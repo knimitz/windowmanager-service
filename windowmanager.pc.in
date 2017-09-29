@@ -1,0 +1,12 @@
+includedir=@PROJECT_INCLUDEDIR@
+libdir=@PROJECT_LIBDIR@
+binding_install_dir=@binding_install_dir@
+
+Name: @PROJECT_PRETTY_NAME@
+Description: @PROJECT_DESCRIPTION@
+Version: @PROJECT_VERSION@
+URL: @PROJECT_URL@
+
+Requires: json-c afb-daemon
+Cflags: -I${includedir}
+Libs: -L${libdir} -lwindowmanager

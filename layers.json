@@ -1,0 +1,89 @@
+{
+   "comment": "Surface ID to Layer ID mapping",
+
+   "main_surface": {
+      "surface_role": "HomeScreen",
+      "comment": "This surface should never be made invisible (The HomeScreen)"
+   },
+
+   "mappings": [
+      {
+         "role": "^HomeScreen$",
+         "name": "HomeScreen",
+         "layer_id": 1000,
+         "area": { "type": "full" },
+         "comment": "Single layer map for the HomeScreen, XXX: type is redundant, could also check existence of id/first_id+last_id"
+      },
+      {
+         "role": "MediaPlayer|Radio|Phone|Navigation|HVAC|Settings|Dashboard|POI|Mixer",
+         "name": "apps",
+         "layer_id": 1001,
+         "area": { "type": "rect", "rect": { "x": 0, "y": 218, "width": -1, "height": -433 } },
+         "comment": "Range of IDs that will always be placed on layer 1001, negative rect values are interpreted as output_size.dimension - $value",
+
+         "split_layouts": [
+            {
+               "name": "MediaPlayer",
+               "main_match": "MediaPlayer",
+               "sub_match": "MediaPlayer",
+               "priority": 1000
+            },
+            {
+               "name": "Radio",
+               "main_match": "Radio",
+               "sub_match": "Radio",
+               "priority": 1000
+            },
+            {
+               "name": "Phone",
+               "main_match": "Phone",
+               "sub_match": "Phone",
+               "priority": 1000
+            },
+            {
+               "name": "Navigation",
+               "main_match": "Navigation",
+               "sub_match": "Navigation",
+               "priority": 1000
+            },
+            {
+               "name": "HVAC",
+               "main_match": "HVAC",
+               "sub_match": "HVAC",
+               "priority": 1000
+            },
+            {
+               "name": "Settings",
+               "main_match": "Settings",
+               "sub_match": "Settings",
+               "priority": 1000
+            },
+            {
+               "name": "Dashboard",
+               "main_match": "Dashboard",
+               "sub_match": "Dashboard",
+               "priority": 1000
+            },
+            {
+               "name": "POI",
+               "main_match": "POI",
+               "sub_match": "POI",
+               "priority": 1000
+            },
+            {
+               "name": "Mixer",
+               "main_match": "Mixer",
+               "sub_match": "Mixer",
+               "priority": 1000
+            }
+         ]
+      },
+      {
+         "role": "^OnScreen.*",
+         "name": "popups",
+         "layer_id": 9999,
+         "area": { "type": "rect", "rect": { "x": 0, "y": 300, "width": -1, "height": 400 } },
+         "comment": "Range of IDs that will always be placed on the popup layer, that gets a very high 'dummy' id of 9999"
+      }
+   ]
+}

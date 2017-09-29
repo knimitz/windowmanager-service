@@ -1,0 +1,250 @@
+Introduction
+============
+
+The LibWindowmanager library provides a simple interface to manipulate and
+query the state of the window manager application framework binding. 
+It is needs to be integrated and called from the client application.
+
+Intended audience
+-----------------
+
+This document is intended to be useful to application developers.
+
+Scope of this Document
+----------------------
+
+This document describes the singleton class interface to the *Window
+Manager* binding service.
+
+class LibWindowmanager
+===============
+
+This is the public interface of the class `LibWindowmanager`. Private members
+and methods are not reproduced as they will not affect usage of the
+class by client applications.
+
+    class LibWindowmanager
+    {
+    public:
+        static LibWindowmanager &instance();
+
+        int init(int port, char const *token);
+
+        // WM API
+        int requestSurface(const char *label);
+        int activateSurface(const char *label);
+        int deactivateSurface(const char *label);
+        int endDraw(const char *label);
+
+        enum EventType {
+           Event_Active,
+           Event_Inactive,
+           Event_Visible,
+           Event_Invisible,
+           Event_SyncDraw,
+           Event_FlushDraw,
+        };
+
+        void set_event_handler(enum EventType et,
+             std::function<void(char const *label)> f);
+    };
+
+Errors
+------
+
+Methods returning an `int` signal successful operation when returning
+`0`. In case of an error, an error value is returned as a negative errno
+value. E.g. `-EINVAL` to signal that some input value was invalid.
+
+Additionally, logging of error messages is done on the standard error
+file descriptor to help debugging the issue.
+
+Labels
+------
+
+Surface labels are any valid strings. For `requestSurface()` these
+strings must match the *Window Manager* configuration in order to be
+allowed to be displayed on one layer or the other. For all other calls
+the label must match the exact name of a requested surface.
+
+Methods
+-------
+
+### LibWindowmanager::init(port, token)
+
+Initialize the Binding communication.
+
+The `token` parameter is a string consisting of only alphanumeric characters.
+If these conditions are not met, the LibWindowmanager instance will not initialize, 
+i.e. this call will return `-EINVAL`.
+
+The `port` parameter is the port the afb daemon is listening on, an
+invalid port will lead to a failure of the call and return `-EINVAL`.
+
+### LibWindowmanager::requestSurface(label)
+
+This method requests a surface with the label given from the *Window
+Manager*. It will return `0` for a successful surface request, and
+`-errno` on failure. Additionally, on the standard error, messages are
+logged to help debgging the issue.
+
+### LibWindowmanager::activateSurface(label)
+
+This method is mainly intended for *manager* applications that control
+other applications (think an application manager or the *HomeScreen*).
+It instructs the window manager to activate the surface with the given
+*label*.
+
+This method only is effective after the actual window or surface was
+created by the application.
+
+### LibWindowmanager::deactivateSurface(label)
+
+This method is mainly intended for *manager* applications that control
+other applications. It instructs the window manager to deactivate the
+surface associated with the given label. Note, that deactivating a
+surface also means to implicitly activate another (the last active or if
+not available *main surface* or *HomeScreen*.)
+
+This method only is effective after the actual window or surface was
+created by the application.
+
+### LibWindowmanager::endDraw(label)
+
+This function is called from a client application when it is done
+drawing its surface content.
+
+It is not crucial to make this call at every time a drawing is finished
+- it is mainly intended to allow the window manager to synchronize
+drawing in case of layout switch. The exact semantics are explained in
+the next [Events](#_events) Section.
+
+### LibWindowmanager::set\_event\_handler(et, func)
+
+This method needs to be used to register event handlers for the WM
+events described in the EventType enum. Only one hendler for each
+EventType is possible, i.e. if it is called multiple times with the same
+EventType the previous handler will be replaced.
+
+The `func` handler functions will receive the label of the surface this
+event is targeted at.
+
+See Section [Events](#_events) for mor detailed information about event
+delivery to client applications.
+
+Usage
+-----
+
+### Initialization of LibWindowmanager
+
+Before usage of the LibWindowmanager, the method `init()` must be
+called once, it will return `-errno` in case of en error and log
+diagnostic messages to stderr.
+
+### Request a surface
+
+When creating a surface with *Qt* - it is necessary to request a surface
+from the WM, internally this will communicate with the window manager
+binding. Only after `requestSurface()` was successful, a surface should
+be created.
+
+This is also true for *QML* aplications, where only after the
+`requestSurface()` should the load of the resource be done. The method
+returns `0` after the surface was requested successfully.
+
+#### Workings of requestSurface()
+
+`LibWindowmanager::requestSurface()` calls the AFB binding verb
+`requestsurface` of the `windowmanager` API. This API call will return a
+numeric ID to be used when creating the surface. This ID is never
+explicitly returned to the client application, instead, it is set in the
+application environment in order for *Qt* to then use it when creating
+the surface.
+
+With the current *Qt* implementation this means, that only one surface
+will be available to client applications, as subsequent windows will
+increment this numeric ID internally - which then will lead to IDs that
+cannot be known by the window manager as there is no direct
+communication from *Qt* to the WM.
+
+Events
+------
+
+Events are a way for the *Window Manager* to propagate information to
+client applications. It was vital for the project to implement a number
+of events, that mirror functionality that is already present in the
+wayland protocol.
+
+All events have the surface `label` as argument - a way to enable future
+multi-surface applications.
+
+As already stated above, this is currently not possible with the way
+*Qt* implements its surface ID setting.
+
+### Active and Inactive Events
+
+These events signal an application that it was activated or deactivated
+respectively. Usually this means it was switched visible - which means
+the surface will now be on the screen and therefor continue to render.
+
+### Visible and Invisible
+
+These events signal an application that it was switched to be visible or
+invisible respectively. These events too are handled implicitly through
+the wayland protocol by means of `wl_surface::enter` and
+`wl_surface::leave` events to the client.
+
+### SyncDraw and FlushDraw
+
+These events instruct applications that they should redraw their surface
+contents - again, this is handled implicitly by the wayland protocol.
+
+`SyncDraw` is sent to the application when it has to redraw its surface.
+
+`FlushDraw` is sent to the application when it should swap its buffers,
+that is *signal* the compositor that its surface contains new content.
+
+Example Use Case
+----------------
+
+In order to enable application to use the `WM` surface registration
+function the above described steps need to be implemented.
+
+As a minimal example the usage and initialization can look like the
+following.
+
+        // Assume a program argc and argv.
+        QGuiApplication app(argc, argv);
+
+        auto &wm = LibWindowmanager::instance();
+
+        // initialize the LibWindowmanager binding.
+        if(wm.init(1234, "wmtest") != 0) {
+            exit(EXIT_FAILURE);
+        }
+
+        // Request a surface label from the WM.
+        char const *surface_label = "AppMediaPlayer";
+        if (wm.requestSurface(surface_label) != 0) {
+            exit(EXIT_FAILURE);
+        }
+
+        // Register an Active event handler.
+        wm.set_event_handler(Event_Active,
+             [](char const *label) {
+                qDebug() << "Surface" << label << "got activated";
+             });
+
+        // Initialize application window
+        // ...
+
+        // request to activate the surface, this should usually
+        // not be done by the client application.
+        if (wm.activateSurface(surface_label) != 0) {
+           fprintf(stderr, "Could not activate the surface\n");
+           exit(EXIT_FAILURE);
+        }
+
+        // e.g. exec the qt application
+        app.exec();
+

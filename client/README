@@ -1,0 +1,39 @@
+= Example Application for TMC AGL WindowManager Client Lib 
+This is a example QML application that uses clients of the TMC WindowManager.
+
+== Dependencies
+* Qt5 + QtQuick (QML) with ivi-shell support
+
+== Build instructions
+Inside of an SDK environment run:
+
+----------------
+qmake
+make
+----------------
+
+* The binary should be installed somewhere in $PATH
+
+== Usage
+Run this application like follows:
+
+----------------
+qmlWindowManagerSampleApp $width $height $appLabel $colorName
+----------------
+
+.Note
+****************
+Depending on your environment you will need to set the following
+environment variable to instruct Qt to use the ivi-shell integration:
+`QT_WAYLAND_SHELL_INTEGRATION=ivi-shell`
+****************
+
+Starts the application with a surface the size $width x $height
+the Surface will request the label "$appLabel" and set its surface
+color "$colorName" e.g. red.
+
+Note, that although the application sets an initial window size, the
+window manager will send events to the application that instruct it to
+set the proper, requested size for the layout.
+
+// vim:set tw=72 ft=asciidoc:
