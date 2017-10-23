@@ -1,24 +1,51 @@
 **Window Manager Application Guide**
 ====
-<div align="right">Revision: 0.2Beta</div>
+<div align="right">Revision: 0.2Final</div>
 <div align="right">TOYOTA MOTOR CORPORATION</div>
-<div align="right">30th/Sep/2017</div>
+<div align="right">23rd/Oct/2017</div>
 
 * * *
+## **<div id="Table\ of\ content">Table of content</div>**
+- [Introduction](#Introduction)
+	- [Intended audience](#Intended\ audience)
+	- [Scope of this Document](#Scope\ of\ this\ Document)
+	- [Known Issues](#Known\ Issues)
+	- [External libraries](#External\ libraries)
+	- [Client Library](#Client\ Library)
+- [Concepts](#Concepts)
+	- [Layers](#Layers)
+	- [Surfaces](#Surfaces)
+- [Configuration](#Configuration)
+	- [Configuration Items](#Configuration\ Items)
+- [Building and Running](#Building\ and\ Running)
+	- [Dependencies](#Dependencies)
+	- [Build Configuration](#Build\ Configuration)
+- [Implementation Notes](#Implementation\ Notes)
+	- [Binding code generation](#Binding\ code\ generation)
+	- [Structure](#Structure)
+- [Sequence](#Sequence)
+- [Binding API](#Binding\ API)
+	- [LibWindowmanager](#LibWindowmanager)
+	- [Methods](#Methods)
+	- [Errors](#Errors)
+	- [Usage](#Usage)
+	- [Events](#Events)
+- [Sample](#Sample)
 
-Introduction
+
+<div id="Introduction">Introduction</div>
 ============
 
 This WindowManager implements simple layout switching of applications on
 multiple layers and with different layer layouts.
 
-Intended audience
+<div id="Intended\ audience">Intended audience</div>
 -----------------
 
 This documentation is intended for developers and system integrators who
 need to know, how the window manager works and how it is to be used.
 
-Scope of this Document
+<div id="Scope\ of\ this\ Document">Scope of this Document</div>
 ----------------------
 
 This document covers the window manager that was implemented for TMC and
@@ -37,7 +64,7 @@ It does not include
 It is highly recommended to have a good understanding of these documents
 and projects before using the window manager.
 
-Known Issues
+<div id="Known\ Issues">Known Issues</div>
 ------------
 
 Currently there is a one known issues:
@@ -46,13 +73,13 @@ Currently there is a one known issues:
     libwindowmanager library. This is a limitation of how Qt creates surface
     IDs for the ivi-application interface.
 
-External libraries
+<div id="External\ libraries">External libraries</div>
 ------------------
 
 This project includes a copy of version 2.1.1 the excellent [C++11 JSON
 library by Niels Lohmann](https://github.com/nlohmann/json).
 
-Client Library
+<div id="Client\ Library">Client Library</div>
 --------------
 
 A client library implementation that internally uses the *libafbwsc*, is
@@ -61,13 +88,13 @@ directory.
 
 The client library is built together with the window manager itself.
 
-Concepts
+<div id="Concepts">Concepts</div>
 ========
 
 The window manager implements a couple of concepts in order to allow
 efficient implementation.
 
-Layers
+<div id="Layers">Layers</div>
 ------
 
 Layers are entities that are stacked on top of each other. Each layer
@@ -85,112 +112,15 @@ currently used layer.
 It is possible to deactivate these surfaces on lower layers explicitly
 using the `DeactivateSurface` API call.
 
-Surfaces
+<div id="Surfaces">Surfaces</div>
 --------
 
 Surfaces are *placed* on layers according to their name. The surface
-will then be resized to dimensions, according to the layer’s layout
+will then be resized to dimensions, according to the layer's layout
 configuration.
 
-Binding API
-===========
 
-The binding API consists of a couple of AFB *verbs* - that is; function
-calls to the Window Manager.
-
-Verbs (Functions)
------------------
-
-Each function returns a reply containing at least a failed or successful
-result of the call, additionally, when calls return something, it is
-noted. The notation used has the following meaning:
-
-    FunctionName(argument_name: argument_type)[: function_return_type]
-
-Where the return type may be omitted if it is void.
-
--   `RequestSurface(drawing_name: string): int` Request a surface ID for
-    the given name. This name and ID association will live until the
-    surface is destroyed (or e.g. the application exits). Each surface
-    that is managed by the window manager needs to call this function
-    first!
-
--   `ActivateSurface(drawing_name: string)` This function requests the
-    activation of a surface. It usually is not called by the
-    application, but rather by the application framework or
-    the HomeScreen.
-
--   `DeactivateSurface(drawing_name: string)` Request deactivation of
-    a surface. This function is not usually called by applications
-    themselves, but rather by the application framework or
-    the HomeScreen.
-
--   `EndDraw(drawing_name: string)` Signals the window manager, that the
-    surface is finished drawing. This is useful for consistent
-    flicker-free layout switches, see the Architecture document
-    for details.
-
-There are a couple of non-essential (mostly for debugging and
-development) API calls:
-
--   `list_drawing_names(): json` List known surface *name* to
-    *ID* associations.
-
--   `ping()` Ping the window manager. Does also dispatch pending events
-    if any.
-
--   `debug_status(): json` Returns a json representation of the current
-    layers and surfaces known to the window manager. This represents the
-    wayland-ivi-extension object’s properties.
-
--   `debug_surfaces(): json` Returns a json representation of all
-    surfaces known to the window manager. This represents the
-    wayland-ivi-extension properties of the surfaces.
-
--   `debug_layers(): json` Returns the current layer configuration, as
-    configured through *layers.json*.
-
--   `debug_terminate()` Terminates the afb-daemon running the window
-    manager binding, if the environment variable
-    `WINMAN_DEBUG_TERMINATE` is set.
-
-Events
-------
-
-The window manager broadcasts certain events (to all applications) that
-signal information on the state of the surface regarding the current
-layout.
-
--   `Active(drawing_name: string)` Signal that the surface with the name
-    `drawing_name` is now active.
-
--   `Inactive(drawing_name: string)` Signal that the surface with the
-    name `drawing_name` is now inactive. This usually means, the layout
-    got changed, and the surface is now considered inactive
-    (or sleeping).
-
--   `Visible(drawing_name: string)` Signal applications, that the
-    surface with name `drawing_name` is now visible.
-
--   `Invisible(drawing_name: string)` Signal applications that the
-    surface with name `drawing_name` is now invisible.
-
--   `SyncDraw(drawing_name: string)` Signal applications, that the
-    surface with name `drawing_name` needs to redraw its content - this
-    usually is sent when the surface geometry changed.
-
--   `FlushDraw(drawing_name: string)` Signal to applications, that the
-    surface with name `drawing_name` can now be swapped to its newly
-    drawn content as the window manager is ready to activate a new
-    layout (i.e. a new surface geometry).
-
-Binding API Usage
------------------
-
-For a detailed description on how the binding API is supposed to be
-used, refer to the Architecture document.
-
-Configuration
+<div id="Configuration">Configuration</div>
 =============
 
 The window manager is configured with the *layers.json* configuration
@@ -202,7 +132,7 @@ configuration is found and valid.
 A sample configuration is provided with the window manager
 implementation, this sample is installed to /etc/layers.json.
 
-Configuration Items
+<div id="Configuration\ Items">Configuration Items</div>
 -------------------
 
 This section describes configuration items available through
@@ -231,23 +161,36 @@ This configuration item is a list of surface-name to layer mappings.
 #### surface to layer mapping
 
     "mappings": [
-       {
-          "role": "^HomeScreen$",
-          "name": "HomeScreen",
-          "layer_id": 1000,
-          "area": { "type": "full" },
-       },
-       {
-          "role": "MediaPlayer|Radio|Phone",
-          "name": "apps",
-          "layer_id": 1001,
-          "area": { "type": "rect",
-                    "rect": { "x": 0,
-                              "y": 100,
-                              "width": -1,
-                              "height": -201 } },
-          "split_layouts": []
-       }
+      {
+         "role": "^HomeScreen$",
+         "name": "HomeScreen",
+         "layer_id": 1000,
+         "area": { "type": "full" },
+         "comment": "Single layer map for the HomeScreen, XXX: type is redundant, could also check existence of id/first_id+last_id"
+      },
+      {
+         "role": "MediaPlayer|Radio|Phone|Navigation|HVAC|Settings|Dashboard|POI|Mixer",
+         "name": "apps",
+         "layer_id": 1001,
+         "area": { "type": "rect", "rect": { "x": 0, "y": 218, "width": -1, "height": -433 } },
+         "comment": "Range of IDs that will always be placed on layer 1001, negative rect values are interpreted as output_size.dimension - $value",
+
+         "split_layouts": [
+            {
+               "name": "Navigation",
+               "main_match": "Navigation",
+               "sub_match": "HVAC|MediaPlayer",
+               "priority": 1000
+            }
+         ]
+      },
+      {
+         "role": "^OnScreen.*",
+         "name": "popups",
+         "layer_id": 9999,
+         "area": { "type": "rect", "rect": { "x": 0, "y": 760, "width": -1, "height": 400 } },
+         "comment": "Range of IDs that will always be placed on the popup layer, that gets a very high 'dummy' id of 9999"
+      }
     ]
 
 Each mapping defines the following items to map corresponding surfaces
@@ -317,9 +260,9 @@ activated).
 
     "split_layouts": [
        {
-          "name": "Media Player",
-          "main_match": "^App MPlayer Main$",
-          "sub_match": "^App MPlayer Sub",
+           "name": "Navigation",
+           "main_match": "Navigation",
+           "sub_match": "HVAC|MediaPlayer",
        }
     ]
 
@@ -341,10 +284,10 @@ this layout.
 
 The names must still match the layer’s role match!
 
-Building and Running
+<div id="Building\ and\ Running">Building and Running</div>
 ====================
 
-Dependencies
+<div id="Dependencies">Dependencies</div>
 ------------
 
 This project is intended to be build with the 4.0 release of AGL.
@@ -359,7 +302,7 @@ Build dependencies are as follows:
 
 -   cmake &gt;= 3.6.1
 
-Build Configuration
+<div id="Build\ Configuration">Build Configuration</div>
 -------------------
 
 **Download recipe**
@@ -397,14 +340,14 @@ A couple of build options to configure the build are available:
 By default these options will be disabled.
 
 
-Implementation Notes
+<div id="Implementation\ Notes">Implementation Notes</div>
 ====================
 
 The window manager is implemented as a app-framework-binder binding.
 That means, the build produces one shared object that exports a binding
 interface.
 
-Binding code generation
+<div id="Binding\ code\ generation">Binding code generation</div>
 -----------------------
 
 The binding API is rather simple; functions receive a json object
@@ -441,7 +384,7 @@ exception is thrown and not handled inside the afb\_binding\_call, that
 internal state of the window manager might be broken at this time (hence
 the talkative error log).
 
-Structure
+<div id="Structure">Structure</div>
 ---------
 
 The implementation is loosely split across the following source files:
@@ -494,4 +437,248 @@ The implementation is loosely split across the following source files:
     libwayland-client wrapper. It is instanced in `main.cpp` and handles
     all our wayland needs.
 
+<div id="Sequence">Sequence</div>
+===============
+
+To understand the sequence between application and window manager, refer to the [spec documentation](https://wiki.automotivelinux.org/windowmanager).
+
+
+<div id="Binding\ API">Binding API</div>
+===============
+
+Each function returns a reply containing at least a failed or successful
+result of the call, additionally, when calls return something, it is
+noted.
+
+<div id="LibWindowmanager">LibWindowmanager</div>
+------
+
+This is the public interface of the class `LibWindowmanager`.
+
+    class LibWindowmanager
+    {
+    public:
+        LibWindowmanager();
+        ~LibWindowmanager();
+
+        enum EventType {
+           Event_Active = 0,
+           Event_Inactive,
+
+           Event_Visible,
+           Event_Invisible,
+
+           Event_SyncDraw,
+           Event_FlushDraw,
+        };
+
+        int init(int port, char const *token);
+
+        // WM API
+        int requestSurface(json_object *object);
+        int activateSurface(json_object *object);
+        int deactivateSurface(json_object *object);
+        int endDraw(json_object *object);
+
+        void set_event_handler(enum EventType et, handler_fun f);
+
+    };
+
+<div id="Methods">Methods</div>
+-------
+
+### init(int port, char const *token)
+
+Initialize the Binding communication.
+
+The `token` parameter is a string consisting of only alphanumeric characters.
+If these conditions are not met, the LibWindowmanager instance will not initialize,
+i.e. this call will return `-EINVAL`.
+
+The `port` parameter is the port the afb daemon is listening on, an
+invalid port will lead to a failure of the call and return `-EINVAL`.
+
+### requestSurface(json_object *object)
+
+**args: `{ 'kKeyDrawingName': 'application name' }`**
+This method requests a surface with the label given from the *Window
+Manager*. It will return `0` for a successful surface request, and
+`-errno` on failure. Additionally, on the standard error, messages are
+logged to help debgging the issue.
+
+### activateSurface(json_object *object)
+
+**args: `{ 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }`**
+This method is mainly intended for *manager* applications that control
+other applications (think an application manager or the *HomeScreen*).
+It instructs the window manager to activate the surface with the given
+*label*.
+
+This method only is effective after the actual window or surface was
+created by the application.
+
+### deactivateSurface(json_object *object)
+
+**args: `{ 'kKeyDrawingName': 'application name' }`**
+This method is mainly intended for *manager* applications that control
+other applications. It instructs the window manager to deactivate the
+surface associated with the given label. Note, that deactivating a
+surface also means to implicitly activate another (the last active or if
+not available *main surface* or *HomeScreen*.)
+
+This method only is effective after the actual window or surface was
+created by the application.
+
+### endDraw(json_object *object)
+
+**args: `{ 'kKeyDrawingName': 'application name' }`**
+This function is called from a client application when it is done
+drawing its surface content.
+
+It is not crucial to make this call at every time a drawing is finished
+- it is mainly intended to allow the window manager to synchronize
+drawing in case of layout switch. The exact semantics are explained in
+the next [Events](#_events) Section.
+
+### set\_event\_handler(enum EventType et, handler_fun f)
+
+This method needs to be used to register event handlers for the WM
+events described in the EventType enum. Only one hendler for each
+EventType is possible, i.e. if it is called multiple times with the same
+EventType the previous handler will be replaced.
+
+The `func` handler functions will receive the label of the surface this
+event is targeted at.
+
+See Section [Events](#_events) for mor detailed information about event
+delivery to client applications.
+
+<div id="Errors">Errors</div>
+------
+
+Methods returning an `int` signal successful operation when returning
+`0`. In case of an error, an error value is returned as a negative errno
+value. E.g. `-EINVAL` to signal that some input value was invalid.
+
+Additionally, logging of error messages is done on the standard error
+file descriptor to help debugging the issue.
+
+<div id="Usage">Usage</div>
+-----
+
+### Initialization of LibWindowmanager
+
+Before usage of the LibWindowmanager, the method `init()` must be
+called once, it will return `-errno` in case of en error and log
+diagnostic messages to stderr.
+
+### Request a surface
+
+When creating a surface with *Qt* - it is necessary to request a surface
+from the WM, internally this will communicate with the window manager
+binding. Only after `requestSurface()` was successful, a surface should
+be created.
+
+This is also true for *QML* applications, where only after the
+`requestSurface()` should the load of the resource be done. The method
+returns `0` after the surface was requested successfully.
+
+#### Workings of requestSurface()
+
+`LibWindowmanager::requestSurface()` calls the AFB binding verb
+`requestsurface` of the `windowmanager` API. This API call will return a
+numeric ID to be used when creating the surface. This ID is never
+explicitly returned to the client application, instead, it is set in the
+application environment in order for *Qt* to then use it when creating
+the surface.
+
+With the current *Qt* implementation this means, that only one surface
+will be available to client applications, as subsequent windows will
+increment this numeric ID internally - which then will lead to IDs that
+cannot be known by the window manager as there is no direct
+communication from *Qt* to the WM.
+
+<div id="Events">Events</div>
+------
+
+Events are a way for the *Window Manager* to propagate information to
+client applications. It was vital for the project to implement a number
+of events, that mirror functionality that is already present in the
+wayland protocol.
+
+All events have the surface label as argument - a way to enable future
+multi-surface applications.
+
+As already stated above, this is currently not possible with the way
+*Qt* implements its surface ID setting.
+
+### Active and Inactive Events
+
+These events signal an application that it was activated or deactivated
+respectively. Usually this means it was switched visible - which means
+the surface will now be on the screen and therefor continue to render.
+
+-   `Active(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
+    Signal that the surface with the name
+    `kKeyDrawingName` is now active.
+
+-   `Inactive(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
+    Signal that the surface with the
+    name `kKeyDrawingName` is now inactive. This usually means, the layout
+    got changed, and the surface is now considered inactive
+    (or sleeping).
+
+### Visible and Invisible
+
+These events signal an application that it was switched to be visible or
+invisible respectively. These events also are handled implicitly through
+the wayland protocol by means of `wl_surface::enter` and
+`wl_surface::leave` events to the client.
+
+-   `Visible(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
+    Signal applications, that the
+    surface with name `kKeyDrawingName` is now visible.
+
+-   `Invisible(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
+    Signal applications that the
+    surface with name `kKeyDrawingName` is now invisible.
+
+### SyncDraw and FlushDraw
+
+These events instruct applications that they should redraw their surface
+contents - again, this is handled implicitly by the wayland protocol.
+
+`SyncDraw` is sent to the application when it has to redraw its surface.
+
+`FlushDraw` is sent to the application when it should swap its buffers,
+that is *signal* the compositor that its surface contains new content.
+
+-   `SyncDraw(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }
+    Signal applications, that the
+    surface with name `kKeyDrawingArea` needs to redraw its content - this
+    usually is sent when the surface geometry changed.
+
+-   `FlushDraw(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
+    Signal applications, that the
+    surface with name `kKeyDrawingArea` can now be swapped to its newly
+    drawn content as the window manager is ready to activate a new
+    layout (i.e. a new surface geometry).
+
+<div id="Sample">Sample</div>
+============
+
+In order to enable application to use the `WM` surface registration
+function the above described steps need to be implemented.
+
+As a minimal example the usage and initialization can look like the
+following.
+
+Repo: `apps/agl-service-homescreen-2017`
+Path: `sample/template/main.c`
 
