@@ -639,8 +639,8 @@ void App::activate(int id) {
       this->controller->surfaces[id]->set_visibility(1);
       char const *label =
          this->lookup_name(id).value_or("unknown-name").c_str();
-      this->emit_activated(label);
       this->emit_visible(label);
+      this->emit_activated(label);
    }
 }
 
