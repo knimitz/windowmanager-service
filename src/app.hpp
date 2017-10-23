@@ -46,6 +46,17 @@ namespace wm {
 
 using std::experimental::optional;
 
+/* DrawingArea name used by "{layout}.{area}" */
+static const char *kNameLayoutNormal = "normal";
+static const char *kNameLayoutSplit = "split";
+static const char *kNameAreaFull = "full";
+static const char *kNameAreaMain = "main";
+static const char *kNameAreaSub = "sub";
+
+/* Key for json obejct */
+static const char *kKeyDrawingName = "drawing_name";
+static const char *kKeyDrawingArea = "drawing_area";
+
 struct id_allocator {
    unsigned next = 1;
 
@@ -141,7 +152,7 @@ struct App {
    void set_pending_events();
 
    result<int> api_request_surface(char const *drawing_name);
-   char const *api_activate_surface(char const *drawing_name);
+   char const *api_activate_surface(char const *drawing_name, char const *drawing_area);
    char const *api_deactivate_surface(char const *drawing_name);
    char const *api_enddraw(char const *drawing_name);
    void api_ping();
@@ -167,7 +178,7 @@ private:
    // TMC WM Events to clients
    void emit_activated(char const *label);
    void emit_deactivated(char const *label);
-   void emit_syncdraw(char const *label);
+   void emit_syncdraw(char const *label, char const *area);
    void emit_flushdraw(char const *label);
    void emit_visible(char const *label, bool is_visible);
    void emit_invisible(char const *label);

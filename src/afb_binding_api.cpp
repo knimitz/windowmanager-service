@@ -42,9 +42,9 @@ binding_api::result_type binding_api::requestsurface(
 }
 
 binding_api::result_type binding_api::activatesurface(
-   char const *drawing_name) {
+   char const *drawing_name, char const *drawing_area) {
    logdebug("%s drawing_name %s", __func__, drawing_name);
-   auto r = this->app->api_activate_surface(drawing_name);
+  auto r = this->app->api_activate_surface(drawing_name, drawing_area);
    if (r != nullptr) {
       logdebug("%s failed with error: %s", __func__, r);
       return Err<json_object *>(r);
