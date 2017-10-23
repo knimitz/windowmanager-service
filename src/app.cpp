@@ -319,6 +319,7 @@ void App::layout_commit() {
 
 char const *App::api_activate_surface(char const *drawing_name, char const *drawing_area) {
    ST();
+
    auto const &surface_id = this->lookup_id(drawing_name);
 
    if (!surface_id) {
@@ -367,35 +368,67 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
       }
    }
 
-   if (state.main == *surface_id || state.sub == *surface_id) {
-      return "Surface already active";
-   }
+   auto layer = this->layers.get_layer(*layer_id);
 
    if (state.main == -1) {
       this->try_layout(
          state, LayoutState{*surface_id}, [&] (LayoutState const &nl) {
+            HMI_DEBUG("wm", "Layout: %s", kNameLayoutNormal);
             this->surface_set_layout(*surface_id);
             state = nl;
+
+            // Commit for configuraton
+            this->layout_commit();
+
+            if (!(layer->is_normal_layout_only)) {
+               // Wait for configuration listener
+               controller->is_configured = false;
+               while (!(controller->is_configured)) {
+                  dispatch_pending_events();
+               }
+            }
+
             std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
             this->emit_syncdraw(drawing_name, str_area.c_str());
             this->enqueue_flushdraw(state.main);
          });
    } else {
-      bool can_split = this->can_split(state, *surface_id);
+      if (0 == strcmp(drawing_name, "HomeScreen")) {
+         this->try_layout(
+            state, LayoutState{*surface_id}, [&] (LayoutState const &nl) {
+               HMI_DEBUG("wm", "Layout: %s", kNameLayoutNormal);
+               std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
+               this->emit_syncdraw(drawing_name, str_area.c_str());
+               this->enqueue_flushdraw(state.main);
+            });
+      } else {
+         bool can_split = this->can_split(state, *surface_id);
 
          if (can_split) {
             this->try_layout(
                state,
                LayoutState{state.main, *surface_id},
                [&] (LayoutState const &nl) {
+                  HMI_DEBUG("wm", "Layout: %s", kNameLayoutSplit);
                   std::string main =
                      std::move(*this->lookup_name(state.main));
 
                   this->surface_set_layout(state.main, surface_id);
-                  if (state.sub != -1) {
-                     this->deactivate(state.sub);
+                  if (state.sub != *surface_id) {
+                      if (state.sub != -1) {
+                         this->deactivate(state.sub);
+                      }
                   }
                   state = nl;
+
+                  // Commit for configuraton and visibility(0)
+                  this->layout_commit();
+
+                  // Wait for configuration listener
+                  controller->is_configured = false;
+                  while (!(controller->is_configured)) {
+                     dispatch_pending_events();
+                  }
 
                   std::string str_area_main = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaMain);
                   std::string str_area_sub = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaSub);
@@ -407,19 +440,36 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
          } else {
             this->try_layout(
                state, LayoutState{*surface_id}, [&] (LayoutState const &nl) {
+                  HMI_DEBUG("wm", "Layout: %s", kNameLayoutNormal);
+
                   this->surface_set_layout(*surface_id);
-                  this->deactivate(state.main);
+                  if (state.main != *surface_id) {
+                      this->deactivate(state.main);
+                  }
                   if (state.sub != -1) {
-                     this->deactivate(state.sub);
+                      if (state.sub != *surface_id) {
+                         this->deactivate(state.sub);
+                      }
                   }
                   state = nl;
 
+                  // Commit for configuraton and visibility(0)
+                  this->layout_commit();
+
+                  if (!(layer->is_normal_layout_only)) {
+                     // Wait for configuration listener
+                     controller->is_configured = false;
+                     while (!(controller->is_configured)) {
+                        dispatch_pending_events();
+                     }
+                  }
 
                   std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
                   this->emit_syncdraw(drawing_name, str_area.c_str());
                   this->enqueue_flushdraw(state.main);
                });
          }
+      }
    }
 
    // no error
@@ -636,7 +686,9 @@ result<int> App::api_request_surface(char const *drawing_name) {
 
 void App::activate(int id) {
    auto ip = this->controller->sprops.find(id);
-   if (ip != this->controller->sprops.end() && ip->second.visibility == 0) {
+   if (ip != this->controller->sprops.end()) {
+      this->controller->surfaces[id]->set_visibility(0);
+      this->layout_commit();
       this->controller->surfaces[id]->set_visibility(1);
       char const *label =
          this->lookup_name(id).value_or("unknown-name").c_str();

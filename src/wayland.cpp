@@ -656,6 +656,7 @@ void controller::surface_configuration(struct surface *s, int32_t width,
    HMI_DEBUG("wm", "genivi::surface %s @ %d w %i h %i", __func__, s->id,
             width, height);
    this->sprops[s->id].size = size{uint32_t(width), uint32_t(height)};
+   is_configured = true;
 }
 
 void controller::surface_orientation(struct surface *s, int32_t orientation) {

@@ -52,10 +52,13 @@ struct layer {
    // Specify a role prefix for surfaces that should be
    // put on this layer.
    std::string role;
-   // XXX perhaps a zorder is needed here?
+   // TODO: perhaps a zorder is needed here?
    std::vector<struct split_layout> layouts;
-   // XXX need to change the way we store these things...
+
    mutable struct LayoutState state;
+
+  // Flag of normal layout only
+   bool is_normal_layout_only;
 
    explicit layer(nlohmann::json const &j);
 

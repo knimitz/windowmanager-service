@@ -37,8 +37,16 @@ layer::layer(nlohmann::json const &j) {
          jr["width"], jr["height"], jr["x"], jr["y"],
       };
    }
+
+   // Init flag of normal layout only
+   this->is_normal_layout_only = true;
+
    auto split_layouts = j.find("split_layouts");
    if (split_layouts != j.end()) {
+
+      // Clear flag of normal layout only
+      this->is_normal_layout_only = false;
+
       auto &sls = j["split_layouts"];
       // this->layouts.reserve(sls.size());
       std::transform(std::cbegin(sls), std::cend(sls),
@@ -53,6 +61,8 @@ layer::layer(nlohmann::json const &j) {
                         return l;
                      });
    }
+   HMI_DEBUG("wm", "layer_id:%d is_normal_layout_only:%d\n",
+      this->layer_id, this->is_normal_layout_only);
 }
 
 struct result<struct layer_map> to_layer_map(nlohmann::json const &j) {

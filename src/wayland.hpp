@@ -288,6 +288,8 @@ struct controller : public wayland_proxy<struct ivi_controller> {
 
    wm::controller_hooks *chooks;
 
+   bool is_configured;
+
    void add_proxy_to_id_mapping(struct ivi_controller_surface *p, uint32_t id);
    void remove_proxy_to_id_mapping(struct ivi_controller_surface *p);
    void add_proxy_to_id_mapping(struct ivi_controller_layer *p, uint32_t id);
