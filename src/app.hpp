@@ -93,7 +93,6 @@ struct id_allocator {
    }
 
    // Remove a surface id and name
-   // I don't think I will need this, do I?
    void remove_id(std::string const &name) {
       auto i = this->name2id.find(name);
       if (i != this->name2id.end()) {
@@ -112,6 +111,30 @@ struct id_allocator {
 };
 
 struct App {
+   enum EventType {
+      Event_Val_Min = 0,
+
+      Event_Active = Event_Val_Min,
+      Event_Inactive,
+
+      Event_Visible,
+      Event_Invisible,
+
+      Event_SyncDraw,
+      Event_FlushDraw,
+
+      Event_Val_Max = Event_FlushDraw,
+   };
+
+   const std::vector<const char *> kListEventName{
+     "active",
+     "inactive",
+     "visible",
+     "invisible",
+     "syncdraw",
+     "flushdraw"
+   };
+
    struct binding_api api;
    struct controller_hooks chooks;
 
@@ -136,6 +159,8 @@ struct App {
 
    Policy policy;
 
+   std::map<const char *, struct afb_event> map_afb_event;
+
    explicit App(wl::display *d);
    ~App() = default;
 
@@ -155,6 +180,7 @@ struct App {
    char const *api_activate_surface(char const *drawing_name, char const *drawing_area);
    char const *api_deactivate_surface(char const *drawing_name);
    char const *api_enddraw(char const *drawing_name);
+   char const *api_subscribe(afb_req *req, char const *event_name);
    void api_ping();
 
    // Events from the compositor we are interested in

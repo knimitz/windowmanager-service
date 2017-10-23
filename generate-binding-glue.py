@@ -30,22 +30,41 @@ def p(*args):
 
 def emit_func_impl(api, f):
     args = f.get('args', [])
-    if len(args) > 0:
-        p('   json_object *jreq = afb_req_json(req);', '')
-        for arg in args:
-            arg['jtype'] = arg.get('jtype', arg['type']) # add jtype default
-            p('   json_object *j_%(name)s = nullptr;' % arg,
-              '   if (! json_object_object_get_ex(jreq, "%(name)s", &j_%(name)s)) {' % arg,
-              '      afb_req_fail(req, "failed", "Need %(type)s argument %(name)s");' % arg,
-              '      return;',
-              '   }',
-              '   %(type)s a_%(name)s = json_object_get_%(jtype)s(j_%(name)s);' % arg, '')
-    p('   auto ret = %(api)s' % api + '%(name)s(' % f + ', '.join(map(lambda x: 'a_' + x['name'], args)) + ');')
-    p('   if (ret.is_err()) {',
-      '      afb_req_fail(req, "failed", ret.unwrap_err());',
-      '      return;',
-      '   }', '')
-    p('   afb_req_success(req, ret.unwrap(), "success");')
+    func_name = f.get('name', [])
+    if "wm_subscribe" == func_name:
+        p('   json_object *jreq = afb_req_json(req);')
+        p('   json_object *j = nullptr;')
+        p('   if (! json_object_object_get_ex(jreq, "event", &j)) {')
+        p('      afb_req_fail(req, "failed", "Need char const* argument event");')
+        p('      return;')
+        p('   }')
+        p('   int event_type = json_object_get_int(j);')
+        p('   const char *event_name = g_afb_instance->app.kListEventName[event_type];')
+        p('   struct afb_event event = g_afb_instance->app.map_afb_event[event_name];')
+        p('   int ret = afb_req_subscribe(req, event);')
+        p('   if (ret) {',
+          '      afb_req_fail(req, "failed", "Error: afb_req_subscribe()");',
+          '      return;',
+          '   }')
+        p('   afb_req_success(req, NULL, "success");')
+
+    else:
+        if len(args) > 0:
+            p('   json_object *jreq = afb_req_json(req);', '')
+            for arg in args:
+                arg['jtype'] = arg.get('jtype', arg['type']) # add jtype default
+                p('   json_object *j_%(name)s = nullptr;' % arg,
+                  '   if (! json_object_object_get_ex(jreq, "%(name)s", &j_%(name)s)) {' % arg,
+                  '      afb_req_fail(req, "failed", "Need %(type)s argument %(name)s");' % arg,
+                  '      return;',
+                  '   }',
+                  '   %(type)s a_%(name)s = json_object_get_%(jtype)s(j_%(name)s);' % arg, '')
+        p('   auto ret = %(api)s' % api + '%(name)s(' % f + ', '.join(map(lambda x: 'a_' + x['name'], args)) + ');')
+        p('   if (ret.is_err()) {',
+          '      afb_req_fail(req, "failed", ret.unwrap_err());',
+          '      return;',
+          '   }', '')
+        p('   afb_req_success(req, ret.unwrap(), "success");')
 
 def emit_func(api, f):
     p('void %(impl_name)s(afb_req req) noexcept {' % f)
@@ -132,6 +151,8 @@ API = {
                     { 'name': 'drawing_name', 'type': 'char const*', 'jtype': 'string' },
                 ],
             },
+            { 'name': 'wm_subscribe', },
+
             { 'name': 'list_drawing_names', },
             { 'name': 'ping' },
 

@@ -105,6 +105,11 @@ int App::init() {
       return -1;
    }
 
+   // Make afb event
+   for (int i=Event_Val_Min; i<=Event_Val_Max; i++) {
+      map_afb_event[kListEventName[i]] = afb_daemon_make_event(kListEventName[i]);
+   }
+
    this->display->add_global_handler(
       "wl_output", [this](wl_registry *r, uint32_t name, uint32_t v) {
          this->outputs.emplace_back(std::make_unique<wl::output>(r, name, v));
@@ -118,8 +123,7 @@ int App::init() {
          // Init controller hooks
          this->controller->chooks = &this->chooks;
 
-         // XXX: This protocol needs the output, so lets just add our mapping
-         // here...
+         // This protocol needs the output, so lets just add our mapping here...
          this->controller->add_proxy_to_id_mapping(
             this->outputs.back()->proxy.get(),
             wl_proxy_get_id(reinterpret_cast<struct wl_proxy *>(
@@ -575,23 +579,23 @@ void App::surface_removed(uint32_t surface_id) {
 }
 
 void App::emit_activated(char const *label) {
-   this->api.send_event("active", label);
+   this->api.send_event(kListEventName[Event_Active], label);
 }
 
 void App::emit_deactivated(char const *label) {
-   this->api.send_event("inactive", label);
+   this->api.send_event(kListEventName[Event_Inactive], label);
 }
 
 void App::emit_syncdraw(char const *label, char const *area) {
-   this->api.send_event("syncdraw", label, area);
+    this->api.send_event(kListEventName[Event_SyncDraw], label, area);
 }
 
 void App::emit_flushdraw(char const *label) {
-   this->api.send_event("flushdraw", label);
+   this->api.send_event(kListEventName[Event_FlushDraw], label);
 }
 
 void App::emit_visible(char const *label, bool is_visible) {
-   this->api.send_event(is_visible ? "visible" : "invisible", label);
+   this->api.send_event(is_visible ? kListEventName[Event_Visible] : kListEventName[Event_Invisible], label);
 }
 
 void App::emit_invisible(char const *label) {
@@ -603,7 +607,7 @@ void App::emit_visible(char const *label) { return emit_visible(label, true); }
 result<int> App::api_request_surface(char const *drawing_name) {
    auto lid = this->layers.get_layer_id(std::string(drawing_name));
    if (!lid) {
-      // XXX: to we need to put these applications on the App layer?
+      // TODO: Do we need to put these applications on the App layer?
       return Err<int>("Drawing name does not match any role");
    }
 
@@ -613,8 +617,7 @@ result<int> App::api_request_surface(char const *drawing_name) {
       auto id = int(this->id_alloc.generate_id(drawing_name));
       this->layers.add_surface(id, *lid);
 
-      // XXX: we set the main_surface[_name] here and now,
-      // not sure if we want this, but it worked so far.
+      // set the main_surface[_name] here and now
       if (!this->layers.main_surface_name.empty() &&
           this->layers.main_surface_name == drawing_name) {
          this->layers.main_surface = id;
