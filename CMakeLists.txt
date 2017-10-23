@@ -79,7 +79,6 @@ set(SANITIZER_MODE "none" CACHE STRING "Build using a specific sanitizer (e.g. '
 
 set(LINK_LIBCXX OFF CACHE BOOL "Link against LLVMs libc++")
 
-add_subdirectory(scripts)
 add_subdirectory(src)
 
 install(
