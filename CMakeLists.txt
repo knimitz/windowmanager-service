@@ -79,14 +79,8 @@ set(SANITIZER_MODE "none" CACHE STRING "Build using a specific sanitizer (e.g. '
 
 set(LINK_LIBCXX OFF CACHE BOOL "Link against LLVMs libc++")
 
-add_subdirectory(libwindowmanager)
 add_subdirectory(scripts)
 add_subdirectory(src)
-
-configure_file(windowmanager.pc.in windowmanager.pc @ONLY)
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/windowmanager.pc
-    DESTINATION
-    ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 install(
    FILES layers.json
