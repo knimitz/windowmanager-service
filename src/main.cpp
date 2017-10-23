@@ -52,7 +52,7 @@ int display_event_callback(sd_event_source *evs, int /*fd*/, uint32_t events,
    ST();
 
    if ((events & EPOLLHUP) != 0) {
-      logerror("The compositor hung up, dying now.");
+      HMI_ERROR("wm", "The compositor hung up, dying now.");
       delete g_afb_instance;
       g_afb_instance = nullptr;
       goto error;
@@ -93,15 +93,15 @@ error:
 // |_.__/|_|_| |_|\__,_|_|_| |_|\__, |___|_|_| |_|_|\__| |  | |
 //                              |___/_____|             \_\/_/
 int binding_init_() {
-   lognotice("WinMan ver. %s", WINMAN_VERSION_STRING);
+   HMI_NOTICE("wm", "WinMan ver. %s", WINMAN_VERSION_STRING);
 
    if (g_afb_instance != nullptr) {
-      logerror("Wayland context already initialized?");
+      HMI_ERROR("wm", "Wayland context already initialized?");
       return 0;
    }
 
    if (getenv("XDG_RUNTIME_DIR") == nullptr) {
-      logerror("Environment variable XDG_RUNTIME_DIR not set");
+      HMI_ERROR("wm", "Environment variable XDG_RUNTIME_DIR not set");
       goto error;
    }
 
@@ -112,10 +112,10 @@ int binding_init_() {
       while (!g_afb_instance->display->ok()) {
          cnt++;
          if (20 <= cnt) {
-            logerror("Could not connect to compositor");
+            HMI_ERROR("wm", "Could not connect to compositor");
             goto error;
          }
-         logerror("Wait to start weston ...");
+         HMI_ERROR("wm", "Wait to start weston ...");
          sleep(1);
          delete g_afb_instance;
          g_afb_instance = new afb_instance;
@@ -123,7 +123,7 @@ int binding_init_() {
    }
 
    if (g_afb_instance->init() == -1) {
-      logerror("Could not connect to compositor");
+      HMI_ERROR("wm", "Could not connect to compositor");
       goto error;
    }
 
@@ -132,7 +132,7 @@ int binding_init_() {
                                 g_afb_instance->display->get_fd(), EPOLLIN,
                                 display_event_callback, g_afb_instance);
       if (ret < 0) {
-         logerror("Could not initialize afb_instance event handler: %d", -ret);
+         HMI_ERROR("wm", "Could not initialize afb_instance event handler: %d", -ret);
          goto error;
       }
    }
@@ -151,7 +151,7 @@ int binding_init() noexcept {
    try {
       return binding_init_();
    } catch (std::exception &e) {
-      logerror("Uncaught exception in binding_init(): %s", e.what());
+      HMI_ERROR("wm", "Uncaught exception in binding_init(): %s", e.what());
    }
    return -1;
 }
@@ -162,19 +162,19 @@ int binding_init() noexcept {
 
 namespace wm {
 void binding_api::send_event(char const *evname, char const *label) {
-   logdebug("%s: %s(%s)", __func__, evname, label);
+   HMI_DEBUG("wm", "%s: %s(%s)", __func__, evname, label);
 
    json_object *j = json_object_new_object();
    json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
 
    int ret = afb_event_push(g_afb_instance->app.map_afb_event[evname], j);
    if (ret != 0) {
-      logdebug("afb_event_push failed: %m");
+      HMI_DEBUG("wm", "afb_event_push failed: %m");
    }
 }
 
 void binding_api::send_event(char const *evname, char const *label, char const *area) {
-   logdebug("%s: %s(%s, %s)", __func__, evname, label, area);
+   HMI_DEBUG("wm", "%s: %s(%s, %s)", __func__, evname, label, area);
 
    json_object *j = json_object_new_object();
    json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
@@ -182,7 +182,7 @@ void binding_api::send_event(char const *evname, char const *label, char const *
 
    int ret = afb_event_push(g_afb_instance->app.map_afb_event[evname], j);
    if (ret != 0) {
-      logdebug("afb_event_push failed: %m");
+      HMI_DEBUG("wm", "afb_event_push failed: %m");
    }
 }
 } // namespace wm

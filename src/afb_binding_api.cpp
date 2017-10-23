@@ -43,53 +43,53 @@ binding_api::result_type binding_api::requestsurface(
 
 binding_api::result_type binding_api::activatesurface(
    char const *drawing_name, char const *drawing_area) {
-   logdebug("%s drawing_name %s", __func__, drawing_name);
+  HMI_DEBUG("wm", "%s drawing_name %s, drawing_area %s", __func__, drawing_name, drawing_area);
   auto r = this->app->api_activate_surface(drawing_name, drawing_area);
    if (r != nullptr) {
-      logdebug("%s failed with error: %s", __func__, r);
+      HMI_DEBUG("wm", "%s failed with error: %s", __func__, r);
       return Err<json_object *>(r);
    }
    return Ok(json_object_new_object());
 }
 
 binding_api::result_type binding_api::deactivatesurface(char const* drawing_name) {
-   logdebug("%s drawing_name %s", __func__, drawing_name);
+   HMI_DEBUG("wm", "%s drawing_name %s", __func__, drawing_name);
    auto r = this->app->api_deactivate_surface(drawing_name);
    if (r != nullptr) {
-      logdebug("%s failed with error: %s", __func__, r);
+      HMI_DEBUG("wm", "%s failed with error: %s", __func__, r);
       return Err<json_object *>(r);
    }
    return Ok(json_object_new_object());
 }
 
 binding_api::result_type binding_api::enddraw(char const* drawing_name) {
-   logdebug("%s drawing_name %s", __func__, drawing_name);
+   HMI_DEBUG("wm", "%s drawing_name %s", __func__, drawing_name);
    auto r = this->app->api_enddraw(drawing_name);
    if (r != nullptr) {
-      logdebug("%s failed with error: %s", __func__, r);
+      HMI_DEBUG("wm", "%s failed with error: %s", __func__, r);
       return Err<json_object *>(r);
    }
    return Ok(json_object_new_object());
 }
 
 binding_api::result_type binding_api::list_drawing_names() {
-   logdebug("%s", __func__);
+   HMI_DEBUG("wm", "%s", __func__);
    json j = this->app->id_alloc.name2id;
    return Ok(json_tokener_parse(j.dump().c_str()));
 }
 
 binding_api::result_type binding_api::debug_layers() {
-   logdebug("%s", __func__);
+   HMI_DEBUG("wm", "%s", __func__);
    return Ok(json_tokener_parse(this->app->layers.to_json().dump().c_str()));
 }
 
 binding_api::result_type binding_api::debug_surfaces() {
-   logdebug("%s", __func__);
+   HMI_DEBUG("wm", "%s", __func__);
    return Ok(to_json(this->app->controller->sprops));
 }
 
 binding_api::result_type binding_api::debug_status() {
-   logdebug("%s", __func__);
+   HMI_DEBUG("wm", "%s", __func__);
    json_object *jr = json_object_new_object();
    json_object_object_add(jr, "surfaces",
                           to_json(this->app->controller->sprops));
@@ -98,7 +98,7 @@ binding_api::result_type binding_api::debug_status() {
 }
 
 binding_api::result_type binding_api::debug_terminate() {
-   logdebug("%s", __func__);
+   HMI_DEBUG("wm", "%s", __func__);
    if (getenv("WINMAN_DEBUG_TERMINATE") != nullptr) {
       raise(SIGKILL);  // XXX afb-daemon kills it's pgroup using TERM, which
                        // doesn't play well with perf

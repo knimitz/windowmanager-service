@@ -36,6 +36,7 @@
 #include <regex>
 #include <thread>
 
+
 namespace wm {
 
 namespace {
@@ -53,7 +54,7 @@ result<json> file_to_json(char const *filename) {
 }
 
 struct result<layer_map> load_layer_map(char const *filename) {
-   logdebug("loading IDs from %s", filename);
+   HMI_DEBUG("wm", "loading IDs from %s", filename);
 
    auto j = file_to_json(filename);
    if (j.is_err()) {
@@ -65,6 +66,7 @@ struct result<layer_map> load_layer_map(char const *filename) {
 }
 
 }  // namespace
+
 
 /**
  * App Impl
@@ -87,11 +89,11 @@ App::App(wl::display *d)
          if (l.is_ok()) {
             this->layers = l.unwrap();
          } else {
-            logerror("%s", l.err().value());
+            HMI_ERROR("wm", "%s", l.err().value());
          }
       }
    } catch (std::exception &e) {
-      logerror("Loading of configuration failed: %s", e.what());
+      HMI_ERROR("wm", "Loading of configuration failed: %s", e.what());
    }
 }
 
@@ -101,7 +103,7 @@ int App::init() {
    }
 
    if (this->layers.mapping.empty()) {
-      logerror("No surface -> layer mapping loaded");
+      HMI_ERROR("wm", "No surface -> layer mapping loaded");
       return -1;
    }
 
@@ -147,7 +149,7 @@ int App::dispatch_events() {
 
    int ret = this->display->dispatch();
    if (ret == -1) {
-      logerror("wl_display_dipatch() returned error %d",
+      HMI_ERROR("wm", "wl_display_dipatch() returned error %d",
                this->display->get_error());
       return -1;
    }
@@ -186,12 +188,12 @@ optional<std::string> App::lookup_name(int id) {
  */
 int App::init_layers() {
    if (!this->controller) {
-      logerror("ivi_controller global not available");
+      HMI_ERROR("wm", "ivi_controller global not available");
       return -1;
    }
 
    if (this->outputs.empty()) {
-      logerror("no output was set up!");
+      HMI_ERROR("wm", "no output was set up!");
       return -1;
    }
 
@@ -216,7 +218,7 @@ int App::init_layers() {
       auto &l = layers[i.second.layer_id];
       l->set_destination_rectangle(0, 0, o->width, o->height);
       l->set_visibility(1);
-      logdebug("Setting up layer %s (%d) for surface role match \"%s\"",
+      HMI_DEBUG("wm", "Setting up layer %s (%d) for surface role match \"%s\"",
                i.second.name.c_str(), i.second.layer_id, i.second.role.c_str());
    }
 
@@ -230,14 +232,14 @@ int App::init_layers() {
 
 void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
    if (!this->controller->surface_exists(surface_id)) {
-      logerror("Surface %d does not exist", surface_id);
+      HMI_ERROR("wm", "Surface %d does not exist", surface_id);
       return;
    }
 
    auto o_layer_id = this->layers.get_layer_id(surface_id);
 
    if (!o_layer_id) {
-      logerror("Surface %d is not associated with any layer!", surface_id);
+      HMI_ERROR("wm", "Surface %d is not associated with any layer!", surface_id);
       return;
    }
 
@@ -263,7 +265,7 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
 
    if (sub_surface_id) {
       if (o_layer_id != this->layers.get_layer_id(*sub_surface_id)) {
-         logerror(
+         HMI_ERROR("wm",
             "surface_set_layout: layers of surfaces (%d and %d) don't match!",
             surface_id, *sub_surface_id);
          return;
@@ -283,7 +285,7 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
 
       auto &ss = this->controller->surfaces[*sub_surface_id];
 
-      logdebug("surface_set_layout for sub surface %u on layer %u",
+      HMI_DEBUG("wm", "surface_set_layout for sub surface %u on layer %u",
                *sub_surface_id, layer_id);
 
       // configure surface to wxh dimensions
@@ -292,9 +294,10 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
       ss->set_source_rectangle(0, 0, w, h);
       // set destination to the display rectangle
       ss->set_destination_rectangle(x + x_off, y + y_off, w, h);
+
    }
 
-   logdebug("surface_set_layout for surface %u on layer %u", surface_id,
+   HMI_DEBUG("wm", "surface_set_layout for surface %u on layer %u", surface_id,
             layer_id);
 
    // configure surface to wxh dimensions
@@ -305,7 +308,7 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
    // set destination to the display rectangle
    s->set_destination_rectangle(x, y, w, h);
 
-   logdebug("Surface %u now on layer %u with rect { %d, %d, %d, %d }",
+   HMI_DEBUG("wm", "Surface %u now on layer %u with rect { %d, %d, %d, %d }",
             surface_id, layer_id, x, y, w, h);
 }
 
@@ -450,7 +453,7 @@ char const *App::api_deactivate_surface(char const *drawing_name) {
    // XXX: check against main_surface, main_surface_name is the configuration
    // item.
    if (*surface_id == this->layers.main_surface) {
-      logdebug("Refusing to deactivate main_surface %d", *surface_id);
+      HMI_DEBUG("wm", "Refusing to deactivate main_surface %d", *surface_id);
       return nullptr;
    }
 
@@ -499,7 +502,7 @@ char const *App::api_deactivate_surface(char const *drawing_name) {
 
 void App::enqueue_flushdraw(int surface_id) {
    this->check_flushdraw(surface_id);
-   logdebug("Enqueuing EndDraw for surface_id %d", surface_id);
+   HMI_DEBUG("wm", "Enqueuing EndDraw for surface_id %d", surface_id);
    this->pending_end_draw.push_back(surface_id);
 }
 
@@ -508,7 +511,7 @@ void App::check_flushdraw(int surface_id) {
                       std::end(this->pending_end_draw), surface_id);
    if (i != std::end(this->pending_end_draw)) {
       auto n = this->lookup_name(surface_id);
-      logerror("Application %s (%d) has pending EndDraw call(s)!",
+      HMI_ERROR("wm", "Application %s (%d) has pending EndDraw call(s)!",
                n ? n->c_str() : "unknown-name", surface_id);
       std::swap(this->pending_end_draw[std::distance(
                    std::begin(this->pending_end_draw), i)],
@@ -541,19 +544,19 @@ void App::api_ping() { this->dispatch_pending_events(); }
 void App::surface_created(uint32_t surface_id) {
    auto layer_id = this->layers.get_layer_id(surface_id);
    if (!layer_id) {
-      logdebug("Newly created surfce %d is not associated with any layer!",
+      HMI_DEBUG("wm", "Newly created surfce %d is not associated with any layer!",
                surface_id);
       return;
    }
 
-   logdebug("surface_id is %u, layer_id is %u", surface_id, *layer_id);
+   HMI_DEBUG("wm", "surface_id is %u, layer_id is %u", surface_id, *layer_id);
 
    this->controller->layers[*layer_id]->add_surface(
       this->controller->surfaces[surface_id].get());
 
    // activate the main_surface right away
    /*if (surface_id == static_cast<unsigned>(this->layers.main_surface)) {
-      logdebug("Activating main_surface (%d)", surface_id);
+      HMI_DEBUG("wm", "Activating main_surface (%d)", surface_id);
 
       this->api_activate_surface(
          this->lookup_name(surface_id).value_or("unknown-name").c_str());
@@ -561,7 +564,7 @@ void App::surface_created(uint32_t surface_id) {
 }
 
 void App::surface_removed(uint32_t surface_id) {
-   logdebug("surface_id is %u", surface_id);
+   HMI_DEBUG("wm", "surface_id is %u", surface_id);
 
    // We cannot normally deactivate the main_surface, so be explicit
    // about it:
@@ -621,7 +624,7 @@ result<int> App::api_request_surface(char const *drawing_name) {
       if (!this->layers.main_surface_name.empty() &&
           this->layers.main_surface_name == drawing_name) {
          this->layers.main_surface = id;
-         logdebug("Set main_surface id to %u", id);
+         HMI_DEBUG("wm", "Set main_surface id to %u", id);
       }
 
       return Ok<int>(id);
@@ -673,21 +676,21 @@ bool App::can_split(struct LayoutState const &state, int new_id) {
 
       auto const &layer = this->layers.get_layer(new_id_layer);
 
-      logdebug("layer info name: %s", layer->name.c_str());
+      HMI_DEBUG("wm", "layer info name: %s", layer->name.c_str());
 
       if (layer->layouts.empty()) {
          return false;
       }
 
       for (auto i = layer->layouts.cbegin(); i != layer->layouts.cend(); i++) {
-         logdebug("%d main_match '%s'", new_id_layer, i->main_match.c_str());
+         HMI_DEBUG("wm", "%d main_match '%s'", new_id_layer, i->main_match.c_str());
          auto rem = std::regex(i->main_match);
          if (std::regex_match(cur_id_str, rem)) {
             // build the second one only if the first already matched
-            logdebug("%d sub_match '%s'", new_id_layer, i->sub_match.c_str());
+            HMI_DEBUG("wm", "%d sub_match '%s'", new_id_layer, i->sub_match.c_str());
             auto res = std::regex(i->sub_match);
             if (std::regex_match(new_id_str, res)) {
-               logdebug("layout matched!");
+               HMI_DEBUG("wm", "layout matched!");
                return true;
             }
          }

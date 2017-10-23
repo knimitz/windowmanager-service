@@ -33,6 +33,7 @@
 #include "policy.hpp"
 #include "result.hpp"
 #include "wayland.hpp"
+#include "hmi-debug.h"
 
 namespace wl {
 struct display;
@@ -76,7 +77,7 @@ struct id_allocator {
       this->id2name[sid] = name;
       // this->pending_surfaces.insert({sid});
       this->name2id[name] = sid;
-      logdebug("allocated new id %u with name %s", sid, name.c_str());
+      HMI_DEBUG("wm", "allocated new id %u with name %s", sid, name.c_str());
       return sid;
    }
 

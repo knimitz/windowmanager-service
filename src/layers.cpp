@@ -20,6 +20,7 @@
 #include "json_helper.hpp"
 #include "layers.hpp"
 #include "util.hpp"
+#include "hmi-debug.h"
 
 namespace wm {
 
@@ -44,7 +45,7 @@ layer::layer(nlohmann::json const &j) {
                      std::back_inserter(this->layouts), [this](json const &sl) {
                         struct split_layout l {
                            sl["name"], sl["main_match"], sl["sub_match"] };
-                        logdebug(
+                        HMI_DEBUG("wm",
                            "layer %d add split_layout \"%s\" (main: \"%s\") (sub: "
                            "\"%s\")", this->layer_id,
                            l.name.c_str(), l.main_match.c_str(),
@@ -114,11 +115,11 @@ optional<int> layer_map::get_layer_id(std::string const &role) {
    for (auto const &r : this->roles) {
       auto re = std::regex(r.first);
       if (std::regex_match(role, re)) {
-         logdebug("role %s matches layer %d", role.c_str(), r.second);
+         HMI_DEBUG("wm", "role %s matches layer %d", role.c_str(), r.second);
          return optional<int>(r.second);
       }
    }
-   logdebug("role %s does NOT match any layer", role.c_str());
+   HMI_DEBUG("wm", "role %s does NOT match any layer", role.c_str());
    return nullopt;
 }
 

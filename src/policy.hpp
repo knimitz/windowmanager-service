@@ -18,6 +18,7 @@
 #define TMCAGLWM_POLICY_HPP
 
 #include "layout.hpp"
+#include "hmi-debug.h"
 
 namespace wm {
 
@@ -25,7 +26,7 @@ class Policy {
 public:
    bool layout_is_valid(LayoutState const & /* layout */) {
       // We do not check for policy currently
-      logdebug("Policy check returns positive");
+      HMI_DEBUG("wm", "Policy check returns positive");
       return true;
    }
 };

@@ -18,6 +18,7 @@
 
 #include "util.hpp"
 #include "wayland.hpp"
+#include "hmi-debug.h"
 
 //                                                                  _
 //  _ __   __ _ _ __ ___   ___  ___ _ __   __ _  ___ ___  __      _| |
@@ -110,7 +111,7 @@ void registry::global(uint32_t name, char const *iface, uint32_t v) {
    if (b != this->bindings.end()) {
       b->second(this->proxy.get(), name, v);
    }
-   logdebug("wl::registry @ %p global n %u i %s v %u", this->proxy.get(), name,
+   HMI_DEBUG("wm", "wl::registry @ %p global n %u i %s v %u", this->proxy.get(), name,
             iface, v);
 }
 
@@ -157,14 +158,14 @@ output::output(struct wl_registry *r, uint32_t name, uint32_t v)
 void output::geometry(int32_t x, int32_t y, int32_t pw, int32_t ph,
                       int32_t subpel, char const *make, char const *model,
                       int32_t tx) {
-   logdebug(
+   HMI_DEBUG("wm",
       "wl::output %s @ %p x %i y %i w %i h %i spel %x make %s model %s tx %i",
       __func__, this->proxy.get(), x, y, pw, ph, subpel, make, model, tx);
    this->transform = tx;
 }
 
 void output::mode(uint32_t flags, int32_t w, int32_t h, int32_t r) {
-   logdebug("wl::output %s @ %p f %x w %i h %i r %i", __func__,
+   HMI_DEBUG("wm", "wl::output %s @ %p f %x w %i h %i r %i", __func__,
             this->proxy.get(), flags, w, h, r);
    if ((flags & WL_OUTPUT_MODE_CURRENT) != 0u) {
       this->width = w;
@@ -174,7 +175,7 @@ void output::mode(uint32_t flags, int32_t w, int32_t h, int32_t r) {
 }
 
 void output::done() {
-   logdebug("wl::output %s @ %p done", __func__, this->proxy.get());
+   HMI_DEBUG("wm", "wl::output %s @ %p done", __func__, this->proxy.get());
    // Let's just disregard the flipped ones...
    if (this->transform == WL_OUTPUT_TRANSFORM_90 ||
        this->transform == WL_OUTPUT_TRANSFORM_270) {
@@ -183,7 +184,7 @@ void output::done() {
 }
 
 void output::scale(int32_t factor) {
-   logdebug("wl::output %s @ %p f %i", __func__, this->proxy.get(), factor);
+   HMI_DEBUG("wm", "wl::output %s @ %p f %i", __func__, this->proxy.get(), factor);
 }
 }  // namespace wl
 
@@ -251,15 +252,15 @@ void controller::surface_create(uint32_t id) {
 
 void controller::controller_screen(uint32_t id,
                                    struct ivi_controller_screen *screen) {
-   logdebug("genivi::controller @ %p screen %u (%x) @ %p", this->proxy.get(),
+   HMI_DEBUG("wm", "genivi::controller @ %p screen %u (%x) @ %p", this->proxy.get(),
             id, id, screen);
    this->screens[id] = std::make_unique<struct screen>(id, this, screen);
 }
 
 void controller::controller_layer(uint32_t id) {
-   logdebug("genivi::controller @ %p layer %u (%x)", this->proxy.get(), id, id);
+   HMI_DEBUG("wm", "genivi::controller @ %p layer %u (%x)", this->proxy.get(), id, id);
    if (this->layers.find(id) != this->layers.end()) {
-      logerror("Someone created a layer without asking US! (%d)", id);
+      HMI_ERROR("wm", "Someone created a layer without asking US! (%d)", id);
    } else {
       auto &l = this->layers[id] = std::make_unique<struct layer>(id, this);
       l->clear_surfaces();
@@ -267,7 +268,7 @@ void controller::controller_layer(uint32_t id) {
 }
 
 void controller::controller_surface(uint32_t id) {
-   logdebug("genivi::controller @ %p surface %u (%x)", this->proxy.get(), id,
+   HMI_DEBUG("wm", "genivi::controller @ %p surface %u (%x)", this->proxy.get(), id,
             id);
    if (this->surfaces.find(id) == this->surfaces.end()) {
       this->surfaces[id] = std::make_unique<struct surface>(id, this);
@@ -277,7 +278,7 @@ void controller::controller_surface(uint32_t id) {
 
 void controller::controller_error(int32_t object_id, int32_t object_type,
                                   int32_t error_code, const char *error_text) {
-   logdebug("genivi::controller @ %p error o %i t %i c %i text %s",
+   HMI_DEBUG("wm", "genivi::controller @ %p error o %i t %i c %i text %s",
             this->proxy.get(), object_id, object_type, error_code, error_text);
 }
 
@@ -356,7 +357,7 @@ layer::layer(uint32_t i, struct controller *c) : layer(i, 0, 0, c) {}
 layer::layer(uint32_t i, int32_t w, int32_t h, struct controller *c)
    : wayland_proxy(ivi_controller_layer_create(c->proxy.get(), i, w, h),
                    [c, i](ivi_controller_layer *l) {
-                      logdebug("~layer layer %i @ %p", i, l);
+                      HMI_DEBUG("wm", "~layer layer %i @ %p", i, l);
                       c->remove_proxy_to_id_mapping(l);
                       ivi_controller_layer_destroy(l, 1);
                    }),
@@ -418,18 +419,18 @@ void layer::set_render_order(std::vector<uint32_t> const &ro) {
 }
 
 void controller::layer_visibility(struct layer *l, int32_t visibility) {
-   logdebug("genivi::layer %s @ %d v %i", __func__, l->id, visibility);
+   HMI_DEBUG("wm", "genivi::layer %s @ %d v %i", __func__, l->id, visibility);
    this->lprops[l->id].visibility = visibility;
 }
 
 void controller::layer_opacity(struct layer *l, float opacity) {
-   logdebug("genivi::layer %s @ %d o %f", __func__, l->id, opacity);
+   HMI_DEBUG("wm", "genivi::layer %s @ %d o %f", __func__, l->id, opacity);
    this->lprops[l->id].opacity = opacity;
 }
 
 void controller::layer_source_rectangle(struct layer *l, int32_t x, int32_t y,
                                         int32_t width, int32_t height) {
-   logdebug("genivi::layer %s @ %d x %i y %i w %i h %i", __func__,
+   HMI_DEBUG("wm", "genivi::layer %s @ %d x %i y %i w %i h %i", __func__,
             l->id, x, y, width, height);
    this->lprops[l->id].src_rect = rect{width, height, x, y};
 }
@@ -437,30 +438,30 @@ void controller::layer_source_rectangle(struct layer *l, int32_t x, int32_t y,
 void controller::layer_destination_rectangle(struct layer *l, int32_t x,
                                              int32_t y, int32_t width,
                                              int32_t height) {
-   logdebug("genivi::layer %s @ %d x %i y %i w %i h %i", __func__,
+   HMI_DEBUG("wm", "genivi::layer %s @ %d x %i y %i w %i h %i", __func__,
             l->id, x, y, width, height);
    this->lprops[l->id].dst_rect = rect{width, height, x, y};
 }
 
 void controller::layer_configuration(struct layer *l, int32_t width,
                                      int32_t height) {
-   logdebug("genivi::layer %s @ %d w %i h %i", __func__, l->id,
+   HMI_DEBUG("wm", "genivi::layer %s @ %d w %i h %i", __func__, l->id,
             width, height);
    this->lprops[l->id].size = size{uint32_t(width), uint32_t(height)};
 }
 
 void controller::layer_orientation(struct layer *l, int32_t orientation) {
-   logdebug("genivi::layer %s @ %d o %i", __func__, l->id,
+   HMI_DEBUG("wm", "genivi::layer %s @ %d o %i", __func__, l->id,
             orientation);
    this->lprops[l->id].orientation = orientation;
 }
 
 void controller::layer_screen(struct layer *l, struct wl_output *screen) {
-   logdebug("genivi::layer %s @ %d s %p", __func__, l->id, screen);
+   HMI_DEBUG("wm", "genivi::layer %s @ %d s %p", __func__, l->id, screen);
 }
 
 void controller::layer_destroyed(struct layer *l) {
-   logdebug("genivi::layer %s @ %d", __func__, l->id);
+   HMI_DEBUG("wm", "genivi::layer %s @ %d", __func__, l->id);
    this->lprops.erase(l->id);
    this->layers.erase(l->id);
 }
@@ -570,7 +571,7 @@ constexpr struct ivi_controller_surface_listener surface_listener = {
 surface::surface(uint32_t i, struct controller *c)
    : wayland_proxy(ivi_controller_surface_create(c->proxy.get(), i),
                    [c, i](ivi_controller_surface *s) {
-                      logdebug("~surface surface %i @ %p", i, s);
+                      HMI_DEBUG("wm", "~surface surface %i @ %p", i, s);
                       c->remove_proxy_to_id_mapping(s);
                       ivi_controller_surface_destroy(s, 1);
                    }),
@@ -621,14 +622,14 @@ void surface::destroy(int32_t destroy_scene_object) {
 }
 
 void controller::surface_visibility(struct surface *s, int32_t visibility) {
-   logdebug("genivi::surface %s @ %d v %i", __func__, s->id,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d v %i", __func__, s->id,
             visibility);
    this->sprops[s->id].visibility = visibility;
    this->chooks->surface_visibility(s->id, visibility);
 }
 
 void controller::surface_opacity(struct surface *s, float opacity) {
-   logdebug("genivi::surface %s @ %d o %f", __func__, s->id,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d o %f", __func__, s->id,
             opacity);
    this->sprops[s->id].opacity = opacity;
 }
@@ -636,7 +637,7 @@ void controller::surface_opacity(struct surface *s, float opacity) {
 void controller::surface_source_rectangle(struct surface *s, int32_t x,
                                           int32_t y, int32_t width,
                                           int32_t height) {
-   logdebug("genivi::surface %s @ %d x %i y %i w %i h %i", __func__,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d x %i y %i w %i h %i", __func__,
             s->id, x, y, width, height);
    this->sprops[s->id].src_rect = rect{width, height, x, y};
 }
@@ -644,7 +645,7 @@ void controller::surface_source_rectangle(struct surface *s, int32_t x,
 void controller::surface_destination_rectangle(struct surface *s, int32_t x,
                                                int32_t y, int32_t width,
                                                int32_t height) {
-   logdebug("genivi::surface %s @ %d x %i y %i w %i h %i", __func__,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d x %i y %i w %i h %i", __func__,
             s->id, x, y, width, height);
    this->sprops[s->id].dst_rect = rect{width, height, x, y};
    this->chooks->surface_destination_rectangle(s->id, x, y, width, height);
@@ -652,39 +653,39 @@ void controller::surface_destination_rectangle(struct surface *s, int32_t x,
 
 void controller::surface_configuration(struct surface *s, int32_t width,
                                        int32_t height) {
-   logdebug("genivi::surface %s @ %d w %i h %i", __func__, s->id,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d w %i h %i", __func__, s->id,
             width, height);
    this->sprops[s->id].size = size{uint32_t(width), uint32_t(height)};
 }
 
 void controller::surface_orientation(struct surface *s, int32_t orientation) {
-   logdebug("genivi::surface %s @ %d o %i", __func__, s->id,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d o %i", __func__, s->id,
             orientation);
    this->sprops[s->id].orientation = orientation;
 }
 
 void controller::surface_pixelformat(struct surface * s,
                                      int32_t pixelformat) {
-   logdebug("genivi::surface %s @ %d f %i", __func__, s->id,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d f %i", __func__, s->id,
             pixelformat);
 }
 
 void controller::surface_layer(struct surface * s,
                                struct ivi_controller_layer *layer) {
-   logdebug("genivi::surface %s @ %d l %u @ %p", __func__, s->id,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d l %u @ %p", __func__, s->id,
             this->layer_proxy_to_id[uintptr_t(layer)], layer);
 }
 
 void controller::surface_stats(struct surface *s, uint32_t redraw_count,
                                uint32_t frame_count, uint32_t update_count,
                                uint32_t pid, const char *process_name) {
-   logdebug("genivi::surface %s @ %d r %u f %u u %u pid %u p %s", __func__,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d r %u f %u u %u pid %u p %s", __func__,
             s->id, redraw_count, frame_count, update_count, pid,
             process_name);
 }
 
 void controller::surface_destroyed(struct surface *s) {
-   logdebug("genivi::surface %s @ %d", __func__, s->id);
+   HMI_DEBUG("wm", "genivi::surface %s @ %d", __func__, s->id);
    this->chooks->surface_removed(s->id);
    // XXX: do I need to actually remove the surface late, i.e. using add_task()?
    this->sprops.erase(s->id);
@@ -692,7 +693,7 @@ void controller::surface_destroyed(struct surface *s) {
 }
 
 void controller::surface_content(struct surface *s, int32_t content_state) {
-   logdebug("genivi::surface %s @ %d s %i", __func__, s->id,
+   HMI_DEBUG("wm", "genivi::surface %s @ %d s %i", __func__, s->id,
             content_state);
    if (content_state == IVI_CONTROLLER_SURFACE_CONTENT_STATE_CONTENT_REMOVED) {
       // XXX is this the right thing to do?
@@ -704,35 +705,35 @@ void controller::surface_content(struct surface *s, int32_t content_state) {
 
 void controller::add_proxy_to_id_mapping(struct ivi_controller_surface *p,
                                          uint32_t id) {
-   logdebug("Add surface proxy mapping for %p (%u)", p, id);
+   HMI_DEBUG("wm", "Add surface proxy mapping for %p (%u)", p, id);
    this->surface_proxy_to_id[uintptr_t(p)] = id;
    this->sprops[id].id = id;
 }
 
 void controller::remove_proxy_to_id_mapping(struct ivi_controller_surface *p) {
-   logdebug("Remove surface proxy mapping for %p", p);
+   HMI_DEBUG("wm", "Remove surface proxy mapping for %p", p);
    this->surface_proxy_to_id.erase(uintptr_t(p));
 }
 
 void controller::add_proxy_to_id_mapping(struct ivi_controller_layer *p,
                                          uint32_t id) {
-   logdebug("Add layer proxy mapping for %p (%u)", p, id);
+   HMI_DEBUG("wm", "Add layer proxy mapping for %p (%u)", p, id);
    this->layer_proxy_to_id[uintptr_t(p)] = id;
    this->lprops[id].id = id;
 }
 
 void controller::remove_proxy_to_id_mapping(struct ivi_controller_layer *p) {
-   logdebug("Remove layer proxy mapping for %p", p);
+   HMI_DEBUG("wm", "Remove layer proxy mapping for %p", p);
    this->layer_proxy_to_id.erase(uintptr_t(p));
 }
 
 void controller::add_proxy_to_id_mapping(struct wl_output *p, uint32_t id) {
-   logdebug("Add screen proxy mapping for %p (%u)", p, id);
+   HMI_DEBUG("wm", "Add screen proxy mapping for %p (%u)", p, id);
    this->screen_proxy_to_id[uintptr_t(p)] = id;
 }
 
 void controller::remove_proxy_to_id_mapping(struct wl_output *p) {
-   logdebug("Remove screen proxy mapping for %p", p);
+   HMI_DEBUG("wm", "Remove screen proxy mapping for %p", p);
    this->screen_proxy_to_id.erase(uintptr_t(p));
 }
 
@@ -745,7 +746,7 @@ void controller::remove_proxy_to_id_mapping(struct wl_output *p) {
 screen::screen(uint32_t i, struct controller *c,
                struct ivi_controller_screen *p)
    : wayland_proxy(p), controller_child(c, i) {
-   logdebug("genivi::screen @ %p id %u", p, i);
+   HMI_DEBUG("wm", "genivi::screen @ %p id %u", p, i);
 }
 
 void screen::clear() { ivi_controller_screen_clear(this->proxy.get()); }
