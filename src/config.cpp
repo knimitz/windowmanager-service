@@ -15,12 +15,20 @@
  */
 
 #include "config.hpp"
+#include "hmi-debug.h"
 
 namespace wm {
 
 config::config() : cfg() {
    // Supply default values for these...
-   this->cfg["layers.json"] = getenv("LAYERS_JSON") ?: "/etc/windowmanager/layers.json";
+   char const *path_layers_json = getenv("AFM_APP_INSTALL_DIR");
+
+   if (!path_layers_json) {
+      HMI_ERROR("wm", "AFM_APP_INSTALL_DIR is not defined");
+   }
+   else {
+      this->cfg["layers.json"] = std::string(path_layers_json) + std::string("/etc/layers.json");
+   }
 }
 
 }  // namespace wm
