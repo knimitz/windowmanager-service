@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Mentor Graphics Development (Deutschland) GmbH
+ * Copyright (c) 2017 TOYOTA MOTOR CORPORATION
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
