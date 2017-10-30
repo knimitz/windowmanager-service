@@ -30,10 +30,10 @@ layer::layer(nlohmann::json const &j) {
    this->role = j["role"];
    this->name = j["name"];
    this->layer_id = j["layer_id"];
-   this->rect = genivi::full_rect;
+   this->rect = compositor::full_rect;
    if (j["area"]["type"] == "rect") {
       auto jr = j["area"]["rect"];
-      this->rect = genivi::rect{
+      this->rect = compositor::rect{
          jr["width"], jr["height"], jr["x"], jr["y"],
       };
    }
@@ -134,7 +134,7 @@ optional<int> layer_map::get_layer_id(std::string const &role) {
 }
 
 json layer::to_json() const {
-   auto is_full = this->rect == genivi::full_rect;
+   auto is_full = this->rect == compositor::full_rect;
 
    json r{};
    if (is_full) {

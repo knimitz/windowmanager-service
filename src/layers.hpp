@@ -48,7 +48,7 @@ struct layer {
    // the actual value is computed using MAX + 1 - w
    // That is; allow us to specify dimensions dependent on
    // e.g. screen dimension, w/o knowing the actual screen size.
-   genivi::rect rect;
+   compositor::rect rect;
    // Specify a role prefix for surfaces that should be
    // put on this layer.
    std::string role;

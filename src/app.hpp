@@ -39,7 +39,7 @@ namespace wl {
 struct display;
 }
 
-namespace genivi {
+namespace compositor {
 struct controller;
 }
 
@@ -142,7 +142,7 @@ struct App {
    // This is the one thing, we do not own.
    struct wl::display *display;
 
-   std::unique_ptr<struct genivi::controller> controller;
+   std::unique_ptr<struct compositor::controller> controller;
    std::vector<std::unique_ptr<struct wl::output>> outputs;
 
    struct config config;

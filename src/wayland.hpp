@@ -132,12 +132,9 @@ struct output : wayland_proxy<struct wl_output> {
 // |_| |_|\__,_|_| |_| |_|\___||___/ .__/ \__,_|\___\___|
 //                                 |_|
 //                   _       _
-//   __ _  ___ _ __ (_)_   _(_)
-//  / _` |/ _ \ '_ \| \ \ / / |
-// | (_| |  __/ | | | |\ V /| |
-//  \__, |\___|_| |_|_| \_/ |_|
-//  |___/
-namespace genivi {
+
+// namespace compositor
+namespace compositor {
 
 struct size {
    uint32_t w, h;
@@ -351,6 +348,6 @@ struct controller : public wayland_proxy<struct ivi_controller> {
    void layer_screen(struct layer *l, struct wl_output *screen);
    void layer_destroyed(struct layer *l);
 };
-}  // namespace genivi
+}  // namespace compositor
 
 #endif  // !WM_WAYLAND_HPP

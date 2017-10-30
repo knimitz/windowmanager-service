@@ -120,7 +120,7 @@ int App::init() {
    this->display->add_global_handler(
       "ivi_controller", [this](wl_registry *r, uint32_t name, uint32_t v) {
          this->controller =
-            std::make_unique<struct genivi::controller>(r, name, v);
+            std::make_unique<struct compositor::controller>(r, name, v);
 
          // Init controller hooks
          this->controller->chooks = &this->chooks;
@@ -204,7 +204,7 @@ int App::init_layers() {
    auto &layers = c->layers;
 
    // Write output dimensions to ivi controller...
-   c->output_size = genivi::size{uint32_t(o->width), uint32_t(o->height)};
+   c->output_size = compositor::size{uint32_t(o->width), uint32_t(o->height)};
 
    // Clear scene
    layers.clear();

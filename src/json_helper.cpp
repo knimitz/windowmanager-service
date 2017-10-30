@@ -18,7 +18,7 @@
 
 #include <json.h>
 
-json_object *to_json(genivi::surface_properties const &s) {
+json_object *to_json(compositor::surface_properties const &s) {
    // auto j = json::object({
    auto j = json_object_new_object();
 
@@ -70,7 +70,7 @@ json_object *to_json(genivi::surface_properties const &s) {
    return j;
 }
 
-json_object *to_json(genivi::screen const *s) {
+json_object *to_json(compositor::screen const *s) {
    auto o = json_object_new_object();
    json_object_object_add(o, "id", json_object_new_int(s->id));
    return o;
@@ -89,7 +89,7 @@ json_object *to_json_(T const &s) {
    return a;
 }
 
-json_object *to_json(genivi::controller::props_map const &s) {
+json_object *to_json(compositor::controller::props_map const &s) {
    return to_json_(s);
 }
 
