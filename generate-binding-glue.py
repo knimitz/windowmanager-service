@@ -93,6 +93,7 @@ def emit_afb_api(api):
     p('   typedef wm::result<json_object *> result_type;')
     p('   struct wm::App *app;')
     p('   void send_event(char const *evname, char const *label);')
+    p('   void send_event(char const *evname, char const *label, char const *area);')
     for f in api['functions']:
         p('   result_type %(name)s(' % f + ', '.join(map(lambda x: '%(type)s %(name)s' % x, f.get('args', []))) + ');')
     p('};', '')
@@ -116,6 +117,7 @@ API = {
                 'name': 'activatesurface',
                 'args': [
                     { 'name': 'drawing_name', 'type': 'char const*', 'jtype': 'string' },
+                    { 'name': 'drawing_area', 'type': 'char const*', 'jtype': 'string' },
                 ],
             },
             {

@@ -160,11 +160,27 @@ int binding_init() noexcept {
 
 #include "afb_binding_glue.inl"
 
-// XXX implement send_event right here...
 namespace wm {
 void binding_api::send_event(char const *evname, char const *label) {
    logdebug("%s: %s(%s)", __func__, evname, label);
-   int ret = afb_daemon_broadcast_event(evname, json_object_new_string(label));
+
+   json_object *j = json_object_new_object();
+   json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
+
+   int ret = afb_daemon_broadcast_event(evname, j);
+   if (ret != 0) {
+      logdebug("afb_event_broadcast failed: %m");
+   }
+}
+
+void binding_api::send_event(char const *evname, char const *label, char const *area) {
+  logdebug("%s: %s(%s, %s)", __func__, evname, label, area);
+
+   json_object *j = json_object_new_object();
+   json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
+   json_object_object_add(j, kKeyDrawingArea, json_object_new_string(area));
+
+   int ret = afb_daemon_broadcast_event(evname, j);
    if (ret != 0) {
       logdebug("afb_event_broadcast failed: %m");
    }

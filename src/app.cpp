@@ -66,12 +66,9 @@ struct result<layer_map> load_layer_map(char const *filename) {
 
 }  // namespace
 
-//       _                    _                  _                 _
-//   ___| | __ _ ___ ___     / \   _ __  _ __   (_)_ __ ___  _ __ | |
-//  / __| |/ _` / __/ __|   / _ \ | '_ \| '_ \  | | '_ ` _ \| '_ \| |
-// | (__| | (_| \__ \__ \  / ___ \| |_) | |_) | | | | | | | | |_) | |
-//  \___|_|\__,_|___/___/ /_/   \_\ .__/| .__/  |_|_| |_| |_| .__/|_|
-//                                |_|   |_|                 |_|
+/**
+ * App Impl
+ */
 App::App(wl::display *d)
    : api{this},
      chooks{this},
@@ -158,8 +155,8 @@ int App::dispatch_events() {
 int App::dispatch_pending_events() {
    if (this->pop_pending_events()) {
       this->display->dispatch_pending();
-   return 0;
-}
+      return 0;
+   }
    return -1;
 }
 
@@ -180,12 +177,9 @@ optional<std::string> App::lookup_name(int id) {
    return this->id_alloc.lookup(id);
 }
 
-//  _       _ _       _                         _    ____
-// (_)_ __ (_) |_    | | __ _ _   _  ___  _   _| |_ / /\ \
-// | | '_ \| | __|   | |/ _` | | | |/ _ \| | | | __| |  | |
-// | | | | | | |_    | | (_| | |_| | (_) | |_| | |_| |  | |
-// |_|_| |_|_|\__|___|_|\__,_|\__, |\___/ \__,_|\__| |  | |
-//              |_____|       |___/                 \_\/_/
+/**
+ * init_layers()
+ */
 int App::init_layers() {
    if (!this->controller) {
       logerror("ivi_controller global not available");
@@ -203,7 +197,7 @@ int App::init_layers() {
    auto &s = c->screens.begin()->second;
    auto &layers = c->layers;
 
-   // XXX: Write output dimensions to ivi controller...
+   // Write output dimensions to ivi controller...
    c->output_size = genivi::size{uint32_t(o->width), uint32_t(o->height)};
 
    // Clear scene
@@ -213,8 +207,6 @@ int App::init_layers() {
    s->clear();
 
    // Quick and dirty setup of layers
-   // XXX: This likely needs to be sorted by order (note, we don't (yet?)
-   // do any zorder arrangement).
    for (auto const &i : this->layers.mapping) {
       c->layer_create(i.second.layer_id, o->width, o->height);
       auto &l = layers[i.second.layer_id];
@@ -224,7 +216,7 @@ int App::init_layers() {
                i.second.name.c_str(), i.second.layer_id, i.second.role.c_str());
    }
 
-   // Add layers to screen (XXX: are they sorted correctly?)
+   // Add layers to screen
    s->set_render_order(this->layers.layers);
 
    this->layout_commit();
@@ -290,7 +282,7 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
       logdebug("surface_set_layout for sub surface %u on layer %u",
                *sub_surface_id, layer_id);
 
-   // configure surface to wxh dimensions
+      // configure surface to wxh dimensions
       ss->set_configuration(w, h);
       // set source reactangle, even if we should not need to set it.
       ss->set_source_rectangle(0, 0, w, h);
@@ -318,7 +310,7 @@ void App::layout_commit() {
    this->display->flush();
 }
 
-char const *App::api_activate_surface(char const *drawing_name) {
+char const *App::api_activate_surface(char const *drawing_name, char const *drawing_area) {
    ST();
    auto const &surface_id = this->lookup_id(drawing_name);
 
@@ -340,7 +332,7 @@ char const *App::api_activate_surface(char const *drawing_name) {
 
    if (o_state == nullptr) {
       return "Could not find layer for surface";
-}
+   }
 
    struct LayoutState &state = *o_state;
 
@@ -355,13 +347,13 @@ char const *App::api_activate_surface(char const *drawing_name) {
          this->deactivate(l.second.state.main);
          l.second.state.main = -1;
          flush = true;
-   }
+      }
 
       if (l.second.state.sub != -1) {
          this->deactivate(l.second.state.sub);
          l.second.state.sub = -1;
          flush = true;
-   }
+      }
 
       if (flush) {
          this->layout_commit();
@@ -376,9 +368,9 @@ char const *App::api_activate_surface(char const *drawing_name) {
       this->try_layout(
          state, LayoutState{*surface_id}, [&] (LayoutState const &nl) {
             this->surface_set_layout(*surface_id);
-            // XXX do we need to activate after enddraw?
             state = nl;
-            this->emit_syncdraw(drawing_name);
+            std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
+            this->emit_syncdraw(drawing_name, str_area.c_str());
             this->enqueue_flushdraw(state.main);
          });
    } else {
@@ -395,11 +387,13 @@ char const *App::api_activate_surface(char const *drawing_name) {
                   this->surface_set_layout(state.main, surface_id);
                   if (state.sub != -1) {
                      this->deactivate(state.sub);
-      }
+                  }
                   state = nl;
 
-                  this->emit_syncdraw(drawing_name);
-                  this->emit_syncdraw(main.c_str());
+                  std::string str_area_main = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaMain);
+                  std::string str_area_sub = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaSub);
+                  this->emit_syncdraw(main.c_str(), str_area_main.c_str());
+                  this->emit_syncdraw(drawing_name, str_area_sub.c_str());
                   this->enqueue_flushdraw(state.main);
                   this->enqueue_flushdraw(state.sub);
                });
@@ -410,10 +404,12 @@ char const *App::api_activate_surface(char const *drawing_name) {
                   this->deactivate(state.main);
                   if (state.sub != -1) {
                      this->deactivate(state.sub);
-   }
+                  }
                   state = nl;
 
-                  this->emit_syncdraw(drawing_name);
+
+                  std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
+                  this->emit_syncdraw(drawing_name, str_area.c_str());
                   this->enqueue_flushdraw(state.main);
                });
          }
@@ -465,7 +461,8 @@ char const *App::api_deactivate_surface(char const *drawing_name) {
                state = nl;
 
                this->layout_commit();
-               this->emit_syncdraw(sub.c_str());
+               std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
+               this->emit_syncdraw(sub.c_str(), str_area.c_str());
                this->enqueue_flushdraw(state.sub);
             });
       } else {
@@ -485,7 +482,8 @@ char const *App::api_deactivate_surface(char const *drawing_name) {
             state = nl;
 
             this->layout_commit();
-            this->emit_syncdraw(main.c_str());
+            std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
+            this->emit_syncdraw(main.c_str(), str_area.c_str());
             this->enqueue_flushdraw(state.main);
          });
    } else {
@@ -533,12 +531,9 @@ char const *App::api_enddraw(char const *drawing_name) {
 
 void App::api_ping() { this->dispatch_pending_events(); }
 
-//                      _          _   _____                 _
-//  _ __  _ __ _____  _(_) ___  __| | | ____|_   _____ _ __ | |_ ___
-// | '_ \| '__/ _ \ \/ / |/ _ \/ _` | |  _| \ \ / / _ \ '_ \| __/ __|
-// | |_) | | | (_) >  <| |  __/ (_| | | |___ \ V /  __/ | | | |_\__ \
-// | .__/|_|  \___/_/\_\_|\___|\__,_| |_____| \_/ \___|_| |_|\__|___/
-// |_|
+/**
+ * proxied events
+ */
 void App::surface_created(uint32_t surface_id) {
    auto layer_id = this->layers.get_layer_id(surface_id);
    if (!layer_id) {
@@ -587,8 +582,8 @@ void App::emit_deactivated(char const *label) {
    this->api.send_event("inactive", label);
 }
 
-void App::emit_syncdraw(char const *label) {
-   this->api.send_event("syncdraw", label);
+void App::emit_syncdraw(char const *label, char const *area) {
+   this->api.send_event("syncdraw", label, area);
 }
 
 void App::emit_flushdraw(char const *label) {
@@ -668,7 +663,7 @@ bool App::can_split(struct LayoutState const &state, int new_id) {
       // surfaces are on separate layers, don't bother.
       if (new_id_layer != current_id_layer) {
          return false;
-}
+      }
 
       std::string const &new_id_str = this->lookup_name(new_id).value();
       std::string const &cur_id_str = this->lookup_name(state.main).value();
@@ -679,7 +674,7 @@ bool App::can_split(struct LayoutState const &state, int new_id) {
 
       if (layer->layouts.empty()) {
          return false;
-}
+      }
 
       for (auto i = layer->layouts.cbegin(); i != layer->layouts.cend(); i++) {
          logdebug("%d main_match '%s'", new_id_layer, i->main_match.c_str());
@@ -691,7 +686,7 @@ bool App::can_split(struct LayoutState const &state, int new_id) {
             if (std::regex_match(new_id_str, res)) {
                logdebug("layout matched!");
                return true;
-}
+            }
          }
       }
    }
@@ -707,12 +702,9 @@ void App::try_layout(struct LayoutState & /*state*/,
    }
 }
 
-//                  _             _ _            _                 _
-//   ___ ___  _ __ | |_ _ __ ___ | | | ___ _ __ | |__   ___   ___ | | _____
-//  / __/ _ \| '_ \| __| '__/ _ \| | |/ _ \ '__|| '_ \ / _ \ / _ \| |/ / __|
-// | (_| (_) | | | | |_| | | (_) | | |  __/ |   | | | | (_) | (_) |   <\__ \
-//  \___\___/|_| |_|\__|_|  \___/|_|_|\___|_|___|_| |_|\___/ \___/|_|\_\___/
-//                                         |_____|
+/**
+ * controller_hooks
+ */
 void controller_hooks::surface_created(uint32_t surface_id) {
    this->app->surface_created(surface_id);
 }
