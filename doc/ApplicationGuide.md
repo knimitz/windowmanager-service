@@ -5,7 +5,10 @@
 <div align="right">23rd/Oct/2017</div>
 
 * * *
-## **<div id="Table\ of\ content">Table of content</div>**
+<div id="Table\ of\ content"></div>
+
+Table of content  
+============
 - [Introduction](#Introduction)
 	- [Intended audience](#Intended\ audience)
 	- [Scope of this Document](#Scope\ of\ this\ Document)
@@ -33,19 +36,25 @@
 - [Sample](#Sample)
 
 
-<div id="Introduction">Introduction</div>
+<div id="Introduction"></div>
+
+Introduction
 ============
 
 This WindowManager implements simple layout switching of applications on
 multiple layers and with different layer layouts.
 
-<div id="Intended\ audience">Intended audience</div>
+<div id="Intended\ audience"></div>
+
+Intended audience
 -----------------
 
 This documentation is intended for developers and system integrators who
 need to know, how the window manager works and how it is to be used.
 
-<div id="Scope\ of\ this\ Document">Scope of this Document</div>
+<div id="Scope\ of\ this\ Document"></div>
+
+Scope of this Document
 ----------------------
 
 This document covers the window manager that was implemented for TMC and
@@ -64,7 +73,9 @@ It does not include
 It is highly recommended to have a good understanding of these documents
 and projects before using the window manager.
 
-<div id="Known\ Issues">Known Issues</div>
+<div id="Known\ Issues"></div>
+
+Known Issues
 ------------
 
 Currently there is a one known issues:
@@ -73,13 +84,17 @@ Currently there is a one known issues:
     libwindowmanager library. This is a limitation of how Qt creates surface
     IDs for the ivi-application interface.
 
-<div id="External\ libraries">External libraries</div>
+<div id="External\ libraries"></div>
+
+External libraries
 ------------------
 
 This project includes a copy of version 2.1.1 the excellent [C++11 JSON
 library by Niels Lohmann](https://github.com/nlohmann/json).
 
-<div id="Client\ Library">Client Library</div>
+<div id="Client\ Library"></div>
+
+Client Library
 --------------
 
 A client library implementation that internally uses the *libafbwsc*, is
@@ -88,13 +103,17 @@ directory.
 
 The client library is built together with the window manager itself.
 
-<div id="Concepts">Concepts</div>
+<div id="Concepts"></div>
+
+Concepts
 ========
 
 The window manager implements a couple of concepts in order to allow
 efficient implementation.
 
-<div id="Layers">Layers</div>
+<div id="Layers"></div>
+
+Layers
 ------
 
 Layers are entities that are stacked on top of each other. Each layer
@@ -112,7 +131,9 @@ currently used layer.
 It is possible to deactivate these surfaces on lower layers explicitly
 using the `DeactivateSurface` API call.
 
-<div id="Surfaces">Surfaces</div>
+<div id="Surfaces"></div>
+
+Surfaces
 --------
 
 Surfaces are *placed* on layers according to their name. The surface
@@ -120,7 +141,9 @@ will then be resized to dimensions, according to the layer's layout
 configuration.
 
 
-<div id="Configuration">Configuration</div>
+<div id="Configuration"></div>
+
+Configuration
 =============
 
 The window manager is configured with the *layers.json* configuration
@@ -132,7 +155,9 @@ configuration is found and valid.
 A sample configuration is provided with the window manager
 implementation, this sample is installed to /etc/layers.json.
 
-<div id="Configuration\ Items">Configuration Items</div>
+<div id="Configuration\ Items"></div>
+
+Configuration Items
 -------------------
 
 This section describes configuration items available through
@@ -282,12 +307,16 @@ In the above example only the surface with drawing name
 that begin with `App MPlayer Sub` can be used as a *sub* surface for
 this layout.
 
-The names must still match the layer’s role match!
+The names must still match the layer's role match!
 
-<div id="Building\ and\ Running">Building and Running</div>
+<div id="Building\ and\ Running"></div>
+
+Building and Running
 ====================
 
-<div id="Dependencies">Dependencies</div>
+<div id="Dependencies"></div>
+
+Dependencies
 ------------
 
 This project is intended to be build with the 4.0 release of AGL.
@@ -302,7 +331,9 @@ Build dependencies are as follows:
 
 -   cmake &gt;= 3.6.1
 
-<div id="Build\ Configuration">Build Configuration</div>
+<div id="Build\ Configuration"></div>
+
+Build Configuration
 -------------------
 
 **Download recipe**
@@ -340,14 +371,18 @@ A couple of build options to configure the build are available:
 By default these options will be disabled.
 
 
-<div id="Implementation\ Notes">Implementation Notes</div>
+<div id="Implementation\ Notes"></div>
+
+Implementation Notes
 ====================
 
 The window manager is implemented as a app-framework-binder binding.
 That means, the build produces one shared object that exports a binding
 interface.
 
-<div id="Binding\ code\ generation">Binding code generation</div>
+<div id="Binding\ code\ generation"></div>
+
+Binding code generation
 -----------------------
 
 The binding API is rather simple; functions receive a json object
@@ -384,7 +419,9 @@ exception is thrown and not handled inside the afb\_binding\_call, that
 internal state of the window manager might be broken at this time (hence
 the talkative error log).
 
-<div id="Structure">Structure</div>
+<div id="Structure"></div>
+
+Structure
 ---------
 
 The implementation is loosely split across the following source files:
@@ -437,20 +474,26 @@ The implementation is loosely split across the following source files:
     libwayland-client wrapper. It is instanced in `main.cpp` and handles
     all our wayland needs.
 
-<div id="Sequence">Sequence</div>
+<div id="Sequence"></div>
+
+Sequence
 ===============
 
 To understand the sequence between application and window manager, refer to the [spec documentation](https://wiki.automotivelinux.org/windowmanager).
 
 
-<div id="Binding\ API">Binding API</div>
+<div id="Binding\ API"></div>
+
+Binding API
 ===============
 
 Each function returns a reply containing at least a failed or successful
 result of the call, additionally, when calls return something, it is
 noted.
 
-<div id="LibWindowmanager">LibWindowmanager</div>
+<div id="LibWindowmanager"></div>
+
+LibWindowmanager
 ------
 
 This is the public interface of the class `LibWindowmanager`.
@@ -484,7 +527,9 @@ This is the public interface of the class `LibWindowmanager`.
 
     };
 
-<div id="Methods">Methods</div>
+<div id="Methods"></div>
+
+Methods
 -------
 
 ### init(int port, char const *token)
@@ -492,7 +537,7 @@ This is the public interface of the class `LibWindowmanager`.
 Initialize the Binding communication.
 
 The `token` parameter is a string consisting of only alphanumeric characters.
-If these conditions are not met, the LibWindowmanager instance will not initialize,
+If these conditions are not met, the LibWindowmanager instance will not initialize, 
 i.e. this call will return `-EINVAL`.
 
 The `port` parameter is the port the afb daemon is listening on, an
@@ -500,7 +545,7 @@ invalid port will lead to a failure of the call and return `-EINVAL`.
 
 ### requestSurface(json_object *object)
 
-**args: `{ 'kKeyDrawingName': 'application name' }`**
+**args: `{ 'kKeyDrawingName': 'application name' }`**  
 This method requests a surface with the label given from the *Window
 Manager*. It will return `0` for a successful surface request, and
 `-errno` on failure. Additionally, on the standard error, messages are
@@ -508,7 +553,7 @@ logged to help debgging the issue.
 
 ### activateSurface(json_object *object)
 
-**args: `{ 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }`**
+**args: `{ 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }`**  
 This method is mainly intended for *manager* applications that control
 other applications (think an application manager or the *HomeScreen*).
 It instructs the window manager to activate the surface with the given
@@ -519,7 +564,7 @@ created by the application.
 
 ### deactivateSurface(json_object *object)
 
-**args: `{ 'kKeyDrawingName': 'application name' }`**
+**args: `{ 'kKeyDrawingName': 'application name' }`**  
 This method is mainly intended for *manager* applications that control
 other applications. It instructs the window manager to deactivate the
 surface associated with the given label. Note, that deactivating a
@@ -531,7 +576,7 @@ created by the application.
 
 ### endDraw(json_object *object)
 
-**args: `{ 'kKeyDrawingName': 'application name' }`**
+**args: `{ 'kKeyDrawingName': 'application name' }`**  
 This function is called from a client application when it is done
 drawing its surface content.
 
@@ -553,7 +598,9 @@ event is targeted at.
 See Section [Events](#_events) for mor detailed information about event
 delivery to client applications.
 
-<div id="Errors">Errors</div>
+<div id="Errors"></div>
+
+Errors
 ------
 
 Methods returning an `int` signal successful operation when returning
@@ -563,7 +610,9 @@ value. E.g. `-EINVAL` to signal that some input value was invalid.
 Additionally, logging of error messages is done on the standard error
 file descriptor to help debugging the issue.
 
-<div id="Usage">Usage</div>
+<div id="Usage"></div>
+
+Usage
 -----
 
 ### Initialization of LibWindowmanager
@@ -598,7 +647,9 @@ increment this numeric ID internally - which then will lead to IDs that
 cannot be known by the window manager as there is no direct
 communication from *Qt* to the WM.
 
-<div id="Events">Events</div>
+<div id="Events"></div>
+
+Events
 ------
 
 Events are a way for the *Window Manager* to propagate information to
@@ -618,13 +669,13 @@ These events signal an application that it was activated or deactivated
 respectively. Usually this means it was switched visible - which means
 the surface will now be on the screen and therefor continue to render.
 
--   `Active(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
+-   `Active(json_object *object)`  
+    args: { 'kKeyDrawingName': 'application name' }  
     Signal that the surface with the name
     `kKeyDrawingName` is now active.
 
--   `Inactive(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
+-   `Inactive(json_object *object)`  
+    args: { 'kKeyDrawingName': 'application name' }  
     Signal that the surface with the
     name `kKeyDrawingName` is now inactive. This usually means, the layout
     got changed, and the surface is now considered inactive
@@ -637,13 +688,13 @@ invisible respectively. These events also are handled implicitly through
 the wayland protocol by means of `wl_surface::enter` and
 `wl_surface::leave` events to the client.
 
--   `Visible(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
+-   `Visible(json_object *object)`  
+    args: { 'kKeyDrawingName': 'application name' }  
     Signal applications, that the
     surface with name `kKeyDrawingName` is now visible.
 
--   `Invisible(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
+-   `Invisible(json_object *object)`  
+    args: { 'kKeyDrawingName': 'application name' }  
     Signal applications that the
     surface with name `kKeyDrawingName` is now invisible.
 
@@ -657,20 +708,22 @@ contents - again, this is handled implicitly by the wayland protocol.
 `FlushDraw` is sent to the application when it should swap its buffers,
 that is *signal* the compositor that its surface contains new content.
 
--   `SyncDraw(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }
+-   `SyncDraw(json_object *object)`  
+    args: { 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }  
     Signal applications, that the
     surface with name `kKeyDrawingArea` needs to redraw its content - this
     usually is sent when the surface geometry changed.
 
--   `FlushDraw(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
+-   `FlushDraw(json_object *object)`  
+    args: { 'kKeyDrawingName': 'application name' }  
     Signal applications, that the
     surface with name `kKeyDrawingArea` can now be swapped to its newly
     drawn content as the window manager is ready to activate a new
     layout (i.e. a new surface geometry).
 
-<div id="Sample">Sample</div>
+<div id="Sample"></div>
+
+Sample
 ============
 
 In order to enable application to use the `WM` surface registration
@@ -679,6 +732,6 @@ function the above described steps need to be implemented.
 As a minimal example the usage and initialization can look like the
 following.
 
-Repo: `apps/agl-service-homescreen-2017`
-Path: `sample/template/main.c`
+Repo: `apps/agl-service-homescreen-2017`  
+Path: `sample/template/main.c`  
 
