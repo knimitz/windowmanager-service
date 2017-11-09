@@ -98,10 +98,7 @@ Client Library
 --------------
 
 A client library implementation that internally uses the *libafbwsc*, is
-provided in the subdirectory `libwindowmanager/` with its own documentation
-directory.
-
-The client library is built together with the window manager itself.
+provided in the `libwindowmanager`.
 
 <div id="Concepts"></div>
 
@@ -147,13 +144,11 @@ Configuration
 =============
 
 The window manager is configured with the *layers.json* configuration
-file, by default it is searched in `/etc/layers.json` but through the
-use of the environment variable `LAYERS_JSON` the WM can be instructed
-to use different file. Note, that the WM will not run unless this
-configuration is found and valid.
+file, by default it is searched in `${AFM_APP_INSTALL_DIR}/etc/layers.json`.
+Note, that the WM will not run unless this configuration is found and valid.
 
 A sample configuration is provided with the window manager
-implementation, this sample is installed to /etc/layers.json.
+implementation, this sample is installed to ${AFM_APP_INSTALL_DIR}/etc/layers.json.
 
 <div id="Configuration\ Items"></div>
 
@@ -222,7 +217,7 @@ Each mapping defines the following items to map corresponding surfaces
 to a layer.
 
 -   `role` defines a regular expression that application drawing names
-    are matched against. If applications match tis regular expression,
+    are matched against. If applications match this regular expression,
     the surface will be visible on this layer.
 
 -   `name` is just a name definition for this layer, it has no
@@ -303,8 +298,8 @@ A split layout object has the following attributes:
     surface of this layout.
 
 In the above example only the surface with drawing name
-`App MPlayer Main` will be used as the *main* surface, but all surfaces
-that begin with `App MPlayer Sub` can be used as a *sub* surface for
+`Navigation` will be used as the *main* surface, and the surfaces
+with drawing name `HVAC` or `MediaPlayer` can be used as a *sub* surface for
 this layout.
 
 The names must still match the layer's role match!
@@ -331,6 +326,17 @@ Build dependencies are as follows:
 
 -   cmake &gt;= 3.6.1
 
+<div id="Supported environment"></div>
+
+Supported environment
+-------------------
+
+| Item        | Description                       |
+|:------------|:----------------------------------|
+| AGL version | Electric Eel                      |
+| Hardware    | Renesas R-Car Starter Kit Pro(M3) |
+
+
 <div id="Build\ Configuration"></div>
 
 Build Configuration
@@ -338,38 +344,27 @@ Build Configuration
 
 **Download recipe**
 If repo is already done, please start with git clone
+
 ```
 $ mkdir WORK
 $ cd WORK
-$ repo init -b dab -m dab_4.0.0_xml -u https://gerrit.automotivelinux.org/gerrit/AGL/AGL-repo
+$ repo init -u https://gerrit.automotivelinux.org/gerrit/AGL/AGL-repo
 $ repo sync
-$ git clone https://gerrit.automotivelinux.org/gerrit/staging/meta-hmi-framework
 
 ```
 
 Then you can get the following recipe.
-* `meta-hmi-framework/windowmanager`
 
+* `meta-agl-devel/meta-hmi-framework/recipes-graphics/agl-service-windowmanager-2017`
+
+* `meta-agl-devel/meta-hmi-framework/recipes-graphics/libwindowmanager`
 
 **Bitbake**
+
 ```
 $ source meta-agl/scripts/aglsetup.sh -m m3ulcb agl-demo agl-devel agl-appfw-smack agl-hmi-framework
-$ bitbake agl-service-windowmanager-2017
+$ bitbake agl-demo-platform
 ```
-
-
-A couple of build options to configure the build are available:
-
--   `ENABLE_DEBUG_OUTPUT:BOOL` Compiles including very verbose debug
-    output from the window manager, use --verbose three times on an
-    afb-daemon instance to see the debug messages.
-
--   `ENABLE_SCOPE_TRACING:BOOL` Enables a simple scope tracing mechanism
-    used for a rather small portion of the window manager code. However,
-    it is used quite extensively in the libwindowmanager implementation.
-
-By default these options will be disabled.
-
 
 <div id="Implementation\ Notes"></div>
 
@@ -546,8 +541,8 @@ invalid port will lead to a failure of the call and return `-EINVAL`.
 ### requestSurface(json_object *object)
 
 **args: `{ 'kKeyDrawingName': 'application name' }`**  
-This method requests a surface with the label given from the *Window
-Manager*. It will return `0` for a successful surface request, and
+This method requests a surface with the label given from the *Window Manager*.
+It will return `surface id` a client application can use, and
 `-errno` on failure. Additionally, on the standard error, messages are
 logged to help debgging the issue.
 
@@ -630,7 +625,8 @@ be created.
 
 This is also true for *QML* applications, where only after the
 `requestSurface()` should the load of the resource be done. The method
-returns `0` after the surface was requested successfully.
+returns `surface id` a client application can use
+after the surface was requested successfully.
 
 #### Workings of requestSurface()
 
@@ -711,7 +707,8 @@ that is *signal* the compositor that its surface contains new content.
 -   `SyncDraw(json_object *object)`  
     args: { 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }  
     Signal applications, that the
-    surface with name `kKeyDrawingArea` needs to redraw its content - this
+    surface with name `kKeyDrawingArea` needs to redraw its content
+    in the layout with name `kKeyDrawingArea` - this
     usually is sent when the surface geometry changed.
 
 -   `FlushDraw(json_object *object)`  
