@@ -256,7 +256,7 @@ void controller::controller_screen(uint32_t id,
 void controller::controller_layer(uint32_t id) {
    HMI_DEBUG("wm", "compositor::controller @ %p layer %u (%x)", this->proxy.get(), id, id);
    if (this->layers.find(id) != this->layers.end()) {
-      HMI_ERROR("wm", "Someone created a layer without asking US! (%d)", id);
+      HMI_DEBUG("wm", "WindowManager has created layer %u (%x) already", id, id);
    } else {
       auto &l = this->layers[id] = std::make_unique<struct layer>(id, this);
       l->clear_surfaces();
