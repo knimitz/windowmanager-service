@@ -186,7 +186,7 @@ This configuration item is a list of surface-name to layer mappings.
          "name": "HomeScreen",
          "layer_id": 1000,
          "area": { "type": "full" },
-         "comment": "Single layer map for the HomeScreen, XXX: type is redundant, could also check existence of id/first_id+last_id"
+         "comment": "Single layer map for the HomeScreen"
       },
       {
          "role": "MediaPlayer|Radio|Phone|Navigation|HVAC|Settings|Dashboard|POI|Mixer",

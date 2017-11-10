@@ -504,8 +504,7 @@ char const *App::api_deactivate_surface(char const *drawing_name) {
       return "No surface active";
    }
 
-   // XXX: check against main_surface, main_surface_name is the configuration
-   // item.
+   // Check against main_surface, main_surface_name is the configuration item.
    if (*surface_id == this->layers.main_surface) {
       HMI_DEBUG("wm", "Refusing to deactivate main_surface %d", *surface_id);
       return nullptr;
@@ -580,7 +579,6 @@ char const *App::api_enddraw(char const *drawing_name) {
       if (n && *n == drawing_name) {
          std::swap(this->pending_end_draw[i], this->pending_end_draw[iend - 1]);
          this->pending_end_draw.resize(iend - 1);
-         // XXX: Please tell the compositor to thaw the surface...
          this->activate(this->pending_end_draw[i]);
          this->layout_commit();
          this->emit_flushdraw(drawing_name);

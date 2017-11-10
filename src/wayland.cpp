@@ -20,20 +20,14 @@
 #include "wayland.hpp"
 #include "hmi-debug.h"
 
-//                                                                  _
-//  _ __   __ _ _ __ ___   ___  ___ _ __   __ _  ___ ___  __      _| |
-// | '_ \ / _` | '_ ` _ \ / _ \/ __| '_ \ / _` |/ __/ _ \ \ \ /\ / / |
-// | | | | (_| | | | | | |  __/\__ \ |_) | (_| | (_|  __/  \ V  V /| |
-// |_| |_|\__,_|_| |_| |_|\___||___/ .__/ \__,_|\___\___|   \_/\_/ |_|
-//                                 |_|
+/**
+ * namespace wl
+ */
 namespace wl {
 
-//      _ _           _
-//   __| (_)___ _ __ | | __ _ _   _
-//  / _` | / __| '_ \| |/ _` | | | |
-// | (_| | \__ \ |_) | | (_| | |_| |
-//  \__,_|_|___/ .__/|_|\__,_|\__, |
-//             |_|            |___/
+/**
+ * display
+ */
 display::display()
    : d(std::unique_ptr<struct wl_display, void (*)(struct wl_display *)>(
         wl_display_connect(nullptr), &wl_display_disconnect)),
@@ -49,7 +43,6 @@ int display::dispatch_pending() { return wl_display_dispatch_pending(this->d.get
 
 int display::read_events() {
    ST();
-   // XXX: uhm, how?!
    while (wl_display_prepare_read(this->d.get()) == -1) {
       STN(pending_events_dispatch);
       if (wl_display_dispatch_pending(this->d.get()) == -1) {
@@ -74,12 +67,9 @@ int display::get_fd() const { return wl_display_get_fd(this->d.get()); }
 
 int display::get_error() { return wl_display_get_error(this->d.get()); }
 
-//                 _     _
-//  _ __ ___  __ _(_)___| |_ _ __ _   _
-// | '__/ _ \/ _` | / __| __| '__| | | |
-// | | |  __/ (_| | \__ \ |_| |  | |_| |
-// |_|  \___|\__, |_|___/\__|_|   \__, |
-//           |___/                |___/
+/**
+ * registry
+ */
 namespace {
 void registry_global(void *data, struct wl_registry * /*r*/, uint32_t name,
                      char const *iface, uint32_t v) {
@@ -117,12 +107,9 @@ void registry::global(uint32_t name, char const *iface, uint32_t v) {
 
 void registry::global_remove(uint32_t /*name*/) {}
 
-//              _               _
-//   ___  _   _| |_ _ __  _   _| |_
-//  / _ \| | | | __| '_ \| | | | __|
-// | (_) | |_| | |_| |_) | |_| | |_
-//  \___/ \__,_|\__| .__/ \__,_|\__|
-//                 |_|
+/**
+ * output
+ */
 namespace {
 void output_geometry(void *data, struct wl_output * /*wl_output*/, int32_t x,
                      int32_t y, int32_t physical_width, int32_t physical_height,
@@ -188,21 +175,14 @@ void output::scale(int32_t factor) {
 }
 }  // namespace wl
 
-//  _ __   __ _ _ __ ___   ___  ___ _ __   __ _  ___ ___
-// | '_ \ / _` | '_ ` _ \ / _ \/ __| '_ \ / _` |/ __/ _ \
-// | | | | (_| | | | | | |  __/\__ \ |_) | (_| | (_|  __/
-// |_| |_|\__,_|_| |_| |_|\___||___/ .__/ \__,_|\___\___|
-//                                 |_|
-
-// namespace compositor
+/**
+ * namespace compositor
+ */
 namespace compositor {
 
-//                  _             _ _
-//   ___ ___  _ __ | |_ _ __ ___ | | | ___ _ __
-//  / __/ _ \| '_ \| __| '__/ _ \| | |/ _ \ '__|
-// | (_| (_) | | | | |_| | | (_) | | |  __/ |
-//  \___\___/|_| |_|\__|_|  \___/|_|_|\___|_|
-//
+/**
+ * controller
+ */
 namespace {
 void controller_screen(void *data, struct ivi_controller * /*ivi_controller*/,
                        uint32_t id_screen,
@@ -278,12 +258,9 @@ void controller::controller_error(int32_t object_id, int32_t object_type,
             this->proxy.get(), object_id, object_type, error_code, error_text);
 }
 
-//  _
-// | | __ _ _   _  ___ _ __
-// | |/ _` | | | |/ _ \ '__|
-// | | (_| | |_| |  __/ |
-// |_|\__,_|\__, |\___|_|
-//          |___/
+/**
+ * layer
+ */
 namespace {
 void layer_visibility(void *data,
                       struct ivi_controller_layer * /*ivi_controller_layer*/,
@@ -462,12 +439,9 @@ void controller::layer_destroyed(struct layer *l) {
    this->layers.erase(l->id);
 }
 
-//                  __
-//  ___ _   _ _ __ / _| __ _  ___ ___
-// / __| | | | '__| |_ / _` |/ __/ _ \
-// \__ \ |_| | |  |  _| (_| | (_|  __/
-// |___/\__,_|_|  |_|  \__,_|\___\___|
-//
+/**
+ * surface
+ */
 namespace {
 
 void surface_visibility(
@@ -684,7 +658,6 @@ void controller::surface_stats(struct surface *s, uint32_t redraw_count,
 void controller::surface_destroyed(struct surface *s) {
    HMI_DEBUG("wm", "compositor::surface %s @ %d", __func__, s->id);
    this->chooks->surface_removed(s->id);
-   // XXX: do I need to actually remove the surface late, i.e. using add_task()?
    this->sprops.erase(s->id);
    this->surfaces.erase(s->id);
 }
@@ -693,7 +666,6 @@ void controller::surface_content(struct surface *s, int32_t content_state) {
    HMI_DEBUG("wm", "compositor::surface %s @ %d s %i", __func__, s->id,
             content_state);
    if (content_state == IVI_CONTROLLER_SURFACE_CONTENT_STATE_CONTENT_REMOVED) {
-      // XXX is this the right thing to do?
       this->chooks->surface_removed(s->id);
       this->sprops.erase(s->id);
       this->surfaces.erase(s->id);
@@ -734,12 +706,9 @@ void controller::remove_proxy_to_id_mapping(struct wl_output *p) {
    this->screen_proxy_to_id.erase(uintptr_t(p));
 }
 
-//
-//  ___  ___ _ __ ___  ___ _ __
-// / __|/ __| '__/ _ \/ _ \ '_ \
-// \__ \ (__| | |  __/  __/ | | |
-// |___/\___|_|  \___|\___|_| |_|
-//
+/**
+ * screen
+ */
 screen::screen(uint32_t i, struct controller *c,
                struct ivi_controller_screen *p)
    : wayland_proxy(p), controller_child(c, i) {

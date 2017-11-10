@@ -72,7 +72,7 @@ target_compile_definitions(${TARGETS_WM}
         # We do not want source location of messages
         AFB_BINDING_PRAGMA_NO_VERBOSE_DETAILS
         WINMAN_VERSION_STRING="${PACKAGE_VERSION}"
-        _GNU_SOURCE)  # XXX should I define this here?!
+        _GNU_SOURCE)
 
 if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Release")
    target_compile_definitions(${TARGETS_WM}

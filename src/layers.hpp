@@ -73,10 +73,6 @@ struct layer_map {
    using role_to_layer_map = std::vector<std::pair<std::string, int>>;
    using addsurf_layer_map = std::map<int, int>;
 
-   // XXX: we also will need a layer_id to layer map, perhaps
-   // make this the primary map, and the surface_id->layer a
-   // secondary map.
-
    storage_type mapping;  // map surface_id to layer
    layers_type layers;    // the actual layer IDs we have
    int main_surface;

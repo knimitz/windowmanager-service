@@ -26,12 +26,9 @@ using json = nlohmann::json;
 #include <json-c/json.h>
 
 namespace wm {
-//  _     _           _ _                            _   _                 _
-// | |__ (_)_ __   __| (_)_ __   __ _     __ _ _ __ (_) (_)_ __ ___  _ __ | |
-// | '_ \| | '_ \ / _` | | '_ \ / _` |   / _` | '_ \| | | | '_ ` _ \| '_ \| |
-// | |_) | | | | | (_| | | | | | (_| |  | (_| | |_) | | | | | | | | | |_) | |
-// |_.__/|_|_| |_|\__,_|_|_| |_|\__, |___\__,_| .__/|_| |_|_| |_| |_| .__/|_|
-//                              |___/_____|   |_|                   |_|
+/**
+ * binding_api impl
+ */
 binding_api::result_type binding_api::requestsurface(
    char const *drawing_name) {
    auto r = this->app->api_request_surface(drawing_name);
@@ -100,7 +97,7 @@ binding_api::result_type binding_api::debug_status() {
 binding_api::result_type binding_api::debug_terminate() {
    HMI_DEBUG("wm", "%s", __func__);
    if (getenv("WINMAN_DEBUG_TERMINATE") != nullptr) {
-      raise(SIGKILL);  // XXX afb-daemon kills it's pgroup using TERM, which
+      raise(SIGKILL);  // afb-daemon kills it's pgroup using TERM, which
                        // doesn't play well with perf
    }
    return Ok(json_object_new_object());

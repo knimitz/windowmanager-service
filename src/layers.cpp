@@ -77,7 +77,7 @@ struct result<struct layer_map> to_layer_map(nlohmann::json const &j) {
                            j.value("layer_id", -1), layer(j));
                      });
 
-      // XXX: add sanity checks here?
+      // TODO: add sanity checks here?
       // * check for double IDs
       // * check for double names/roles
 

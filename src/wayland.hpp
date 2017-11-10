@@ -26,12 +26,9 @@
 #include <unordered_map>
 #include <vector>
 
-//                      _                 _
-// __      ____ _ _   _| | __ _ _ __   __| |     _ __  _ __ _____  ___   _
-// \ \ /\ / / _` | | | | |/ _` | '_ \ / _` |    | '_ \| '__/ _ \ \/ / | | |
-//  \ V  V / (_| | |_| | | (_| | | | | (_| |    | |_) | | | (_) >  <| |_| |
-//   \_/\_/ \__,_|\__, |_|\__,_|_| |_|\__,_|____| .__/|_|  \___/_/\_\\__, |
-//                |___/                   |_____|_|                  |___/
+/**
+ * @struct wayland_proxy
+ */
 template <typename ProxyT>
 struct wayland_proxy {
    std::unique_ptr<ProxyT, std::function<void(ProxyT *)>> proxy;
@@ -45,19 +42,14 @@ struct wayland_proxy {
            static_cast<ProxyT *>(p), p_del)) {}
 };
 
-//                                                                  _
-//  _ __   __ _ _ __ ___   ___  ___ _ __   __ _  ___ ___  __      _| |
-// | '_ \ / _` | '_ ` _ \ / _ \/ __| '_ \ / _` |/ __/ _ \ \ \ /\ / / |
-// | | | | (_| | | | | | |  __/\__ \ |_) | (_| | (_|  __/  \ V  V /| |
-// |_| |_|\__,_|_| |_| |_|\___||___/ .__/ \__,_|\___\___|   \_/\_/ |_|
-//                                 |_|
+/**
+ * namespace wl
+ */
 namespace wl {
-//                 _     _
-//  _ __ ___  __ _(_)___| |_ _ __ _   _
-// | '__/ _ \/ _` | / __| __| '__| | | |
-// | | |  __/ (_| | \__ \ |_| |  | |_| |
-// |_|  \___|\__, |_|___/\__|_|   \__, |
-//           |___/                |___/
+
+/**
+ * @struct registry
+ */
 struct registry : public wayland_proxy<struct wl_registry> {
    typedef std::function<void(struct wl_registry *, uint32_t, uint32_t)> binder;
    std::unordered_map<std::string, binder> bindings;
@@ -73,12 +65,9 @@ struct registry : public wayland_proxy<struct wl_registry> {
    void global_remove(uint32_t name);
 };
 
-//      _ _           _
-//   __| (_)___ _ __ | | __ _ _   _
-//  / _` | / __| '_ \| |/ _` | | | |
-// | (_| | \__ \ |_) | | (_| | |_| |
-//  \__,_|_|___/ .__/|_|\__,_|\__, |
-//             |_|            |___/
+/**
+ * @struct display
+ */
 struct display {
    std::unique_ptr<struct wl_display, void (*)(struct wl_display *)> d;
    struct registry r;
@@ -101,12 +90,9 @@ struct display {
    }
 };
 
-//              _               _
-//   ___  _   _| |_ _ __  _   _| |_
-//  / _ \| | | | __| '_ \| | | | __|
-// | (_) | |_| | |_| |_) | |_| | |_
-//  \___/ \__,_|\__| .__/ \__,_|\__|
-//                 |_|
+/**
+ * @struct output
+ */
 struct output : wayland_proxy<struct wl_output> {
    int width{};
    int height{};
@@ -126,14 +112,9 @@ struct output : wayland_proxy<struct wl_output> {
 };
 }  // namespace wl
 
-//  _ __   __ _ _ __ ___   ___  ___ _ __   __ _  ___ ___
-// | '_ \ / _` | '_ ` _ \ / _ \/ __| '_ \ / _` |/ __/ _ \
-// | | | | (_| | | | | | |  __/\__ \ |_) | (_| | (_|  __/
-// |_| |_|\__,_|_| |_| |_|\___||___/ .__/ \__,_|\___\___|
-//                                 |_|
-//                   _       _
-
-// namespace compositor
+/**
+ * namespace compositor
+ */
 namespace compositor {
 
 struct size {
@@ -173,12 +154,9 @@ struct surface_properties {
    float opacity;
 };
 
-//                  __
-//  ___ _   _ _ __ / _| __ _  ___ ___
-// / __| | | | '__| |_ / _` |/ __/ _ \
-// \__ \ |_| | |  |  _| (_| | (_|  __/
-// |___/\__,_|_|  |_|  \__,_|\___\___|
-//
+/**
+ * @struct surface
+ */
 struct surface : public wayland_proxy<struct ivi_controller_surface>,
                  controller_child {
    surface(surface const &) = delete;
@@ -199,12 +177,9 @@ struct surface : public wayland_proxy<struct ivi_controller_surface>,
    void destroy(int32_t destroy_scene_object);
 };
 
-//  _
-// | | __ _ _   _  ___ _ __
-// | |/ _` | | | |/ _ \ '__|
-// | | (_| | |_| |  __/ |
-// |_|\__,_|\__, |\___|_|
-//          |___/
+/**
+ * @struct layer
+ */
 struct layer : public wayland_proxy<struct ivi_controller_layer>,
                controller_child {
    layer(layer const &) = delete;
@@ -228,12 +203,9 @@ struct layer : public wayland_proxy<struct ivi_controller_layer>,
    void set_render_order(std::vector<uint32_t> const &ro);
 };
 
-//
-//  ___  ___ _ __ ___  ___ _ __
-// / __|/ __| '__/ _ \/ _ \ '_ \
-// \__ \ (__| | |  __/  __/ | | |
-// |___/\___|_|  \___|\___|_| |_|
-//
+/**
+ * @struct screen
+ */
 struct screen : public wayland_proxy<struct ivi_controller_screen>,
                 controller_child {
    screen(screen const &) = delete;
@@ -244,12 +216,9 @@ struct screen : public wayland_proxy<struct ivi_controller_screen>,
    void set_render_order(std::vector<uint32_t> const &ro);
 };
 
-//                  _             _ _
-//   ___ ___  _ __ | |_ _ __ ___ | | | ___ _ __
-//  / __/ _ \| '_ \| __| '__/ _ \| | |/ _ \ '__|
-// | (_| (_) | | | | |_| | | (_) | | |  __/ |
-//  \___\___/|_| |_|\__|_|  \___/|_|_|\___|_|
-//
+/**
+ * @struct controller
+ */
 struct controller : public wayland_proxy<struct ivi_controller> {
    // This controller is still missing ivi-input
 
