@@ -116,6 +116,49 @@ struct layer_map {
 
 struct result<struct layer_map> to_layer_map(nlohmann::json const &j);
 
+static const nlohmann::json default_layers_json = {
+   {"main_surface", {
+      {"surface_role", "HomeScreen"}
+   }},
+   {"mappings", {
+      {
+         {"role", "^HomeScreen$"},
+         {"name", "HomeScreen"},
+         {"layer_id", 1000},
+         {"area", {
+            {"type", "full"}
+         }}
+      },
+      {
+         {"role", "MediaPlayer|Radio|Phone|Navigation|HVAC|Settings|Dashboard|POI|Mixer"},
+         {"name", "apps"},
+         {"layer_id", 1001},
+         {"area", {
+            {"type", "rect"},
+            {"rect", {
+               {"x", 0},
+               {"y", 218},
+               {"width", -1},
+               {"height", -433}
+            }}
+         }}
+      },
+      {
+         {"role", "^OnScreen.*"},
+         {"name", "popups"},
+         {"layer_id", 9999},
+         {"area", {
+            {"type", "rect"},
+            {"rect", {
+               {"x", 0},
+               {"y", 760},
+               {"width", -1},
+               {"height", 400}
+            }}
+         }}
+      }
+   }}
+};
 }  // namespace wm
 
 #endif  // TMCAGLWM_LAYERS_H

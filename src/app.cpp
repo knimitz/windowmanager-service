@@ -44,12 +44,16 @@ namespace {
 using nlohmann::json;
 
 result<json> file_to_json(char const *filename) {
+   json j;
    std::ifstream i(filename);
    if (i.fail()) {
-      return Err<json>("Could not open config file");
+      HMI_DEBUG("wm", "Could not open config file, so use default layer information");
+      j = default_layers_json;
    }
-   json j;
-   i >> j;
+   else {
+      i >> j;
+   }
+
    return Ok(j);
 }
 
