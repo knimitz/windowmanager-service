@@ -163,9 +163,11 @@ void output::mode(uint32_t flags, int32_t w, int32_t h, int32_t r) {
 
 void output::done() {
    HMI_DEBUG("wm", "wl::output %s @ %p done", __func__, this->proxy.get());
-   // Let's just disregard the flipped ones...
+   // Pivot and flipped
    if (this->transform == WL_OUTPUT_TRANSFORM_90 ||
-       this->transform == WL_OUTPUT_TRANSFORM_270) {
+       this->transform == WL_OUTPUT_TRANSFORM_270 ||
+       this->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90 ||
+       this->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270) {
       std::swap(this->width, this->height);
    }
 }
