@@ -517,6 +517,10 @@ This is the public interface of the class `LibWindowmanager`.
         int activateSurface(json_object *object);
         int deactivateSurface(json_object *object);
         int endDraw(json_object *object);
+        int getDisplayInfo(json_object *object);
+        int getAreaInfo(json_object *in_obj, json_object *out_obj);
+
+        int getAreaInfo(const char *label, json_object *out_obj);
 
         void set_event_handler(enum EventType et, handler_fun f);
 
@@ -579,6 +583,56 @@ It is not crucial to make this call at every time a drawing is finished
 - it is mainly intended to allow the window manager to synchronize
 drawing in case of layout switch. The exact semantics are explained in
 the next [Events](#_events) Section.
+
+### getDisplayInfo(json_object *object)
+
+**args: `{ }`**  
+This function gets the display information as follows:
+ - width[pixel]
+ - height[pixel]
+ - width[mm]
+ - height[mm]
+
+It outputs the display information for json_object in the argument as follows:  
+  `{"width_pixel": int value of width[pixel], "height_pixel": int value of height[pixel],
+    "width_mm": int value of width[mm], "height_mm": int value of height[mm]}`
+
+It should be called after calling init().
+It should not be called in the event handler because it occurs hang-up.
+
+#### NOTE
+It uses wl_output::geometry() for getting physical width[mm] and height[mm] of the display,
+but the value is different with measured value.
+
+ - value from wl_output::geometry(): width:320 height:520
+ - measured value                  : width:193 height:343
+
+### getAreaInfo(json_object *in_obj, json_object *out_obj)
+
+**args1: `{ 'kKeyDrawingName': 'application name' }`**  
+**args2: `{ }`**  
+This function gets the information of area drawn by the application as follows:
+ - x-coordinate
+ - y-coordinate
+ - width
+ - height
+
+It outputs the area information for json_object in the 2nd argument as follows:  
+  `{"x": int value of x-coordinate, "y": int value of y-coordinate,
+    "width": int value of width, "height": int value of height}`
+
+It should be called after calling activateSurface().
+It should not be called in the event handler because it occurs hang-up.
+
+#### NOTE
+The same information can given by SyncDraw event.
+
+### getAreaInfo(const char *label, json_object *out_obj)
+
+**args1: String of application name**  
+**args2: `{ }`**  
+This function is same with `getAreaInfo(json_object *in_obj, json_object *out_obj)`,
+but only has difference of 1st argument.
 
 ### set\_event\_handler(enum EventType et, handler_fun f)
 
@@ -705,11 +759,14 @@ contents - again, this is handled implicitly by the wayland protocol.
 that is *signal* the compositor that its surface contains new content.
 
 -   `SyncDraw(json_object *object)`  
-    args: { 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }  
+    args: { 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout',
+            'kKeyDrawingRect': { "x": int value of x-coordinate, "y": int value of y-coordinate,
+                                 "width": int value of width, "height": int value of height } }  
     Signal applications, that the
     surface with name `kKeyDrawingArea` needs to redraw its content
     in the layout with name `kKeyDrawingArea` - this
     usually is sent when the surface geometry changed.
+    And the area position and size are included with name `kKeyDrawingRect`.
 
 -   `FlushDraw(json_object *object)`  
     args: { 'kKeyDrawingName': 'application name' }  

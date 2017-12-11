@@ -57,6 +57,17 @@ static const char *kNameAreaSub = "sub";
 /* Key for json obejct */
 static const char *kKeyDrawingName = "drawing_name";
 static const char *kKeyDrawingArea = "drawing_area";
+static const char *kKeyDrawingRect = "drawing_rect";
+static const char *kKeyX           = "x";
+static const char *kKeyY           = "y";
+static const char *kKeyWidth       = "width";
+static const char *kKeyHeight      = "height";
+static const char *kKeyWidthPixel  = "width_pixel";
+static const char *kKeyHeightPixel = "height_pixel";
+static const char *kKeyWidthMm     = "width_mm";
+static const char *kKeyHeightMm    = "height_mm";
+
+
 
 struct id_allocator {
    unsigned next = 1;
@@ -112,6 +123,9 @@ struct id_allocator {
 };
 
 struct App {
+
+   typedef std::unordered_map<uint32_t, struct compositor::rect> rect_map;
+
    enum EventType {
       Event_Val_Min = 0,
 
@@ -162,6 +176,8 @@ struct App {
 
    std::map<const char *, struct afb_event> map_afb_event;
 
+   rect_map area_info;
+
    explicit App(wl::display *d);
    ~App() = default;
 
@@ -181,6 +197,8 @@ struct App {
    char const *api_activate_surface(char const *drawing_name, char const *drawing_area);
    char const *api_deactivate_surface(char const *drawing_name);
    char const *api_enddraw(char const *drawing_name);
+   result<json_object *> api_get_display_info();
+   result<json_object *> api_get_area_info(char const *drawing_name);
    char const *api_subscribe(afb_req *req, char const *event_name);
    void api_ping();
 
@@ -205,7 +223,7 @@ private:
    // TMC WM Events to clients
    void emit_activated(char const *label);
    void emit_deactivated(char const *label);
-   void emit_syncdraw(char const *label, char const *area);
+   void emit_syncdraw(char const *label, char const *area, int x, int y, int w, int h);
    void emit_flushdraw(char const *label);
    void emit_visible(char const *label, bool is_visible);
    void emit_invisible(char const *label);

@@ -69,6 +69,23 @@ binding_api::result_type binding_api::enddraw(char const* drawing_name) {
    return Ok(json_object_new_object());
 }
 
+binding_api::result_type binding_api::getdisplayinfo() {
+   auto r = this->app->api_get_display_info();
+   if (r.is_err()) {
+      return Err<json_object *>(r.unwrap_err());
+   }
+   return Ok(r.unwrap());
+}
+
+binding_api::result_type binding_api::getareainfo(
+   char const *drawing_name) {
+   auto r = this->app->api_get_area_info(drawing_name);
+   if (r.is_err()) {
+      return Err<json_object *>(r.unwrap_err());
+   }
+   return Ok(r.unwrap());
+}
+
 binding_api::result_type binding_api::list_drawing_names() {
    HMI_DEBUG("wm", "%s", __func__);
    json j = this->app->id_alloc.name2id;

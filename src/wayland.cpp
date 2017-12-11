@@ -148,6 +148,8 @@ void output::geometry(int32_t x, int32_t y, int32_t pw, int32_t ph,
    HMI_DEBUG("wm",
       "wl::output %s @ %p x %i y %i w %i h %i spel %x make %s model %s tx %i",
       __func__, this->proxy.get(), x, y, pw, ph, subpel, make, model, tx);
+   this->physical_width = pw;
+   this->physical_height = ph;
    this->transform = tx;
 }
 
@@ -169,6 +171,7 @@ void output::done() {
        this->transform == WL_OUTPUT_TRANSFORM_FLIPPED_90 ||
        this->transform == WL_OUTPUT_TRANSFORM_FLIPPED_270) {
       std::swap(this->width, this->height);
+      std::swap(this->physical_width, this->physical_height);
    }
 }
 

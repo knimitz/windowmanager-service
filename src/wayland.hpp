@@ -96,6 +96,8 @@ struct display {
 struct output : wayland_proxy<struct wl_output> {
    int width{};
    int height{};
+   int physical_width{};
+   int physical_height{};
    int refresh{};
    int transform{};
 
@@ -250,7 +252,8 @@ struct controller : public wayland_proxy<struct ivi_controller> {
    layer_map_type layers;
    screen_map_type screens;
 
-   size output_size;
+   size output_size;   // Display size[pixel]
+   size physical_size; // Display size[mm]
 
    wm::controller_hooks *chooks;
 
