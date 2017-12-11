@@ -170,21 +170,12 @@ void binding_api::send_event(char const *evname, char const *label) {
    }
 }
 
-void binding_api::send_event(char const *evname, char const *label, char const *area,
-                             int x, int y, int w, int h) {
-   HMI_DEBUG("wm", "%s: %s(%s, %s) x:%d y:%d w:%d h:%d",
-             __func__, evname, label, area, x, y, w, h);
-
-   json_object *j_rect = json_object_new_object();
-   json_object_object_add(j_rect, kKeyX,      json_object_new_int(x));
-   json_object_object_add(j_rect, kKeyY,      json_object_new_int(y));
-   json_object_object_add(j_rect, kKeyWidth,  json_object_new_int(w));
-   json_object_object_add(j_rect, kKeyHeight, json_object_new_int(h));
+void binding_api::send_event(char const *evname, char const *label, char const *area) {
+   HMI_DEBUG("wm", "%s: %s(%s, %s)", __func__, evname, label, area);
 
    json_object *j = json_object_new_object();
    json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
    json_object_object_add(j, kKeyDrawingArea, json_object_new_string(area));
-   json_object_object_add(j, kKeyDrawingRect, j_rect);
 
    int ret = afb_event_push(g_afb_instance->app.map_afb_event[evname], j);
    if (ret != 0) {
