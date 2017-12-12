@@ -133,6 +133,13 @@ API = {
                 ],
             },
             {
+                'name': 'requestsurfacexdg',
+                'args': [
+                    { 'name': 'drawing_name', 'type': 'char const*', 'jtype': 'string' },
+                    { 'name': 'ivi_id',       'type': 'char const*', 'jtype': 'string' },
+                ],
+            },
+            {
                 'name': 'activatesurface',
                 'args': [
                     { 'name': 'drawing_name', 'type': 'char const*', 'jtype': 'string' },

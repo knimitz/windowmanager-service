@@ -686,6 +686,36 @@ result<int> App::api_request_surface(char const *drawing_name) {
    return Err<int>("Surface already present");
 }
 
+char const *App::api_request_surface(char const *drawing_name,
+                                     char const *ivi_id) {
+   ST();
+
+   auto lid = this->layers.get_layer_id(std::string(drawing_name));
+   unsigned sid = std::stol(ivi_id);
+
+   if (!lid) {
+       return "Drawing name does not match any role";
+   }
+
+   auto rname = this->lookup_id(drawing_name);
+
+   if (rname) {
+       return "Surface already present";
+   }
+
+   // register pair drawing_name and ivi_id
+   this->id_alloc.register_name_id(drawing_name, sid);
+   this->layers.add_surface(sid, *lid);
+
+   // this surface is already created
+   HMI_DEBUG("wm", "surface_id is %u, layer_id is %u", sid, *lid);
+
+   this->controller->layers[*lid]->add_surface(
+       this->controller->surfaces[sid].get());
+
+   return nullptr;
+}
+
 void App::activate(int id) {
    auto ip = this->controller->sprops.find(id);
    if (ip != this->controller->sprops.end()) {

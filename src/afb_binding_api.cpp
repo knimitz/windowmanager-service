@@ -38,6 +38,16 @@ binding_api::result_type binding_api::requestsurface(
    return Ok(json_object_new_int(r.unwrap()));
 }
 
+binding_api::result_type binding_api::requestsurfacexdg(
+   char const *drawing_name, char const *ivi_id) {
+   auto r = this->app->api_request_surface(drawing_name, ivi_id);
+   if (r != nullptr) {
+      HMI_DEBUG("wm", "%s failed with error: %s", __func__, r);
+      return Err<json_object *>(r);
+   }
+   return Ok(json_object_new_object());
+}
+
 binding_api::result_type binding_api::activatesurface(
    char const *drawing_name, char const *drawing_area) {
   HMI_DEBUG("wm", "%s drawing_name %s, drawing_area %s", __func__, drawing_name, drawing_area);

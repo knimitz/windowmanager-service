@@ -81,6 +81,14 @@ struct id_allocator {
       return sid;
    }
 
+   // Insert a new ID which defined outside
+   void register_name_id(std::string const &name, unsigned sid) {
+      this->id2name[sid] = name;
+      this->name2id[name] = sid;
+      HMI_DEBUG("wm", "register id %u with name %s", sid, name.c_str());
+      return;
+   }
+
    // Lookup by ID or by name
    optional<unsigned> lookup(std::string const &name) const {
       auto i = this->name2id.find(name);
@@ -178,6 +186,7 @@ struct App {
    void set_pending_events();
 
    result<int> api_request_surface(char const *drawing_name);
+   char const *api_request_surface(char const *drawing_name, char const *ivi_id);
    char const *api_activate_surface(char const *drawing_name, char const *drawing_area);
    char const *api_deactivate_surface(char const *drawing_name);
    char const *api_enddraw(char const *drawing_name);
