@@ -170,6 +170,9 @@ struct App {
 
    std::map<const char *, struct afb_event> map_afb_event;
 
+   // FOR CES DEMO
+   std::vector<int> surface_bg;
+
    explicit App(wl::display *d);
    ~App() = default;
 

@@ -724,6 +724,35 @@ void App::activate(int id) {
       this->controller->surfaces[id]->set_visibility(1);
       char const *label =
          this->lookup_name(id).value_or("unknown-name").c_str();
+
+      // FOR CES DEMO >>>
+      if ((0 == strcmp(label, "Radio"))
+          || (0 == strcmp(label, "MediaPlayer"))
+          || (0 == strcmp(label, "Navigation"))) {
+        for (auto i = surface_bg.begin(); i != surface_bg.end(); ++i) {
+            if (id == *i) {
+               // Remove id
+               this->surface_bg.erase(i);
+
+               // Remove from BG layer (999)
+               HMI_DEBUG("wm", "Remove %s(%d) from BG layer", label, id);
+               this->controller->layers[999]->remove_surface(
+                  this->controller->surfaces[id].get());
+
+               // Add to FG layer (1001)
+               HMI_DEBUG("wm", "Add %s(%d) to FG layer", label, id);
+               this->controller->layers[1001]->add_surface(
+                  this->controller->surfaces[id].get());
+
+               for (int j : this->surface_bg) {
+                 HMI_DEBUG("wm", "Stored id:%d", j);
+               }
+               break;
+            }
+         }
+      }
+      // <<< FOR CES DEMO
+
       this->emit_visible(label);
       this->emit_activated(label);
    }
@@ -732,9 +761,36 @@ void App::activate(int id) {
 void App::deactivate(int id) {
    auto ip = this->controller->sprops.find(id);
    if (ip != this->controller->sprops.end() && ip->second.visibility != 0) {
-      this->controller->surfaces[id]->set_visibility(0);
       char const *label =
          this->lookup_name(id).value_or("unknown-name").c_str();
+
+      // FOR CES DEMO >>>
+      if ((0 == strcmp(label, "Radio"))
+          || (0 == strcmp(label, "MediaPlayer"))
+          || (0 == strcmp(label, "Navigation"))) {
+
+         // Store id
+         this->surface_bg.push_back(id);
+
+         // Remove from FG layer (1001)
+         HMI_DEBUG("wm", "Remove %s(%d) from FG layer", label, id);
+         this->controller->layers[1001]->remove_surface(
+            this->controller->surfaces[id].get());
+
+         // Add to BG layer (999)
+         HMI_DEBUG("wm", "Add %s(%d) to BG layer", label, id);
+         this->controller->layers[999]->add_surface(
+            this->controller->surfaces[id].get());
+
+         for (int j : surface_bg) {
+            HMI_DEBUG("wm", "Stored id:%d", j);
+         }
+      }
+      else {
+         this->controller->surfaces[id]->set_visibility(0);
+      }
+      // <<< FOR CES DEMO
+
       this->emit_deactivated(label);
       this->emit_invisible(label);
    }

@@ -8,6 +8,13 @@
 
    "mappings": [
       {
+         "role": "BackGroundLayer",
+         "name": "BackGroundLayer",
+         "layer_id": 999,
+         "area": { "type": "rect", "rect": { "x": 0, "y": 218, "width": -1, "height": -433 } },
+         "comment": "Single BackGround layer map for the Navigation, Radio and MediaPlayer"
+      },
+      {
          "role": "^HomeScreen$",
          "name": "HomeScreen",
          "layer_id": 1000,
