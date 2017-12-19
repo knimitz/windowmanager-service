@@ -30,8 +30,6 @@ extern "C" {
 #include <systemd/sd-event.h>
 }
 
-namespace {
-
 struct afb_instance {
    std::unique_ptr<wl::display> display;
    wm::App app;
@@ -42,6 +40,7 @@ struct afb_instance {
 };
 
 struct afb_instance *g_afb_instance;
+std::mutex binding_m;
 
 int afb_instance::init() {
    return this->app.init();
@@ -153,9 +152,399 @@ int binding_init() noexcept {
    return -1;
 }
 
-}  // namespace
+void windowmanager_requestsurface(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
 
-#include "afb_binding_glue.inl"
+   try {
+   // BEGIN impl
+   const char* a_drawing_name = afb_req_value(req, "drawing_name");
+   if(!a_drawing_name){
+       afb_req_fail(req, "failed", "Need char const* argument drawing_name");
+       return;
+   }
+
+   auto ret = g_afb_instance->app.api.requestsurface(a_drawing_name);
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling requestsurface: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_requestsurfacexdg(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   json_object *jreq = afb_req_json(req);
+
+   json_object *j_drawing_name = nullptr;
+   if (! json_object_object_get_ex(jreq, "drawing_name", &j_drawing_name)) {
+      afb_req_fail(req, "failed", "Need char const* argument drawing_name");
+      return;
+   }
+   char const* a_drawing_name = json_object_get_string(j_drawing_name);
+
+   json_object *j_ivi_id = nullptr;
+   if (! json_object_object_get_ex(jreq, "ivi_id", &j_ivi_id)) {
+      afb_req_fail(req, "failed", "Need char const* argument ivi_id");
+      return;
+   }
+   char const* a_ivi_id = json_object_get_string(j_ivi_id);
+
+   auto ret = g_afb_instance->app.api.requestsurfacexdg(a_drawing_name, a_ivi_id);
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling requestsurfacexdg: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_activatesurface(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   const char* a_drawing_name = afb_req_value(req, "drawing_name");
+   if(!a_drawing_name){
+       afb_req_fail(req, "failed", "Need char const* argument drawing_name");
+       return;
+   }
+
+   const char* a_drawing_area = afb_req_value(req, "drawing_area");
+   if(!a_drawing_area){
+       afb_req_fail(req, "failed", "Need char const* argument drawing_area");
+       return;
+   }
+
+   auto ret = g_afb_instance->app.api.activatesurface(a_drawing_name, a_drawing_area);
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling activatesurface: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_deactivatesurface(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   const char* a_drawing_name = afb_req_value(req, "drawing_name");
+   if(!a_drawing_name){
+       afb_req_fail(req, "failed", "Need char const* argument drawing_name");
+       return;
+   }
+
+   auto ret = g_afb_instance->app.api.deactivatesurface(a_drawing_name);
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling deactivatesurface: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_enddraw(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   const char* a_drawing_name = afb_req_value(req, "drawing_name");
+   if(!a_drawing_name){
+       afb_req_fail(req, "failed", "Need char const* argument drawing_name");
+       return;
+   }
+
+   auto ret = g_afb_instance->app.api.enddraw(a_drawing_name);
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling enddraw: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_wm_subscribe(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   json_object *jreq = afb_req_json(req);
+   json_object *j = nullptr;
+   if (! json_object_object_get_ex(jreq, "event", &j)) {
+      afb_req_fail(req, "failed", "Need char const* argument event");
+      return;
+   }
+   int event_type = json_object_get_int(j);
+   const char *event_name = g_afb_instance->app.kListEventName[event_type];
+   struct afb_event event = g_afb_instance->app.map_afb_event[event_name];
+   int ret = afb_req_subscribe(req, event);
+   if (ret) {
+      afb_req_fail(req, "failed", "Error: afb_req_subscribe()");
+      return;
+   }
+   afb_req_success(req, NULL, "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling wm_subscribe: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_list_drawing_names(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   auto ret = g_afb_instance->app.api.list_drawing_names();
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling list_drawing_names: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_ping(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   auto ret = g_afb_instance->app.api.ping();
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling ping: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_debug_status(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   auto ret = g_afb_instance->app.api.debug_status();
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_status: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_debug_layers(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   auto ret = g_afb_instance->app.api.debug_layers();
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_layers: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_debug_surfaces(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   auto ret = g_afb_instance->app.api.debug_surfaces();
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_surfaces: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_debug_terminate(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   // BEGIN impl
+   auto ret = g_afb_instance->app.api.debug_terminate();
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   // END impl
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_terminate: %s", e.what());
+      return;
+   }
+
+}
+
+const struct afb_verb_v2 windowmanager_verbs[] = {
+   { "requestsurface", windowmanager_requestsurface, nullptr, nullptr, AFB_SESSION_NONE },
+   { "requestsurfacexdg", windowmanager_requestsurfacexdg, nullptr, nullptr, AFB_SESSION_NONE },
+   { "activatesurface", windowmanager_activatesurface, nullptr, nullptr, AFB_SESSION_NONE },
+   { "deactivatesurface", windowmanager_deactivatesurface, nullptr, nullptr, AFB_SESSION_NONE },
+   { "enddraw", windowmanager_enddraw, nullptr, nullptr, AFB_SESSION_NONE },
+   { "wm_subscribe", windowmanager_wm_subscribe, nullptr, nullptr, AFB_SESSION_NONE },
+   { "list_drawing_names", windowmanager_list_drawing_names, nullptr, nullptr, AFB_SESSION_NONE },
+   { "ping", windowmanager_ping, nullptr, nullptr, AFB_SESSION_NONE },
+   { "debug_status", windowmanager_debug_status, nullptr, nullptr, AFB_SESSION_NONE },
+   { "debug_layers", windowmanager_debug_layers, nullptr, nullptr, AFB_SESSION_NONE },
+   { "debug_surfaces", windowmanager_debug_surfaces, nullptr, nullptr, AFB_SESSION_NONE },
+   { "debug_terminate", windowmanager_debug_terminate, nullptr, nullptr, AFB_SESSION_NONE },
+   {}
+};
 
 namespace wm {
 void binding_api::send_event(char const *evname, char const *label) {

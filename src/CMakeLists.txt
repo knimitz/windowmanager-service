@@ -23,11 +23,6 @@ pkg_check_modules(SD REQUIRED libsystemd>=222)
 # We do not want a prefix for our module
 set(CMAKE_SHARED_MODULE_PREFIX "")
 
-add_custom_command(
-   OUTPUT afb_binding_api.hpp afb_binding_glue.inl
-   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../generate-binding-glue.py
-   COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/../generate-binding-glue.py)
-
 set(TARGETS_WM windowmanager-service)
 
 add_library(${TARGETS_WM} MODULE
@@ -45,7 +40,6 @@ add_library(${TARGETS_WM} MODULE
    afb_binding_api.cpp
    result.hpp
    afb_binding_api.hpp
-   afb_binding_glue.inl
    layers.cpp
    layers.hpp
    controller_hooks.hpp
