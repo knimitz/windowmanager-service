@@ -15,15 +15,15 @@
  */
 
 #include <unistd.h>
+#include <algorithm>
+#include <mutex>
+#include <json.h>
+#include <json.hpp>
 #include "app.hpp"
+#include "result.hpp"
 #include "json_helper.hpp"
 #include "util.hpp"
 #include "wayland.hpp"
-
-#include <algorithm>
-#include <mutex>
-
-#include <json.h>
 
 extern "C" {
 #include <afb/afb-binding.h>
@@ -85,10 +85,7 @@ error:
    return -1;
 }
 
-/**
- * binding_init_()
- */
-int binding_init_() {
+int _binding_init() {
    HMI_NOTICE("wm", "WinMan ver. %s", WINMAN_VERSION_STRING);
 
    if (g_afb_instance != nullptr) {
@@ -145,7 +142,7 @@ error:
 
 int binding_init() noexcept {
    try {
-      return binding_init_();
+      return _binding_init();
    } catch (std::exception &e) {
       HMI_ERROR("wm", "Uncaught exception in binding_init(): %s", e.what());
    }
@@ -163,21 +160,20 @@ void windowmanager_requestsurface(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
    const char* a_drawing_name = afb_req_value(req, "drawing_name");
    if(!a_drawing_name){
        afb_req_fail(req, "failed", "Need char const* argument drawing_name");
        return;
    }
 
-   auto ret = g_afb_instance->app.api.requestsurface(a_drawing_name);
+   auto ret = g_afb_instance->app.api_request_surface(a_drawing_name);
    if (ret.is_err()) {
       afb_req_fail(req, "failed", ret.unwrap_err());
       return;
    }
 
-   afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+   afb_req_success(req, json_object_new_int(ret.unwrap()), "success");
+
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling requestsurface: %s", e.what());
       return;
@@ -196,7 +192,6 @@ void windowmanager_requestsurfacexdg(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
    json_object *jreq = afb_req_json(req);
 
    json_object *j_drawing_name = nullptr;
@@ -213,19 +208,17 @@ void windowmanager_requestsurfacexdg(afb_req req) noexcept {
    }
    char const* a_ivi_id = json_object_get_string(j_ivi_id);
 
-   auto ret = g_afb_instance->app.api.requestsurfacexdg(a_drawing_name, a_ivi_id);
-   if (ret.is_err()) {
-      afb_req_fail(req, "failed", ret.unwrap_err());
+   auto ret = g_afb_instance->app.api_request_surface(a_drawing_name, a_ivi_id);
+   if (ret != nullptr) {
+      afb_req_fail(req, "failed", ret);
       return;
    }
 
-   afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+   afb_req_success(req, NULL, "success");
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling requestsurfacexdg: %s", e.what());
       return;
    }
-
 }
 
 void windowmanager_activatesurface(afb_req req) noexcept {
@@ -239,7 +232,6 @@ void windowmanager_activatesurface(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
    const char* a_drawing_name = afb_req_value(req, "drawing_name");
    if(!a_drawing_name){
        afb_req_fail(req, "failed", "Need char const* argument drawing_name");
@@ -252,14 +244,13 @@ void windowmanager_activatesurface(afb_req req) noexcept {
        return;
    }
 
-   auto ret = g_afb_instance->app.api.activatesurface(a_drawing_name, a_drawing_area);
-   if (ret.is_err()) {
-      afb_req_fail(req, "failed", ret.unwrap_err());
+   auto ret = g_afb_instance->app.api_activate_surface(a_drawing_name, a_drawing_area);
+   if (ret != nullptr) {
+      afb_req_fail(req, "failed", ret);
       return;
    }
 
-   afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+   afb_req_success(req, NULL, "success");
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling activatesurface: %s", e.what());
       return;
@@ -278,26 +269,23 @@ void windowmanager_deactivatesurface(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
    const char* a_drawing_name = afb_req_value(req, "drawing_name");
    if(!a_drawing_name){
        afb_req_fail(req, "failed", "Need char const* argument drawing_name");
        return;
    }
 
-   auto ret = g_afb_instance->app.api.deactivatesurface(a_drawing_name);
-   if (ret.is_err()) {
-      afb_req_fail(req, "failed", ret.unwrap_err());
+   auto ret = g_afb_instance->app.api_deactivate_surface(a_drawing_name);
+   if (ret != nullptr) {
+      afb_req_fail(req, "failed", ret);
       return;
    }
 
-   afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+   afb_req_success(req, NULL, "success");
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling deactivatesurface: %s", e.what());
       return;
    }
-
 }
 
 void windowmanager_enddraw(afb_req req) noexcept {
@@ -311,21 +299,19 @@ void windowmanager_enddraw(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
    const char* a_drawing_name = afb_req_value(req, "drawing_name");
    if(!a_drawing_name){
        afb_req_fail(req, "failed", "Need char const* argument drawing_name");
        return;
    }
 
-   auto ret = g_afb_instance->app.api.enddraw(a_drawing_name);
-   if (ret.is_err()) {
-      afb_req_fail(req, "failed", ret.unwrap_err());
+   auto ret = g_afb_instance->app.api_enddraw(a_drawing_name);
+   if (ret != nullptr) {
+      afb_req_fail(req, "failed", ret);
       return;
    }
 
-   afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+   afb_req_success(req, NULL, "success");
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling enddraw: %s", e.what());
       return;
@@ -344,7 +330,6 @@ void windowmanager_wm_subscribe(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
    json_object *jreq = afb_req_json(req);
    json_object *j = nullptr;
    if (! json_object_object_get_ex(jreq, "event", &j)) {
@@ -360,7 +345,7 @@ void windowmanager_wm_subscribe(afb_req req) noexcept {
       return;
    }
    afb_req_success(req, NULL, "success");
-   // END impl
+
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling wm_subscribe: %s", e.what());
       return;
@@ -379,15 +364,16 @@ void windowmanager_list_drawing_names(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
-   auto ret = g_afb_instance->app.api.list_drawing_names();
+
+   nlohmann::json j = g_afb_instance->app.id_alloc.name2id;
+   auto ret = wm::Ok(json_tokener_parse(j.dump().c_str()));
    if (ret.is_err()) {
       afb_req_fail(req, "failed", ret.unwrap_err());
       return;
    }
 
    afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling list_drawing_names: %s", e.what());
       return;
@@ -406,20 +392,15 @@ void windowmanager_ping(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
-   auto ret = g_afb_instance->app.api.ping();
-   if (ret.is_err()) {
-      afb_req_fail(req, "failed", ret.unwrap_err());
-      return;
-   }
 
-   afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+   g_afb_instance->app.api_ping();
+
+   afb_req_success(req, NULL, "success");
+
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling ping: %s", e.what());
       return;
    }
-
 }
 
 void windowmanager_debug_status(afb_req req) noexcept {
@@ -433,20 +414,18 @@ void windowmanager_debug_status(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
-   auto ret = g_afb_instance->app.api.debug_status();
-   if (ret.is_err()) {
-      afb_req_fail(req, "failed", ret.unwrap_err());
-      return;
-   }
 
-   afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+   json_object *jr = json_object_new_object();
+   json_object_object_add(jr, "surfaces",
+                          to_json(g_afb_instance->app.controller->sprops));
+   json_object_object_add(jr, "layers", to_json(g_afb_instance->app.controller->lprops));
+
+   afb_req_success(req, jr, "success");
+
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_status: %s", e.what());
       return;
    }
-
 }
 
 void windowmanager_debug_layers(afb_req req) noexcept {
@@ -460,20 +439,14 @@ void windowmanager_debug_layers(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
-   auto ret = g_afb_instance->app.api.debug_layers();
-   if (ret.is_err()) {
-      afb_req_fail(req, "failed", ret.unwrap_err());
-      return;
-   }
+   auto ret = wm::Ok(json_tokener_parse(g_afb_instance->app.layers.to_json().dump().c_str()));
 
-   afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+   afb_req_success(req, ret, "success");
+
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_layers: %s", e.what());
       return;
    }
-
 }
 
 void windowmanager_debug_surfaces(afb_req req) noexcept {
@@ -487,15 +460,15 @@ void windowmanager_debug_surfaces(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
-   auto ret = g_afb_instance->app.api.debug_surfaces();
+
+   auto ret = wm::Ok(to_json(g_afb_instance->app.controller->sprops));
    if (ret.is_err()) {
       afb_req_fail(req, "failed", ret.unwrap_err());
       return;
    }
 
    afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_surfaces: %s", e.what());
       return;
@@ -514,15 +487,14 @@ void windowmanager_debug_terminate(afb_req req) noexcept {
    }
 
    try {
-   // BEGIN impl
-   auto ret = g_afb_instance->app.api.debug_terminate();
-   if (ret.is_err()) {
-      afb_req_fail(req, "failed", ret.unwrap_err());
-      return;
+
+   if (getenv("WINMAN_DEBUG_TERMINATE") != nullptr) {
+      raise(SIGKILL);  // afb-daemon kills it's pgroup using TERM, which
+                       // doesn't play well with perf
    }
 
-   afb_req_success(req, ret.unwrap(), "success");
-   // END impl
+   afb_req_success(req, NULL, "success");
+
    } catch (std::exception &e) {
       afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_terminate: %s", e.what());
       return;
@@ -545,33 +517,6 @@ const struct afb_verb_v2 windowmanager_verbs[] = {
    { "debug_terminate", windowmanager_debug_terminate, nullptr, nullptr, AFB_SESSION_NONE },
    {}
 };
-
-namespace wm {
-void binding_api::send_event(char const *evname, char const *label) {
-   HMI_DEBUG("wm", "%s: %s(%s)", __func__, evname, label);
-
-   json_object *j = json_object_new_object();
-   json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
-
-   int ret = afb_event_push(g_afb_instance->app.map_afb_event[evname], j);
-   if (ret != 0) {
-      HMI_DEBUG("wm", "afb_event_push failed: %m");
-   }
-}
-
-void binding_api::send_event(char const *evname, char const *label, char const *area) {
-   HMI_DEBUG("wm", "%s: %s(%s, %s)", __func__, evname, label, area);
-
-   json_object *j = json_object_new_object();
-   json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
-   json_object_object_add(j, kKeyDrawingArea, json_object_new_string(area));
-
-   int ret = afb_event_push(g_afb_instance->app.map_afb_event[evname], j);
-   if (ret != 0) {
-      HMI_DEBUG("wm", "afb_event_push failed: %m");
-   }
-}
-} // namespace wm
 
 extern "C" const struct afb_binding_v2 afbBindingV2 = {
    "windowmanager", nullptr, nullptr, windowmanager_verbs, nullptr, binding_init, nullptr, 0};

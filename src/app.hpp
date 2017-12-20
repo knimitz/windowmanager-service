@@ -24,8 +24,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <experimental/optional>
-
-#include "afb_binding_api.hpp"
 #include "config.hpp"
 #include "controller_hooks.hpp"
 #include "layers.hpp"
@@ -144,7 +142,6 @@ struct App {
      "flushdraw"
    };
 
-   struct binding_api api;
    struct controller_hooks chooks;
 
    // This is the one thing, we do not own.
@@ -195,6 +192,8 @@ struct App {
    char const *api_enddraw(char const *drawing_name);
    char const *api_subscribe(afb_req *req, char const *event_name);
    void api_ping();
+   void send_event(char const *evname, char const *label);
+   void send_event(char const *evname, char const *label, char const *area);
 
    // Events from the compositor we are interested in
    void surface_created(uint32_t surface_id);

@@ -37,9 +37,7 @@ add_library(${TARGETS_WM} MODULE
    json_helper.cpp
    json_helper.hpp
    app.hpp app.cpp
-   afb_binding_api.cpp
    result.hpp
-   afb_binding_api.hpp
    layers.cpp
    layers.hpp
    controller_hooks.hpp

@@ -76,8 +76,7 @@ struct result<layer_map> load_layer_map(char const *filename) {
  * App Impl
  */
 App::App(wl::display *d)
-   : api{this},
-     chooks{this},
+   : chooks{this},
      display{d},
      controller{},
      outputs(),
@@ -590,6 +589,31 @@ char const *App::api_enddraw(char const *drawing_name) {
 
 void App::api_ping() { this->dispatch_pending_events(); }
 
+void App::send_event(char const *evname, char const *label){
+   HMI_DEBUG("wm", "%s: %s(%s)", __func__, evname, label);
+
+   json_object *j = json_object_new_object();
+   json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
+
+   int ret = afb_event_push(this->map_afb_event[evname], j);
+   if (ret != 0) {
+      HMI_DEBUG("wm", "afb_event_push failed: %m");
+   }
+}
+
+void App::send_event(char const *evname, char const *label, char const *area){
+   HMI_DEBUG("wm", "%s: %s(%s, %s)", __func__, evname, label, area);
+
+   json_object *j = json_object_new_object();
+   json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
+   json_object_object_add(j, kKeyDrawingArea, json_object_new_string(area));
+
+   int ret = afb_event_push(this->map_afb_event[evname], j);
+   if (ret != 0) {
+      HMI_DEBUG("wm", "afb_event_push failed: %m");
+   }
+}
+
 /**
  * proxied events
  */
@@ -634,23 +658,23 @@ void App::surface_removed(uint32_t surface_id) {
 }
 
 void App::emit_activated(char const *label) {
-   this->api.send_event(kListEventName[Event_Active], label);
+   this->send_event(kListEventName[Event_Active], label);
 }
 
 void App::emit_deactivated(char const *label) {
-   this->api.send_event(kListEventName[Event_Inactive], label);
+   this->send_event(kListEventName[Event_Inactive], label);
 }
 
 void App::emit_syncdraw(char const *label, char const *area) {
-    this->api.send_event(kListEventName[Event_SyncDraw], label, area);
+    this->send_event(kListEventName[Event_SyncDraw], label, area);
 }
 
 void App::emit_flushdraw(char const *label) {
-   this->api.send_event(kListEventName[Event_FlushDraw], label);
+   this->send_event(kListEventName[Event_FlushDraw], label);
 }
 
 void App::emit_visible(char const *label, bool is_visible) {
-   this->api.send_event(is_visible ? kListEventName[Event_Visible] : kListEventName[Event_Invisible], label);
+   this->send_event(is_visible ? kListEventName[Event_Visible] : kListEventName[Event_Invisible], label);
 }
 
 void App::emit_invisible(char const *label) {
