@@ -752,6 +752,7 @@ void App::activate(int id) {
       // FOR CES DEMO >>>
       if ((0 == strcmp(label, "Radio"))
           || (0 == strcmp(label, "MediaPlayer"))
+          || (0 == strcmp(label, "Music"))
           || (0 == strcmp(label, "Navigation"))) {
         for (auto i = surface_bg.begin(); i != surface_bg.end(); ++i) {
             if (id == *i) {
@@ -791,6 +792,7 @@ void App::deactivate(int id) {
       // FOR CES DEMO >>>
       if ((0 == strcmp(label, "Radio"))
           || (0 == strcmp(label, "MediaPlayer"))
+          || (0 == strcmp(label, "Music"))
           || (0 == strcmp(label, "Navigation"))) {
 
          // Store id

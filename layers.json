@@ -22,7 +22,7 @@
          "comment": "Single layer map for the HomeScreen"
       },
       {
-         "role": "MediaPlayer|Radio|Phone|Navigation|HVAC|Settings|Dashboard|POI|Mixer",
+         "role": "Music|Video|WebBrowser|MediaPlayer|Radio|Phone|Navigation|HVAC|Settings|Dashboard|POI|Mixer",
          "name": "apps",
          "layer_id": 1001,
          "area": { "type": "rect", "rect": { "x": 0, "y": 218, "width": -1, "height": -433 } },
