@@ -29,7 +29,6 @@
 #include <json-c/json.h>
 
 #include <algorithm>
-#include <bits/signum.h>
 #include <csignal>
 #include <fstream>
 #include <json.hpp>
