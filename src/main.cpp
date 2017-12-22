@@ -30,6 +30,13 @@ extern "C" {
 #include <systemd/sd-event.h>
 }
 
+typedef struct wmClientCtxt{
+    std::string name;
+    wmClientCtxt(const char* appName){
+        name = appName;
+    }
+} wmClientCtxt;
+
 struct afb_instance {
    std::unique_ptr<wl::display> display;
    wm::App app;
@@ -149,6 +156,30 @@ int binding_init() noexcept {
    return -1;
 }
 
+static bool checkFirstReq(afb_req req){
+    wmClientCtxt* ctxt = (wmClientCtxt*)afb_req_context_get(req);
+    return (ctxt) ? false : true;
+}
+
+static void cbRemoveClientCtxt(void* data){
+    wmClientCtxt* ctxt = (wmClientCtxt*)data;
+    if(ctxt == nullptr){
+        return;
+    }
+    HMI_DEBUG("wm","remove app %s", ctxt->name.c_str());
+    // Lookup surfaceID and remove it because App is dead.
+    auto pSid = g_afb_instance->app.id_alloc.lookup(ctxt->name.c_str());
+    if(pSid){
+        auto sid = *pSid;
+        g_afb_instance->app.id_alloc.remove_id(sid);
+        g_afb_instance->app.layers.remove_surface(sid);
+        g_afb_instance->app.controller->sprops.erase(sid);
+        g_afb_instance->app.controller->surfaces.erase(sid);
+        HMI_DEBUG("wm", "delete surfaceID %d", sid);
+    }
+    delete ctxt;
+}
+
 void windowmanager_requestsurface(afb_req req) noexcept {
    std::lock_guard<std::mutex> guard(binding_m);
    #ifdef ST
@@ -166,7 +197,30 @@ void windowmanager_requestsurface(afb_req req) noexcept {
        return;
    }
 
+   /* Create Security Context */
+   bool isFirstReq = checkFirstReq(req);
+   if(!isFirstReq){
+       wmClientCtxt* ctxt = (wmClientCtxt*)afb_req_context_get(req);
+       HMI_DEBUG("wm", "You're %s.", ctxt->name.c_str());
+       if(ctxt->name != std::string(a_drawing_name)){
+           afb_req_fail_f(req, "failed", "Dont request with other name: %s for now", a_drawing_name);
+           HMI_DEBUG("wm", "Don't request with other name: %s for now", a_drawing_name);
+           return;
+       }
+   }
+
    auto ret = g_afb_instance->app.api_request_surface(a_drawing_name);
+
+   if(isFirstReq){
+       wmClientCtxt* ctxt = new wmClientCtxt(a_drawing_name);
+       HMI_DEBUG("wm", "create session for %s", ctxt->name.c_str());
+       afb_req_session_set_LOA(req, 1);
+       afb_req_context_set(req, ctxt, cbRemoveClientCtxt);
+   }
+   else{
+       HMI_DEBUG("wm", "session already created for %s", a_drawing_name);
+   }
+
    if (ret.is_err()) {
       afb_req_fail(req, "failed", ret.unwrap_err());
       return;

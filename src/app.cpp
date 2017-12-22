@@ -629,7 +629,7 @@ void App::surface_created(uint32_t surface_id) {
 
    this->controller->layers[*layer_id]->add_surface(
       this->controller->surfaces[surface_id].get());
-
+   this->layout_commit();
    // activate the main_surface right away
    /*if (surface_id == static_cast<unsigned>(this->layers.main_surface)) {
       HMI_DEBUG("wm", "Activating main_surface (%d)", surface_id);
@@ -736,6 +736,7 @@ char const *App::api_request_surface(char const *drawing_name,
 
    this->controller->layers[*lid]->add_surface(
        this->controller->surfaces[sid].get());
+   this->layout_commit();
 
    return nullptr;
 }
