@@ -373,6 +373,65 @@ void windowmanager_enddraw(afb_req req) noexcept {
 
 }
 
+void windowmanager_getdisplayinfo_thunk(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   auto ret = g_afb_instance->app.api_get_display_info();
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling getdisplayinfo: %s", e.what());
+      return;
+   }
+
+}
+
+void windowmanager_getareainfo_thunk(afb_req req) noexcept {
+   std::lock_guard<std::mutex> guard(binding_m);
+   #ifdef ST
+   ST();
+   #endif
+   if (g_afb_instance == nullptr) {
+      afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+      return;
+   }
+
+   try {
+   json_object *jreq = afb_req_json(req);
+
+   json_object *j_drawing_name = nullptr;
+   if (! json_object_object_get_ex(jreq, "drawing_name", &j_drawing_name)) {
+      afb_req_fail(req, "failed", "Need char const* argument drawing_name");
+      return;
+   }
+   char const* a_drawing_name = json_object_get_string(j_drawing_name);
+
+   auto ret = g_afb_instance->app.api_get_area_info(a_drawing_name);
+   if (ret.is_err()) {
+      afb_req_fail(req, "failed", ret.unwrap_err());
+      return;
+   }
+
+   afb_req_success(req, ret.unwrap(), "success");
+   } catch (std::exception &e) {
+      afb_req_fail_f(req, "failed", "Uncaught exception while calling getareainfo: %s", e.what());
+      return;
+   }
+
+}
+
 void windowmanager_wm_subscribe(afb_req req) noexcept {
    std::lock_guard<std::mutex> guard(binding_m);
    #ifdef ST
@@ -562,6 +621,8 @@ const struct afb_verb_v2 windowmanager_verbs[] = {
    { "activatesurface", windowmanager_activatesurface, nullptr, nullptr, AFB_SESSION_NONE },
    { "deactivatesurface", windowmanager_deactivatesurface, nullptr, nullptr, AFB_SESSION_NONE },
    { "enddraw", windowmanager_enddraw, nullptr, nullptr, AFB_SESSION_NONE },
+   { "getdisplayinfo", windowmanager_getdisplayinfo_thunk, nullptr, nullptr, AFB_SESSION_NONE },
+   { "getareainfo", windowmanager_getareainfo_thunk, nullptr, nullptr, AFB_SESSION_NONE },
    { "wm_subscribe", windowmanager_wm_subscribe, nullptr, nullptr, AFB_SESSION_NONE },
    { "list_drawing_names", windowmanager_list_drawing_names, nullptr, nullptr, AFB_SESSION_NONE },
    { "ping", windowmanager_ping, nullptr, nullptr, AFB_SESSION_NONE },

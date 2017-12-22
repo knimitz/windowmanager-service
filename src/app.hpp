@@ -46,15 +46,25 @@ namespace wm {
 using std::experimental::optional;
 
 /* DrawingArea name used by "{layout}.{area}" */
-static const char *kNameLayoutNormal = "normal";
-static const char *kNameLayoutSplit = "split";
-static const char *kNameAreaFull = "full";
-static const char *kNameAreaMain = "main";
-static const char *kNameAreaSub = "sub";
+extern const char kNameLayoutNormal[];
+extern const char kNameLayoutSplit[];
+extern const char kNameAreaFull[];
+extern const char kNameAreaMain[];
+extern const char kNameAreaSub[];
 
 /* Key for json obejct */
-static const char *kKeyDrawingName = "drawing_name";
-static const char *kKeyDrawingArea = "drawing_area";
+extern const char kKeyDrawingName[];
+extern const char kKeyDrawingArea[];
+extern const char kKeyDrawingRect[];
+extern const char kKeyX[];
+extern const char kKeyY[];
+extern const char kKeyWidth[];
+extern const char kKeyHeigh[];
+extern const char kKeyWidthPixel[];
+extern const char kKeyHeightPixel[];
+extern const char kKeyWidthMm[];
+extern const char kKeyHeightMm[];
+
 
 struct id_allocator {
    unsigned next = 1;
@@ -118,6 +128,9 @@ struct id_allocator {
 };
 
 struct App {
+
+   typedef std::unordered_map<uint32_t, struct compositor::rect> rect_map;
+
    enum EventType {
       Event_Val_Min = 0,
 
@@ -167,6 +180,9 @@ struct App {
 
    std::map<const char *, struct afb_event> map_afb_event;
 
+   // Surface are info (x, y, w, h)
+   rect_map area_info;
+
    // FOR CES DEMO
    std::vector<int> surface_bg;
 
@@ -189,10 +205,12 @@ struct App {
    char const *api_activate_surface(char const *drawing_name, char const *drawing_area);
    char const *api_deactivate_surface(char const *drawing_name);
    char const *api_enddraw(char const *drawing_name);
+   result<json_object *> api_get_display_info();
+   result<json_object *> api_get_area_info(char const *drawing_name);
    char const *api_subscribe(afb_req *req, char const *event_name);
    void api_ping();
    void send_event(char const *evname, char const *label);
-   void send_event(char const *evname, char const *label, char const *area);
+   void send_event(char const *evname, char const *label, char const *area, int x, int y, int w, int h);
 
    // Events from the compositor we are interested in
    void surface_created(uint32_t surface_id);
@@ -215,7 +233,7 @@ private:
    // TMC WM Events to clients
    void emit_activated(char const *label);
    void emit_deactivated(char const *label);
-   void emit_syncdraw(char const *label, char const *area);
+   void emit_syncdraw(char const *label, char const *area, int x, int y, int w, int h);
    void emit_flushdraw(char const *label);
    void emit_visible(char const *label, bool is_visible);
    void emit_invisible(char const *label);

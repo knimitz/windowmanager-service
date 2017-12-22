@@ -38,6 +38,27 @@
 
 namespace wm {
 
+/* DrawingArea name used by "{layout}.{area}" */
+const char kNameLayoutNormal[] = "normal";
+const char kNameLayoutSplit[]  = "split";
+const char kNameAreaFull[]     = "full";
+const char kNameAreaMain[]     = "main";
+const char kNameAreaSub[]      = "sub";
+
+/* Key for json obejct */
+const char kKeyDrawingName[] = "drawing_name";
+const char kKeyDrawingArea[] = "drawing_area";
+const char kKeyDrawingRect[] = "drawing_rect";
+const char kKeyX[]           = "x";
+const char kKeyY[]           = "y";
+const char kKeyWidth[]       = "width";
+const char kKeyHeight[]      = "height";
+const char kKeyWidthPixel[]  = "width_pixel";
+const char kKeyHeightPixel[] = "height_pixel";
+const char kKeyWidthMm[]     = "width_mm";
+const char kKeyHeightMm[]    = "height_mm";
+
+
 namespace {
 
 using nlohmann::json;
@@ -197,6 +218,8 @@ int App::init_layers() {
 
    // Write output dimensions to ivi controller...
    c->output_size = compositor::size{uint32_t(o->width), uint32_t(o->height)};
+   c->physical_size = compositor::size{uint32_t(o->physical_width),
+                                       uint32_t(o->physical_height)};
 
    // Clear scene
    layers.clear();
@@ -283,6 +306,10 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
       // set destination to the display rectangle
       ss->set_destination_rectangle(x + x_off, y + y_off, w, h);
 
+      this->area_info[*sub_surface_id].x = x;
+      this->area_info[*sub_surface_id].y = y;
+      this->area_info[*sub_surface_id].w = w;
+      this->area_info[*sub_surface_id].h = h;
    }
 
    HMI_DEBUG("wm", "surface_set_layout for surface %u on layer %u", surface_id,
@@ -290,6 +317,12 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
 
    // set destination to the display rectangle
    s->set_destination_rectangle(x, y, w, h);
+
+   // update area information
+   this->area_info[surface_id].x = x;
+   this->area_info[surface_id].y = y;
+   this->area_info[surface_id].w = w;
+   this->area_info[surface_id].h = h;
 
    HMI_DEBUG("wm", "Surface %u now on layer %u with rect { %d, %d, %d, %d }",
             surface_id, layer_id, x, y, w, h);
@@ -364,7 +397,9 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
             this->layout_commit();
 
             std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-            this->emit_syncdraw(drawing_name, str_area.c_str());
+            compositor::rect area_rect = this->area_info[*surface_id];
+            this->emit_syncdraw(drawing_name, str_area.c_str(),
+                                area_rect.x, area_rect.y, area_rect.w, area_rect.h);
             this->enqueue_flushdraw(state.main);
          });
    } else {
@@ -373,7 +408,9 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
             state, LayoutState{*surface_id}, [&] (LayoutState const &nl) {
                HMI_DEBUG("wm", "Layout: %s", kNameLayoutNormal);
                std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-               this->emit_syncdraw(drawing_name, str_area.c_str());
+               compositor::rect area_rect = this->area_info[*surface_id];
+               this->emit_syncdraw(drawing_name, str_area.c_str(),
+                                   area_rect.x, area_rect.y, area_rect.w, area_rect.h);
                this->enqueue_flushdraw(state.main);
             });
       } else {
@@ -401,8 +438,14 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
 
                   std::string str_area_main = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaMain);
                   std::string str_area_sub = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaSub);
-                  this->emit_syncdraw(main.c_str(), str_area_main.c_str());
-                  this->emit_syncdraw(drawing_name, str_area_sub.c_str());
+                  compositor::rect area_rect_main = this->area_info[state.main];
+                  compositor::rect area_rect_sub = this->area_info[*surface_id];
+                  this->emit_syncdraw(main.c_str(), str_area_main.c_str(),
+                                      area_rect_main.x, area_rect_main.y,
+                                      area_rect_main.w, area_rect_main.h);
+                  this->emit_syncdraw(drawing_name, str_area_sub.c_str(),
+                                      area_rect_sub.x, area_rect_sub.y,
+                                      area_rect_sub.w, area_rect_sub.h);
                   this->enqueue_flushdraw(state.main);
                   this->enqueue_flushdraw(state.sub);
                });
@@ -426,7 +469,9 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
                   this->layout_commit();
 
                   std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-                  this->emit_syncdraw(drawing_name, str_area.c_str());
+                  compositor::rect area_rect = this->area_info[*surface_id];
+                  this->emit_syncdraw(drawing_name, str_area.c_str(),
+                                      area_rect.x, area_rect.y, area_rect.w, area_rect.h);
                   this->enqueue_flushdraw(state.main);
                });
          }
@@ -479,7 +524,9 @@ char const *App::api_deactivate_surface(char const *drawing_name) {
 
                this->layout_commit();
                std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-               this->emit_syncdraw(sub.c_str(), str_area.c_str());
+               compositor::rect area_rect = this->area_info[state.sub];
+               this->emit_syncdraw(sub.c_str(), str_area.c_str(),
+                                   area_rect.x, area_rect.y, area_rect.w, area_rect.h);
                this->enqueue_flushdraw(state.sub);
             });
       } else {
@@ -500,7 +547,9 @@ char const *App::api_deactivate_surface(char const *drawing_name) {
 
             this->layout_commit();
             std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-            this->emit_syncdraw(main.c_str(), str_area.c_str());
+            compositor::rect area_rect = this->area_info[state.main];
+            this->emit_syncdraw(main.c_str(), str_area.c_str(),
+                                area_rect.x, area_rect.y, area_rect.w, area_rect.h);
             this->enqueue_flushdraw(state.main);
          });
    } else {
@@ -559,12 +608,21 @@ void App::send_event(char const *evname, char const *label){
    }
 }
 
-void App::send_event(char const *evname, char const *label, char const *area){
-   HMI_DEBUG("wm", "%s: %s(%s, %s)", __func__, evname, label, area);
+void App::send_event(char const *evname, char const *label, char const *area,
+                             int x, int y, int w, int h) {
+   HMI_DEBUG("wm", "%s: %s(%s, %s) x:%d y:%d w:%d h:%d",
+             __func__, evname, label, area, x, y, w, h);
+
+   json_object *j_rect = json_object_new_object();
+   json_object_object_add(j_rect, kKeyX,      json_object_new_int(x));
+   json_object_object_add(j_rect, kKeyY,      json_object_new_int(y));
+   json_object_object_add(j_rect, kKeyWidth,  json_object_new_int(w));
+   json_object_object_add(j_rect, kKeyHeight, json_object_new_int(h));
 
    json_object *j = json_object_new_object();
    json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
    json_object_object_add(j, kKeyDrawingArea, json_object_new_string(area));
+   json_object_object_add(j, kKeyDrawingRect, j_rect);
 
    int ret = afb_event_push(this->map_afb_event[evname], j);
    if (ret != 0) {
@@ -622,8 +680,8 @@ void App::emit_deactivated(char const *label) {
    this->send_event(kListEventName[Event_Inactive], label);
 }
 
-void App::emit_syncdraw(char const *label, char const *area) {
-    this->send_event(kListEventName[Event_SyncDraw], label, area);
+void App::emit_syncdraw(char const *label, char const *area, int x, int y, int w, int h) {
+   this->send_event(kListEventName[Event_SyncDraw], label, area, x, y, w, h);
 }
 
 void App::emit_flushdraw(char const *label) {
@@ -695,6 +753,64 @@ char const *App::api_request_surface(char const *drawing_name,
    this->layout_commit();
 
    return nullptr;
+}
+
+result<json_object *> App::api_get_display_info() {
+   // Check controller
+   if (!this->controller) {
+      return Err<json_object *>("ivi_controller global not available");
+   }
+
+   // Set display info
+   compositor::size o_size = this->controller->output_size;
+   compositor::size p_size = this->controller->physical_size;
+
+   json_object *object = json_object_new_object();
+   json_object_object_add(object, kKeyWidthPixel,  json_object_new_int(o_size.w));
+   json_object_object_add(object, kKeyHeightPixel, json_object_new_int(o_size.h));
+   json_object_object_add(object, kKeyWidthMm,     json_object_new_int(p_size.w));
+   json_object_object_add(object, kKeyHeightMm,    json_object_new_int(p_size.h));
+
+   return Ok<json_object *>(object);
+}
+
+result<json_object *> App::api_get_area_info(char const *drawing_name) {
+   HMI_DEBUG("wm", "called");
+
+   // Check drawing name, surface/layer id
+   auto const &surface_id = this->lookup_id(drawing_name);
+   if (!surface_id) {
+      return Err<json_object *>("Surface does not exist");
+   }
+
+   if (!this->controller->surface_exists(*surface_id)) {
+      return Err<json_object *>("Surface does not exist in controller!");
+   }
+
+   auto layer_id = this->layers.get_layer_id(*surface_id);
+   if (!layer_id) {
+      return Err<json_object *>("Surface is not on any layer!");
+   }
+
+   auto o_state = *this->layers.get_layout_state(*surface_id);
+   if (o_state == nullptr) {
+      return Err<json_object *>("Could not find layer for surface");
+   }
+
+   struct LayoutState &state = *o_state;
+   if ((state.main != *surface_id) && (state.sub != *surface_id)) {
+      return Err<json_object *>("Surface is inactive");
+   }
+
+   // Set area rectangle
+   compositor::rect area_info = this->area_info[*surface_id];
+   json_object *object = json_object_new_object();
+   json_object_object_add(object, kKeyX,      json_object_new_int(area_info.x));
+   json_object_object_add(object, kKeyY,      json_object_new_int(area_info.y));
+   json_object_object_add(object, kKeyWidth,  json_object_new_int(area_info.w));
+   json_object_object_add(object, kKeyHeight, json_object_new_int(area_info.h));
+
+   return Ok<json_object *>(object);
 }
 
 void App::activate(int id) {
