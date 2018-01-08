@@ -743,8 +743,6 @@ char const *App::api_request_surface(char const *drawing_name,
 void App::activate(int id) {
    auto ip = this->controller->sprops.find(id);
    if (ip != this->controller->sprops.end()) {
-      this->controller->surfaces[id]->set_visibility(0);
-      this->layout_commit();
       this->controller->surfaces[id]->set_visibility(1);
       char const *label =
          this->lookup_name(id).value_or("unknown-name").c_str();
