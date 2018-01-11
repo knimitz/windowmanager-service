@@ -18,7 +18,7 @@
 #define WM_WAYLAND_HPP
 
 #include "controller_hooks.hpp"
-#include "ivi-controller-client-protocol.h"
+#include "ivi-wm-client-protocol.h"
 #include "util.hpp"
 
 #include <functional>
@@ -61,8 +61,8 @@ struct registry : public wayland_proxy<struct wl_registry> {
    void add_global_handler(char const *iface, binder bind);
 
    // Events
-   void global(uint32_t name, char const *iface, uint32_t v);
-   void global_remove(uint32_t name);
+   void global_created(uint32_t name, char const *iface, uint32_t v);
+   void global_removed(uint32_t name);
 };
 
 /**
@@ -93,7 +93,7 @@ struct display {
 /**
  * @struct output
  */
-struct output : wayland_proxy<struct wl_output> {
+struct output : public wayland_proxy<struct wl_output> {
    int width{};
    int height{};
    int refresh{};
@@ -157,31 +157,23 @@ struct surface_properties {
 /**
  * @struct surface
  */
-struct surface : public wayland_proxy<struct ivi_controller_surface>,
-                 controller_child {
+struct surface : public controller_child {
    surface(surface const &) = delete;
    surface &operator=(surface const &) = delete;
    surface(uint32_t i, struct controller *c);
 
    // Requests
    void set_visibility(uint32_t visibility);
-   void set_opacity(wl_fixed_t opacity);
-   void set_source_rectangle(int32_t x, int32_t y, int32_t width,
-                             int32_t height);
-   void set_destination_rectangle(int32_t x, int32_t y, int32_t width,
-                                  int32_t height);
-   void set_configuration(int32_t width, int32_t height);
-   void set_orientation(int32_t orientation);
-   void screenshot(const char *filename);
-   void send_stats();
-   void destroy(int32_t destroy_scene_object);
+   void set_source_rectangle(int32_t x, int32_t y,
+                             int32_t width, int32_t height);
+   void set_destination_rectangle(int32_t x, int32_t y,
+                                  int32_t width, int32_t height);
 };
 
 /**
  * @struct layer
  */
-struct layer : public wayland_proxy<struct ivi_controller_layer>,
-               controller_child {
+struct layer : public controller_child {
    layer(layer const &) = delete;
    layer &operator=(layer const &) = delete;
    layer(uint32_t i, struct controller *c);
@@ -189,37 +181,30 @@ struct layer : public wayland_proxy<struct ivi_controller_layer>,
 
    // Requests
    void set_visibility(uint32_t visibility);
-   void set_opacity(wl_fixed_t opacity);
-   void set_source_rectangle(int32_t x, int32_t y, int32_t width,
-                             int32_t height);
-   void set_destination_rectangle(int32_t x, int32_t y, int32_t width,
-                                  int32_t height);
-   void set_configuration(int32_t width, int32_t height);
-   void set_orientation(int32_t orientation);
-   void screenshot(const char *filename);
-   void clear_surfaces();
-   void add_surface(struct surface *surface);
-   void remove_surface(struct surface *surface);
-   void set_render_order(std::vector<uint32_t> const &ro);
+   void set_destination_rectangle(int32_t x, int32_t y,
+                                  int32_t width, int32_t height);
+   void add_surface(uint32_t surface_id);
+   void remove_surface(uint32_t surface_id);
 };
 
 /**
  * @struct screen
  */
-struct screen : public wayland_proxy<struct ivi_controller_screen>,
-                controller_child {
+struct screen : public wayland_proxy<struct ivi_wm_screen>,
+                public controller_child {
    screen(screen const &) = delete;
    screen &operator=(screen const &) = delete;
-   screen(uint32_t i, struct controller *c, struct ivi_controller_screen *p);
+   screen(uint32_t i, struct controller *c, struct wl_output *o);
+
    void clear();
-   void add_layer(layer *l);
+   void screen_created(struct screen *screen, uint32_t id);
    void set_render_order(std::vector<uint32_t> const &ro);
 };
 
 /**
  * @struct controller
  */
-struct controller : public wayland_proxy<struct ivi_controller> {
+struct controller : public wayland_proxy<struct ivi_wm> {
    // This controller is still missing ivi-input
 
    typedef std::unordered_map<uintptr_t, uint32_t> proxy_to_id_map_type;
@@ -227,9 +212,7 @@ struct controller : public wayland_proxy<struct ivi_controller> {
       surface_map_type;
    typedef std::unordered_map<uint32_t, std::unique_ptr<struct layer>>
       layer_map_type;
-   typedef std::unordered_map<uint32_t, std::unique_ptr<struct screen>>
-      screen_map_type;
-
+   typedef std::unordered_map<uint32_t, struct screen *> screen_map_type;
    typedef std::unordered_map<uint32_t, struct surface_properties> props_map;
 
    // HACK:
@@ -250,16 +233,20 @@ struct controller : public wayland_proxy<struct ivi_controller> {
    layer_map_type layers;
    screen_map_type screens;
 
+   std::unique_ptr<struct screen> screen;
+
    size output_size;
 
    wm::controller_hooks *chooks;
 
-   bool is_configured;
+   struct wl::display *display;
 
-   void add_proxy_to_id_mapping(struct ivi_controller_surface *p, uint32_t id);
-   void remove_proxy_to_id_mapping(struct ivi_controller_surface *p);
-   void add_proxy_to_id_mapping(struct ivi_controller_layer *p, uint32_t id);
-   void remove_proxy_to_id_mapping(struct ivi_controller_layer *p);
+   void add_proxy_to_sid_mapping(struct ivi_wm *p, uint32_t id);
+   void remove_proxy_to_sid_mapping(struct ivi_wm *p);
+
+   void add_proxy_to_lid_mapping(struct ivi_wm *p, uint32_t id);
+   void remove_proxy_to_lid_mapping(struct ivi_wm *p);
+
    void add_proxy_to_id_mapping(struct wl_output *p, uint32_t id);
    void remove_proxy_to_id_mapping(struct wl_output *p);
 
@@ -275,47 +262,42 @@ struct controller : public wayland_proxy<struct ivi_controller> {
 
    // Requests
    void commit_changes() const {
-      ivi_controller_commit_changes(this->proxy.get());
+      ivi_wm_commit_changes(this->proxy.get());
    }
    void layer_create(uint32_t id, int32_t w, int32_t h);
    void surface_create(uint32_t id);
+   void create_screen(struct wl_output *output);
 
    // Events
-   // controller
-   void controller_screen(uint32_t id, struct ivi_controller_screen *screen);
-   void controller_layer(uint32_t id);
-   void controller_surface(uint32_t id);
-   void controller_error(int32_t object_id, int32_t object_type,
-                         int32_t error_code, char const *error_text);
-
-   // surface
-   void surface_visibility(struct surface *s, int32_t visibility);
-   void surface_opacity(struct surface *s, float opacity);
-   void surface_source_rectangle(struct surface *s, int32_t x, int32_t y,
+   void surface_visibility_changed(struct surface *s, int32_t visibility);
+   void surface_opacity_changed(struct surface *s, float opacity);
+   void surface_source_rectangle_changed(struct surface *s, int32_t x, int32_t y,
                                  int32_t width, int32_t height);
-   void surface_destination_rectangle(struct surface *s, int32_t x, int32_t y,
+   void surface_destination_rectangle_changed(struct surface *s, int32_t x, int32_t y,
                                       int32_t width, int32_t height);
-   void surface_configuration(struct surface *s, int32_t width, int32_t height);
-   void surface_orientation(struct surface *s, int32_t orientation);
-   void surface_pixelformat(struct surface *s, int32_t pixelformat);
-   void surface_layer(struct surface *s, struct ivi_controller_layer *layer);
-   void surface_stats(struct surface *s, uint32_t redraw_count,
-                      uint32_t frame_count, uint32_t update_count, uint32_t pid,
-                      const char *process_name);
-   void surface_destroyed(struct surface *s);
-   void surface_content(struct surface *s, int32_t content_state);
+   void surface_created(uint32_t id);
+   void surface_destroyed(struct surface *s, uint32_t surface_id);
+   void surface_error_detected(uint32_t object_id,
+                      uint32_t error_code, char const *error_text);
+   void surface_size_changed(struct surface *s, int32_t width, int32_t height);
+   void surface_stats_received(struct surface *s, uint32_t surface_id,
+                      uint32_t frame_count, uint32_t pid);
+   void surface_added_to_layer(struct surface *s, uint32_t layer_id, uint32_t surface_id);
 
-   // layer
-   void layer_visibility(struct layer *l, int32_t visibility);
-   void layer_opacity(struct layer *l, float opacity);
-   void layer_source_rectangle(struct layer *l, int32_t x, int32_t y,
+   void layer_visibility_changed(struct layer *l, uint32_t layer_id,int32_t visibility);
+   void layer_opacity_changed(struct layer *l, uint32_t layer_id,float opacity);
+   void layer_source_rectangle_changed(struct layer *l, uint32_t layer_id,int32_t x, int32_t y,
                                int32_t width, int32_t height);
-   void layer_destination_rectangle(struct layer *l, int32_t x, int32_t y,
+   void layer_destination_rectangle_changed(struct layer *l, uint32_t layer_id,int32_t x, int32_t y,
                                     int32_t width, int32_t height);
+   void layer_created(uint32_t id);
+   void layer_destroyed(struct layer *l, uint32_t layer_id);
+   void layer_error_detected(uint32_t object_id,
+                    uint32_t error_code, char const *error_text);
    void layer_configuration(struct layer *l, int32_t width, int32_t height);
    void layer_orientation(struct layer *l, int32_t orientation);
    void layer_screen(struct layer *l, struct wl_output *screen);
-   void layer_destroyed(struct layer *l);
+
 };
 }  // namespace compositor
 

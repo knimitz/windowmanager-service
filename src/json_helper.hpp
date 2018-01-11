@@ -18,7 +18,7 @@
 #define TMCAGLWM_JSON_HELPER_HPP
 
 #include "result.hpp"
-#include "wayland.hpp"
+#include "wayland_ivi_wm.hpp"
 #include <json.hpp>
 
 struct json_object;

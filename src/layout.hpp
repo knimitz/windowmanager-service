@@ -21,7 +21,6 @@
 #include <string>
 
 #include "result.hpp"
-#include "wayland.hpp"
 
 namespace wm {
 

@@ -19,7 +19,7 @@
 #include "layers.hpp"
 #include "layout.hpp"
 #include "util.hpp"
-#include "wayland.hpp"
+#include "wayland_ivi_wm.hpp"
 
 #include <cstdio>
 #include <memory>
@@ -120,7 +120,7 @@ int App::init() {
       });
 
    this->display->add_global_handler(
-      "ivi_controller", [this](wl_registry *r, uint32_t name, uint32_t v) {
+      "ivi_wm", [this](wl_registry *r, uint32_t name, uint32_t v) {
          this->controller =
             std::make_unique<struct compositor::controller>(r, name, v);
 
@@ -132,6 +132,12 @@ int App::init() {
             this->outputs.back()->proxy.get(),
             wl_proxy_get_id(reinterpret_cast<struct wl_proxy *>(
                this->outputs.back()->proxy.get())));
+
+         // Create screen
+         this->controller->create_screen(this->outputs.back()->proxy.get());
+
+         // Set display to controller
+         this->controller->display = this->display;
       });
 
    // First level objects
@@ -142,22 +148,6 @@ int App::init() {
    this->display->roundtrip();
 
    return init_layers();
-}
-
-int App::dispatch_events() {
-   if (this->dispatch_events() == 0) {
-      return 0;
-   }
-
-   int ret = this->display->dispatch();
-   if (ret == -1) {
-      HMI_ERROR("wm", "wl_display_dipatch() returned error %d",
-               this->display->get_error());
-      return -1;
-   }
-   this->display->flush();
-
-   return 0;
 }
 
 int App::dispatch_pending_events() {
@@ -290,10 +280,6 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
       HMI_DEBUG("wm", "surface_set_layout for sub surface %u on layer %u",
                *sub_surface_id, layer_id);
 
-      // configure surface to wxh dimensions
-      ss->set_configuration(w, h);
-      // set source reactangle, even if we should not need to set it.
-      ss->set_source_rectangle(0, 0, w, h);
       // set destination to the display rectangle
       ss->set_destination_rectangle(x + x_off, y + y_off, w, h);
 
@@ -301,11 +287,6 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id) {
 
    HMI_DEBUG("wm", "surface_set_layout for surface %u on layer %u", surface_id,
             layer_id);
-
-   // configure surface to wxh dimensions
-   s->set_configuration(w, h);
-   // set source reactangle, even if we should not need to set it.
-   s->set_source_rectangle(0, 0, w, h);
 
    // set destination to the display rectangle
    s->set_destination_rectangle(x, y, w, h);
@@ -382,14 +363,6 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
             // Commit for configuraton
             this->layout_commit();
 
-            if (!(layer->is_normal_layout_only)) {
-               // Wait for configuration listener
-               controller->is_configured = false;
-               while (!(controller->is_configured)) {
-                  dispatch_pending_events();
-               }
-            }
-
             std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
             this->emit_syncdraw(drawing_name, str_area.c_str());
             this->enqueue_flushdraw(state.main);
@@ -423,14 +396,8 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
                   }
                   state = nl;
 
-                  // Commit for configuraton and visibility(0)
+                  // Commit for configuration and visibility(0)
                   this->layout_commit();
-
-                  // Wait for configuration listener
-                  controller->is_configured = false;
-                  while (!(controller->is_configured)) {
-                     dispatch_pending_events();
-                  }
 
                   std::string str_area_main = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaMain);
                   std::string str_area_sub = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaSub);
@@ -457,14 +424,6 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
 
                   // Commit for configuraton and visibility(0)
                   this->layout_commit();
-
-                  if (!(layer->is_normal_layout_only)) {
-                     // Wait for configuration listener
-                     controller->is_configured = false;
-                     while (!(controller->is_configured)) {
-                        dispatch_pending_events();
-                     }
-                  }
 
                   std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
                   this->emit_syncdraw(drawing_name, str_area.c_str());
@@ -626,8 +585,7 @@ void App::surface_created(uint32_t surface_id) {
 
    HMI_DEBUG("wm", "surface_id is %u, layer_id is %u", surface_id, *layer_id);
 
-   this->controller->layers[*layer_id]->add_surface(
-      this->controller->surfaces[surface_id].get());
+   this->controller->layers[*layer_id]->add_surface(surface_id);
    this->layout_commit();
    // activate the main_surface right away
    /*if (surface_id == static_cast<unsigned>(this->layers.main_surface)) {
@@ -733,8 +691,7 @@ char const *App::api_request_surface(char const *drawing_name,
    // this surface is already created
    HMI_DEBUG("wm", "surface_id is %u, layer_id is %u", sid, *lid);
 
-   this->controller->layers[*lid]->add_surface(
-       this->controller->surfaces[sid].get());
+   this->controller->layers[*lid]->add_surface(sid);
    this->layout_commit();
 
    return nullptr;
@@ -759,13 +716,11 @@ void App::activate(int id) {
 
                // Remove from BG layer (999)
                HMI_DEBUG("wm", "Remove %s(%d) from BG layer", label, id);
-               this->controller->layers[999]->remove_surface(
-                  this->controller->surfaces[id].get());
+               this->controller->layers[999]->remove_surface(id);
 
                // Add to FG layer (1001)
                HMI_DEBUG("wm", "Add %s(%d) to FG layer", label, id);
-               this->controller->layers[1001]->add_surface(
-                  this->controller->surfaces[id].get());
+               this->controller->layers[1001]->add_surface(id);
 
                for (int j : this->surface_bg) {
                  HMI_DEBUG("wm", "Stored id:%d", j);
@@ -783,7 +738,7 @@ void App::activate(int id) {
 
 void App::deactivate(int id) {
    auto ip = this->controller->sprops.find(id);
-   if (ip != this->controller->sprops.end() && ip->second.visibility != 0) {
+   if (ip != this->controller->sprops.end()) {
       char const *label =
          this->lookup_name(id).value_or("unknown-name").c_str();
 
@@ -798,13 +753,11 @@ void App::deactivate(int id) {
 
          // Remove from FG layer (1001)
          HMI_DEBUG("wm", "Remove %s(%d) from FG layer", label, id);
-         this->controller->layers[1001]->remove_surface(
-            this->controller->surfaces[id].get());
+         this->controller->layers[1001]->remove_surface(id);
 
          // Add to BG layer (999)
          HMI_DEBUG("wm", "Add %s(%d) to BG layer", label, id);
-         this->controller->layers[999]->add_surface(
-            this->controller->surfaces[id].get());
+         this->controller->layers[999]->add_surface(id);
 
          for (int j : surface_bg) {
             HMI_DEBUG("wm", "Stored id:%d", j);

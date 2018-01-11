@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-wlproto(IVI_CON ivi-controller)
+wlproto(IVI_CON ivi-wm)
 
 include(FindPkgConfig)
 pkg_check_modules(AFB REQUIRED afb-daemon)
@@ -27,8 +27,8 @@ set(TARGETS_WM windowmanager-service)
 
 add_library(${TARGETS_WM} MODULE
    main.cpp
-   wayland.cpp
-   wayland.hpp
+   wayland_ivi_wm.cpp
+   wayland_ivi_wm.hpp
    util.cpp
    util.hpp
    layout.cpp

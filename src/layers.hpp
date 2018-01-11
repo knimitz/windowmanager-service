@@ -25,7 +25,7 @@
 
 #include "layout.hpp"
 #include "result.hpp"
-#include "wayland.hpp"
+#include "wayland_ivi_wm.hpp"
 
 namespace wm {
 

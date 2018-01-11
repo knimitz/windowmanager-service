@@ -23,7 +23,7 @@
 #include "result.hpp"
 #include "json_helper.hpp"
 #include "util.hpp"
-#include "wayland.hpp"
+#include "wayland_ivi_wm.hpp"
 
 extern "C" {
 #include <afb/afb-binding.h>

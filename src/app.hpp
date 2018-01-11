@@ -30,7 +30,7 @@
 #include "layout.hpp"
 #include "policy.hpp"
 #include "result.hpp"
-#include "wayland.hpp"
+#include "wayland_ivi_wm.hpp"
 #include "hmi-debug.h"
 
 namespace wl {
@@ -180,7 +180,6 @@ struct App {
 
    int init();
 
-   int dispatch_events();
    int dispatch_pending_events();
 
    void set_pending_events();
