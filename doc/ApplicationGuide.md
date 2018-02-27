@@ -1,13 +1,13 @@
 **Window Manager Application Guide**
 ====
-<div align="right">Revision: 0.2Final</div>
+<div align="right">Revision: 0.5</div>
 <div align="right">TOYOTA MOTOR CORPORATION</div>
-<div align="right">23rd/Oct/2017</div>
+<div align="right">20th/Mar/2018</div>
 
 * * *
 <div id="Table\ of\ content"></div>
 
-Table of content  
+Table of content
 ============
 - [Introduction](#Introduction)
 	- [Intended audience](#Intended\ audience)
@@ -24,7 +24,6 @@ Table of content
 	- [Dependencies](#Dependencies)
 	- [Build Configuration](#Build\ Configuration)
 - [Implementation Notes](#Implementation\ Notes)
-	- [Binding code generation](#Binding\ code\ generation)
 	- [Structure](#Structure)
 - [Sequence](#Sequence)
 - [Binding API](#Binding\ API)
@@ -41,7 +40,7 @@ Table of content
 Introduction
 ============
 
-This WindowManager implements simple layout switching of applications on
+This window manager implements simple layout switching of applications on
 multiple layers and with different layer layouts.
 
 <div id="Intended\ audience"></div>
@@ -49,7 +48,7 @@ multiple layers and with different layer layouts.
 Intended audience
 -----------------
 
-This documentation is intended for developers and system integrators who
+This document is intended for developers and system integrators who
 need to know, how the window manager works and how it is to be used.
 
 <div id="Scope\ of\ this\ Document"></div>
@@ -63,10 +62,10 @@ implementation details, concepts of operation, configuration and usage.
 
 It does not include
 
--   documentation of the underlying architecture, see
+-   document of the underlying architecture, see
     [HMI-Framework](https://wiki.automotivelinux.org/hmiframework).
 
--   documentation of the AGL application framework and its technologies,
+-   document of the AGL application framework and its technologies,
     see [AGL Application
     Framework](https://wiki.automotivelinux.org/agl-distro/app-framework).
 
@@ -145,10 +144,13 @@ Configuration
 
 The window manager is configured with the *layers.json* configuration
 file, by default it is searched in `${AFM_APP_INSTALL_DIR}/etc/layers.json`.
-Note, that the WM will not run unless this configuration is found and valid.
+Note, that the window manager will use default configuration unless this configuration is found.
 
 A sample configuration is provided with the window manager
 implementation, this sample is installed to ${AFM_APP_INSTALL_DIR}/etc/layers.json.
+
+Note:
+Currently, window manager doesn't block the application displaying because "Fallback" is set by default. If the "Fallback" is not set in layers.json, window manager blocks the application displaying. In such a situation, you have to add your role(application name) at "role" in layers.json.
 
 <div id="Configuration\ Items"></div>
 
@@ -238,7 +240,7 @@ layer, this is mostly useful for the main\_surface or HomeScreen layer.
 coordinates `x` and `y` as well as its dimensions `width` and `height`.
 
 The dimensions can be specified relative to the screen dimensions. For
-this negative values for width and height mus be used.
+this negative values for width and height must be used.
 
 For example, a full-screen surface can have the following `rect`
 definition:
@@ -314,8 +316,6 @@ Building and Running
 Dependencies
 ------------
 
-This project is intended to be build with the 4.0 release of AGL.
-
 Build dependencies are as follows:
 
 -   afb-daemon &gt;= 1.0
@@ -324,7 +324,9 @@ Build dependencies are as follows:
 
 -   wayland-client &gt;= 1.11
 
--   cmake &gt;= 3.6.1
+-   wayland-ivi-extension &gt;= 2.0.2 (until eel, wayland-ivi-extension &gt;= 1.13)
+
+-   cmake &gt;= 2.8
 
 <div id="Supported environment"></div>
 
@@ -362,7 +364,7 @@ Then you can get the following recipe.
 **Bitbake**
 
 ```
-$ source meta-agl/scripts/aglsetup.sh -m m3ulcb agl-demo agl-devel agl-appfw-smack agl-hmi-framework
+$ source meta-agl/scripts/aglsetup.sh -m m3ulcb agl-demo
 $ bitbake agl-demo-platform
 ```
 
@@ -375,45 +377,6 @@ The window manager is implemented as a app-framework-binder binding.
 That means, the build produces one shared object that exports a binding
 interface.
 
-<div id="Binding\ code\ generation"></div>
-
-Binding code generation
------------------------
-
-The binding API is rather simple; functions receive a json object
-describing arguments and return a json object describing the result or
-an error. In order to simplify development, the
-`generate-binding-glue.py` script was added, that contains a description
-of the API as a python dictionary. This script generates the header
-`afb_binding_api.hpp` and the afb binding functions as
-`afb_binding_glue.inl`. Where the latter is included in `main.cpp`.
-
-Each function for the AFB binding that is generated does the following:
-
--   Lock the binding mutex, so that we serialize all access to
-    the binding.
-
--   Do some debug logging (if wanted).
-
--   Check the binding state, i.e. the compositor might have exited
-    unexpectedly at which point it would not make sense to continue.
-
--   Extract the arguments from the json object that is provided (doing
-    some primitive type checking).
-
--   Call the afb\_binding\_api method corresponding to this binding
-    function
-
--   Check the afb\_binding\_api’s function return value, log an error
-    state and return the result to the afb request.
-
-The generated functions do also check for any "loose" exception that
-comes out of the afb\_binding\_api call (which in turn might call the
-actual non-trivial implementation in `App`). However, **IF** an
-exception is thrown and not handled inside the afb\_binding\_call, that
-internal state of the window manager might be broken at this time (hence
-the talkative error log).
-
 <div id="Structure"></div>
 
 Structure
@@ -422,25 +385,20 @@ Structure
 The implementation is loosely split across the following source files:
 
 -   `main.cpp`: The program entry point as used by the afb-daemon. This
-    file defines the afbBindingV2 symbol tat is used by the afb-daemon
+    file defines the afbBindingV2 symbol that is used by the afb-daemon
     in order to load a binding. It also defines the wayland fd event
     dispatcher and some globals to be used (as context for the afb calls
     we receive).
 
--   `afb_binding_api.cpp`: The implementation of the afb
-    binding functions. The actual functions are generated by
-    `generate-binding-glue.py` which generates a **.inl** file that is
-    included by `main.cpp`.
-
--   `app.cpp` / `app.hpp`: This is the main application
+-   `app.cpp` / `app.hpp`: This is the main window manager
     logic implementation.
 
 -   `config.cpp` / `config.hpp`: Very simple configuration
     item interface.
 
 -   `controller_hooks.hpp`: hook functions called by the wayland
-    controller to call into the App instance. Only a very limited number
-    of events are passed to the Application, which allowed the usage of
+    controller to call into the window manager instance. Only a very limited number
+    of events are passed to the window manager, which allowed the usage of
     such a simple interface.
 
 -   `json_helper.cpp` / `json_helper.hpp`: Smaller json related
@@ -448,7 +406,7 @@ The implementation is loosely split across the following source files:
 
 -   `layers.cpp` / `layers.hpp`: Actually hold all the data from
     layers.json configuration, do some transformations and service the
-    App implementation.
+    window manager implementation.
 
 -   `layout.cpp` / `layout.hpp`: Very simple layout state for the
     implementation of split layouts and tracking of the
@@ -465,16 +423,17 @@ The implementation is loosely split across the following source files:
 -   `util.cpp` / `util.hpp`: general utility functions and structs - and
     preprocessor definitions (e.g. `log*()` to AFB logging functions.
 
--   `wayland.cpp` / `wayland.hpp`: A C++ object-oriented
+-   `wayland_ivi_wm.cpp` / `wayland_ivi_wm.hpp`: A C++ object-oriented
     libwayland-client wrapper. It is instanced in `main.cpp` and handles
-    all our wayland needs.
+    all our wayland needs. These files are in master. In eel, the name
+    of these files are `wayland.cpp` / `wayland.hpp`
 
 <div id="Sequence"></div>
 
 Sequence
 ===============
 
-To understand the sequence between application and window manager, refer to the [spec documentation](https://wiki.automotivelinux.org/windowmanager).
+To understand the sequence between application and window manager, refer to the [spec document](https://wiki.automotivelinux.org/windowmanager).
 
 
 <div id="Binding\ API"></div>
@@ -512,8 +471,9 @@ This is the public interface of the class `LibWindowmanager`.
 
         int init(int port, char const *token);
 
-        // WM API
+        // Window manager API
         int requestSurface(json_object *object);
+        int requestSurfaceXDG(json_object *object);
         int activateSurface(json_object *object);
         int deactivateSurface(json_object *object);
         int endDraw(json_object *object);
@@ -536,7 +496,7 @@ Methods
 Initialize the Binding communication.
 
 The `token` parameter is a string consisting of only alphanumeric characters.
-If these conditions are not met, the LibWindowmanager instance will not initialize, 
+If these conditions are not met, the LibWindowmanager instance will not initialize,
 i.e. this call will return `-EINVAL`.
 
 The `port` parameter is the port the afb daemon is listening on, an
@@ -544,15 +504,23 @@ invalid port will lead to a failure of the call and return `-EINVAL`.
 
 ### requestSurface(json_object *object)
 
-**args: `{ 'kKeyDrawingName': 'application name' }`**  
+**args: `{ 'kKeyDrawingName': 'application name' }`**
 This method requests a surface with the label given from the *Window Manager*.
 It will return `surface id` a client application can use, and
 `-errno` on failure. Additionally, on the standard error, messages are
-logged to help debgging the issue.
+logged to help debugging the issue.
+
+### requestSurfaceXDG(json_object *object)
+
+**args: `{ 'kKeyDrawingName': 'application name', 'kKeyIviId': 'ivi id' }`**
+This method is mainly intended for *xdglauncher* that controls xdg application such as chromium.
+It will return `surface id` xdglauncher uses, and
+`-errno` on failure. Additionally, on the standard error, messages are
+logged to help debugging the issue.
 
 ### activateSurface(json_object *object)
 
-**args: `{ 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }`**  
+**args: `{ 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }`**
 This method is mainly intended for *manager* applications that control
 other applications (think an application manager or the *HomeScreen*).
 It instructs the window manager to activate the surface with the given
@@ -563,19 +531,17 @@ created by the application.
 
 ### deactivateSurface(json_object *object)
 
-**args: `{ 'kKeyDrawingName': 'application name' }`**  
-This method is mainly intended for *manager* applications that control
-other applications. It instructs the window manager to deactivate the
-surface associated with the given label. Note, that deactivating a
-surface also means to implicitly activate another (the last active or if
-not available *main surface* or *HomeScreen*.)
+**args: `{ 'kKeyDrawingName': 'application name' }`**
+This method is mainly intended for *manager* applications that control other applications.
+In adition, this is for applications that overrides other applications such like popup message.
+In this case, popup surface requests to be hidden. It instructs the window manager to deactivate the surface associated with the given label. Note, that deactivating a surface also means to implicitly activate another (the last active or if not available *main surface* or *HomeScreen*.)
 
 This method only is effective after the actual window or surface was
 created by the application.
 
 ### endDraw(json_object *object)
 
-**args: `{ 'kKeyDrawingName': 'application name' }`**  
+**args: `{ 'kKeyDrawingName': 'application name' }`**
 This function is called from a client application when it is done
 drawing its surface content.
 
@@ -586,14 +552,14 @@ the next [Events](#_events) Section.
 
 ### getDisplayInfo(json_object *object)
 
-**args: `{ }`**  
+**args: `{ }`**
 This function gets the display information as follows:
  - width[pixel]
  - height[pixel]
  - width[mm]
  - height[mm]
 
-It outputs the display information for json_object in the argument as follows:  
+It outputs the display information for json_object in the argument as follows:
   `{"width_pixel": int value of width[pixel], "height_pixel": int value of height[pixel],
     "width_mm": int value of width[mm], "height_mm": int value of height[mm]}`
 
@@ -609,15 +575,15 @@ but the value is different with measured value.
 
 ### getAreaInfo(json_object *in_obj, json_object *out_obj)
 
-**args1: `{ 'kKeyDrawingName': 'application name' }`**  
-**args2: `{ }`**  
+**args1: `{ 'kKeyDrawingName': 'application name' }`**
+**args2: `{ }`**
 This function gets the information of area drawn by the application as follows:
  - x-coordinate
  - y-coordinate
  - width
  - height
 
-It outputs the area information for json_object in the 2nd argument as follows:  
+It outputs the area information for json_object in the 2nd argument as follows:
   `{"x": int value of x-coordinate, "y": int value of y-coordinate,
     "width": int value of width, "height": int value of height}`
 
@@ -629,8 +595,8 @@ The same information can given by SyncDraw event.
 
 ### getAreaInfo(const char *label, json_object *out_obj)
 
-**args1: String of application name**  
-**args2: `{ }`**  
+**args1: String of application name**
+**args2: `{ }`**
 This function is same with `getAreaInfo(json_object *in_obj, json_object *out_obj)`,
 but only has difference of 1st argument.
 
@@ -644,7 +610,7 @@ EventType the previous handler will be replaced.
 The `func` handler functions will receive the label of the surface this
 event is targeted at.
 
-See Section [Events](#_events) for mor detailed information about event
+See Section [Events](#_events) for more detailed information about event
 delivery to client applications.
 
 <div id="Errors"></div>
@@ -667,7 +633,7 @@ Usage
 ### Initialization of LibWindowmanager
 
 Before usage of the LibWindowmanager, the method `init()` must be
-called once, it will return `-errno` in case of en error and log
+called once, it will return `-errno` in case of an error and log
 diagnostic messages to stderr.
 
 ### Request a surface
@@ -719,13 +685,13 @@ These events signal an application that it was activated or deactivated
 respectively. Usually this means it was switched visible - which means
 the surface will now be on the screen and therefor continue to render.
 
--   `Active(json_object *object)`  
-    args: { 'kKeyDrawingName': 'application name' }  
+-   `Active(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
     Signal that the surface with the name
     `kKeyDrawingName` is now active.
 
--   `Inactive(json_object *object)`  
-    args: { 'kKeyDrawingName': 'application name' }  
+-   `Inactive(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
     Signal that the surface with the
     name `kKeyDrawingName` is now inactive. This usually means, the layout
     got changed, and the surface is now considered inactive
@@ -738,13 +704,13 @@ invisible respectively. These events also are handled implicitly through
 the wayland protocol by means of `wl_surface::enter` and
 `wl_surface::leave` events to the client.
 
--   `Visible(json_object *object)`  
-    args: { 'kKeyDrawingName': 'application name' }  
+-   `Visible(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
     Signal applications, that the
     surface with name `kKeyDrawingName` is now visible.
 
--   `Invisible(json_object *object)`  
-    args: { 'kKeyDrawingName': 'application name' }  
+-   `Invisible(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
     Signal applications that the
     surface with name `kKeyDrawingName` is now invisible.
 
@@ -758,18 +724,18 @@ contents - again, this is handled implicitly by the wayland protocol.
 `FlushDraw` is sent to the application when it should swap its buffers,
 that is *signal* the compositor that its surface contains new content.
 
--   `SyncDraw(json_object *object)`  
+-   `SyncDraw(json_object *object)`
     args: { 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout',
             'kKeyDrawingRect': { "x": int value of x-coordinate, "y": int value of y-coordinate,
-                                 "width": int value of width, "height": int value of height } }  
+                                 "width": int value of width, "height": int value of height } }
     Signal applications, that the
     surface with name `kKeyDrawingArea` needs to redraw its content
     in the layout with name `kKeyDrawingArea` - this
     usually is sent when the surface geometry changed.
     And the area position and size are included with name `kKeyDrawingRect`.
 
--   `FlushDraw(json_object *object)`  
-    args: { 'kKeyDrawingName': 'application name' }  
+-   `FlushDraw(json_object *object)`
+    args: { 'kKeyDrawingName': 'application name' }
     Signal applications, that the
     surface with name `kKeyDrawingArea` can now be swapped to its newly
     drawn content as the window manager is ready to activate a new
@@ -786,6 +752,6 @@ function the above described steps need to be implemented.
 As a minimal example the usage and initialization can look like the
 following.
 
-Repo: `apps/agl-service-homescreen-2017`  
-Path: `sample/template/main.c`  
+Repo: `apps/agl-service-homescreen-2017`
+Path: `sample/template/main.c`
 
