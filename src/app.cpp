@@ -701,8 +701,14 @@ void App::emit_visible(char const *label) { return emit_visible(label, true); }
 result<int> App::api_request_surface(char const *drawing_name) {
    auto lid = this->layers.get_layer_id(std::string(drawing_name));
    if (!lid) {
-      // TODO: Do we need to put these applications on the App layer?
-      return Err<int>("Drawing name does not match any role");
+      /**
+       * register drawing_name as fallback and make it displayed.
+       */
+      lid = this->layers.get_layer_id(std::string("Fallback"));
+      HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", drawing_name);
+      if(!lid){
+          return Err<int>("Drawing name does not match any role, Fallback is disabled");
+      }
    }
 
    auto rname = this->lookup_id(drawing_name);
@@ -733,7 +739,14 @@ char const *App::api_request_surface(char const *drawing_name,
    unsigned sid = std::stol(ivi_id);
 
    if (!lid) {
-       return "Drawing name does not match any role";
+      /**
+       * register drawing_name as fallback and make it displayed.
+       */
+      lid = this->layers.get_layer_id(std::string("Fallback"));
+      HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", drawing_name);
+      if(!lid){
+          return "Drawing name does not match any role, Fallback is disabled";
+      }
    }
 
    auto rname = this->lookup_id(drawing_name);
