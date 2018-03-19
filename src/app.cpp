@@ -586,7 +586,6 @@ char const *App::api_enddraw(char const *drawing_name) {
          std::swap(this->pending_end_draw[i], this->pending_end_draw[iend - 1]);
          this->pending_end_draw.resize(iend - 1);
          this->activate(this->pending_end_draw[i]);
-         this->layout_commit();
          this->emit_flushdraw(drawing_name);
          return nullptr;
       }
@@ -859,6 +858,7 @@ void App::activate(int id) {
          }
       }
       // <<< FOR CES DEMO
+      this->layout_commit();
 
       this->emit_visible(label);
       this->emit_activated(label);
