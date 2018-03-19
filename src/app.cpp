@@ -333,30 +333,37 @@ void App::layout_commit() {
    this->display->flush();
 }
 
-char const *App::api_activate_surface(char const *drawing_name, char const *drawing_area) {
+void App::api_activate_surface(char const *drawing_name, char const *drawing_area, const reply_func &reply) {
    ST();
 
    auto const &surface_id = this->lookup_id(drawing_name);
 
    if (!surface_id) {
-      return "Surface does not exist";
+       reply("Surface does not exist");
+       return;
    }
 
    if (!this->controller->surface_exists(*surface_id)) {
-      return "Surface does not exist in controller!";
+      reply("Surface does not exist in controller!");
+      return;
    }
 
    auto layer_id = this->layers.get_layer_id(*surface_id);
 
    if (!layer_id) {
-      return "Surface is not on any layer!";
+      reply("Surface is not on any layer!");
+      return;
    }
 
    auto o_state = *this->layers.get_layout_state(*surface_id);
 
    if (o_state == nullptr) {
-      return "Could not find layer for surface";
+      reply("Could not find layer for surface");
+      return;
    }
+
+   HMI_DEBUG("wm", "surface %d is detected", *surface_id);
+   reply(nullptr);
 
    struct LayoutState &state = *o_state;
 
@@ -477,40 +484,47 @@ char const *App::api_activate_surface(char const *drawing_name, char const *draw
          }
       }
    }
-
-   // no error
-   return nullptr;
 }
 
-char const *App::api_deactivate_surface(char const *drawing_name) {
+void App::api_deactivate_surface(char const *drawing_name, const reply_func &reply) {
    ST();
    auto const &surface_id = this->lookup_id(drawing_name);
 
    if (!surface_id) {
-         return "Surface does not exist";
-      }
+      reply ("Surface does not exist");
+      return;
+   }
 
    if (*surface_id == this->layers.main_surface) {
-      return "Cannot deactivate main_surface";
+      reply("Cannot deactivate main_surface");
+      return;
    }
 
    auto o_state = *this->layers.get_layout_state(*surface_id);
 
    if (o_state == nullptr) {
-      return "Could not find layer for surface";
+      reply("Could not find layer for surface");
+      return;
    }
 
    struct LayoutState &state = *o_state;
 
    if (state.main == -1) {
-      return "No surface active";
+      reply("No surface active");
+      return;
    }
 
    // Check against main_surface, main_surface_name is the configuration item.
    if (*surface_id == this->layers.main_surface) {
       HMI_DEBUG("wm", "Refusing to deactivate main_surface %d", *surface_id);
-      return nullptr;
+      reply(nullptr);
+      return;
    }
+   if((state.main == *surface_id) && (state.sub == *surface_id)){
+       reply("Surface is not active");
+       return;
+   }
+   reply(nullptr);
 
    if (state.main == *surface_id) {
       if (state.sub != -1) {
@@ -552,11 +566,7 @@ char const *App::api_deactivate_surface(char const *drawing_name) {
                                 area_rect.x, area_rect.y, area_rect.w, area_rect.h);
             this->enqueue_flushdraw(state.main);
          });
-   } else {
-      return "Surface is not active";
    }
-
-   return nullptr;
 }
 
 void App::enqueue_flushdraw(int surface_id) {
@@ -579,7 +589,7 @@ void App::check_flushdraw(int surface_id) {
    }
 }
 
-char const *App::api_enddraw(char const *drawing_name) {
+void App::api_enddraw(char const *drawing_name) {
    for (unsigned i = 0, iend = this->pending_end_draw.size(); i < iend; i++) {
       auto n = this->lookup_name(this->pending_end_draw[i]);
       if (n && *n == drawing_name) {
@@ -587,10 +597,8 @@ char const *App::api_enddraw(char const *drawing_name) {
          this->pending_end_draw.resize(iend - 1);
          this->activate(this->pending_end_draw[i]);
          this->emit_flushdraw(drawing_name);
-         return nullptr;
       }
    }
-   return "No EndDraw pending for surface";
 }
 
 void App::api_ping() { this->dispatch_pending_events(); }
@@ -663,7 +671,7 @@ void App::surface_removed(uint32_t surface_id) {
    } else {
       auto drawing_name = this->lookup_name(surface_id);
       if (drawing_name) {
-         this->api_deactivate_surface(drawing_name->c_str());
+         this->api_deactivate_surface(drawing_name->c_str(), [](const char*){});
       }
    }
 
@@ -904,7 +912,7 @@ void App::deactivate(int id) {
 
 void App::deactivate_main_surface() {
    this->layers.main_surface = -1;
-   this->api_deactivate_surface(this->layers.main_surface_name.c_str());
+   this->api_deactivate_surface(this->layers.main_surface_name.c_str(), [](const char*){});
 }
 
 bool App::can_split(struct LayoutState const &state, int new_id) {

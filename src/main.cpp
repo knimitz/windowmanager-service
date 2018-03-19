@@ -298,15 +298,18 @@ void windowmanager_activatesurface(afb_req req) noexcept {
        return;
    }
 
-   auto ret = g_afb_instance->app.api_activate_surface(a_drawing_name, a_drawing_area);
-   if (ret != nullptr) {
-      afb_req_fail(req, "failed", ret);
-      return;
-   }
+   g_afb_instance->app.api_activate_surface(a_drawing_name, a_drawing_area,
+      [&req](const char* errmsg){
+      if (errmsg != nullptr) {
+         HMI_ERROR("wm", errmsg);
+         afb_req_fail(req, "failed", errmsg);
+         return;
+      }
+      afb_req_success(req, NULL, "success");
+   });
 
-   afb_req_success(req, NULL, "success");
    } catch (std::exception &e) {
-      afb_req_fail_f(req, "failed", "Uncaught exception while calling activatesurface: %s", e.what());
+      HMI_WARNING("wm", "failed", "Uncaught exception while calling activatesurface: %s", e.what());
       return;
    }
 
@@ -329,15 +332,18 @@ void windowmanager_deactivatesurface(afb_req req) noexcept {
        return;
    }
 
-   auto ret = g_afb_instance->app.api_deactivate_surface(a_drawing_name);
-   if (ret != nullptr) {
-      afb_req_fail(req, "failed", ret);
-      return;
-   }
+   g_afb_instance->app.api_deactivate_surface(a_drawing_name,
+      [&req](const char* errmsg){
+      if (errmsg != nullptr) {
+         HMI_ERROR("wm", errmsg);
+         afb_req_fail(req, "failed", errmsg);
+         return;
+      }
+      afb_req_success(req, NULL, "success");
+   });
 
-   afb_req_success(req, NULL, "success");
    } catch (std::exception &e) {
-      afb_req_fail_f(req, "failed", "Uncaught exception while calling deactivatesurface: %s", e.what());
+      HMI_WARNING("wm", "Uncaught exception while calling deactivatesurface: %s", e.what());
       return;
    }
 }
@@ -358,16 +364,12 @@ void windowmanager_enddraw(afb_req req) noexcept {
        afb_req_fail(req, "failed", "Need char const* argument drawing_name");
        return;
    }
-
-   auto ret = g_afb_instance->app.api_enddraw(a_drawing_name);
-   if (ret != nullptr) {
-      afb_req_fail(req, "failed", ret);
-      return;
-   }
-
    afb_req_success(req, NULL, "success");
+
+   g_afb_instance->app.api_enddraw(a_drawing_name);
+
    } catch (std::exception &e) {
-      afb_req_fail_f(req, "failed", "Uncaught exception while calling enddraw: %s", e.what());
+      HMI_WARNING("wm", "failed", "Uncaught exception while calling enddraw: %s", e.what());
       return;
    }
 

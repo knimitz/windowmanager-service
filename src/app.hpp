@@ -130,6 +130,7 @@ struct id_allocator {
 struct App {
 
    typedef std::unordered_map<uint32_t, struct compositor::rect> rect_map;
+   typedef std::function<void(const char* err_msg)> reply_func;
 
    enum EventType {
       Event_Val_Min = 0,
@@ -202,12 +203,11 @@ struct App {
 
    result<int> api_request_surface(char const *drawing_name);
    char const *api_request_surface(char const *drawing_name, char const *ivi_id);
-   char const *api_activate_surface(char const *drawing_name, char const *drawing_area);
-   char const *api_deactivate_surface(char const *drawing_name);
-   char const *api_enddraw(char const *drawing_name);
+   void api_activate_surface(char const *drawing_name, char const *drawing_area, const reply_func &reply);
+   void api_deactivate_surface(char const *drawing_name, const reply_func &reply);
+   void api_enddraw(char const *drawing_name);
    result<json_object *> api_get_display_info();
    result<json_object *> api_get_area_info(char const *drawing_name);
-   char const *api_subscribe(afb_req *req, char const *event_name);
    void api_ping();
    void send_event(char const *evname, char const *label);
    void send_event(char const *evname, char const *label, char const *area, int x, int y, int w, int h);
