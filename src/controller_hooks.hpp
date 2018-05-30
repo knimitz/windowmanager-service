@@ -21,20 +21,22 @@
 
 #include <functional>
 
-namespace wm {
+namespace wm
+{
 
 struct App;
 
-struct controller_hooks {
-   struct App *app;
+struct controller_hooks
+{
+    struct App *app;
 
-   void surface_created(uint32_t surface_id);
+    void surface_created(uint32_t surface_id);
 
-   void surface_removed(uint32_t surface_id);
-   void surface_visibility(uint32_t surface_id, uint32_t v);
-   void surface_destination_rectangle(uint32_t surface_id, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+    void surface_removed(uint32_t surface_id);
+    void surface_visibility(uint32_t surface_id, uint32_t v);
+    void surface_destination_rectangle(uint32_t surface_id, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 };
 
-}  // namespace wm
+} // namespace wm
 
-#endif  // TMCAGLWM_CONTROLLER_HOOKS_HPP
+#endif // TMCAGLWM_CONTROLLER_HOOKS_HPP

@@ -20,17 +20,20 @@
 #include "layout.hpp"
 #include "hmi-debug.h"
 
-namespace wm {
+namespace wm
+{
 
-class Policy {
-public:
-   bool layout_is_valid(LayoutState const & /* layout */) {
-      // We do not check for policy currently
-      HMI_DEBUG("wm", "Policy check returns positive");
-      return true;
-   }
+class Policy
+{
+  public:
+    bool layout_is_valid(LayoutState const & /* layout */)
+    {
+        // We do not check for policy currently
+        HMI_DEBUG("wm", "Policy check returns positive");
+        return true;
+    }
 };
 
-}  // namespace wm
+} // namespace wm
 
 #endif //TMCAGLWM_POLICY_HPP

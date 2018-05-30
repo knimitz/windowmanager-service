@@ -20,58 +20,67 @@
 #include <experimental/optional>
 #include <functional>
 
-namespace wm {
+namespace wm
+{
 
-using std::experimental::optional;
 using std::experimental::nullopt;
+using std::experimental::optional;
 
 // We only ever return a string as an error - so just parametrize
 // this over result type T
 template <typename T>
-struct result {
-   char const *e;
-   optional<T> t;
+struct result
+{
+  char const *e;
+  optional<T> t;
 
-   bool is_ok() const { return this->t != nullopt; }
-   bool is_err() const { return this->e != nullptr; }
+  bool is_ok() const { return this->t != nullopt; }
+  bool is_err() const { return this->e != nullptr; }
 
-   T unwrap() {
-      if (this->e != nullptr) {
-         throw std::logic_error(this->e);
-      }
-      return this->t.value();
-   }
+  T unwrap()
+  {
+    if (this->e != nullptr)
+    {
+      throw std::logic_error(this->e);
+    }
+    return this->t.value();
+  }
 
-   operator T() { return this->unwrap(); }
+  operator T() { return this->unwrap(); }
 
-   char const *unwrap_err() { return this->e; }
+  char const *unwrap_err() { return this->e; }
 
-   optional<T> const &ok() const { return this->t; }
-   optional<char const *> err() const {
-      return this->e ? optional<char const *>(this->e) : nullopt;
-   }
+  optional<T> const &ok() const { return this->t; }
+  optional<char const *> err() const
+  {
+    return this->e ? optional<char const *>(this->e) : nullopt;
+  }
 
-   result<T> map_err(std::function<char const *(char const *)> f);
+  result<T> map_err(std::function<char const *(char const *)> f);
 };
 
 template <typename T>
-struct result<T> Err(char const *e) {
-   return result<T>{e, nullopt};
+struct result<T> Err(char const *e)
+{
+  return result<T>{e, nullopt};
 }
 
 template <typename T>
-struct result<T> Ok(T t) {
-   return result<T>{nullptr, t};
+struct result<T> Ok(T t)
+{
+  return result<T>{nullptr, t};
 }
 
 template <typename T>
-result<T> result<T>::map_err(std::function<char const *(char const *)> f) {
-   if (this->is_err()) {
-      return Err<T>(f(this->e));
-   }
-   return *this;
+result<T> result<T>::map_err(std::function<char const *(char const *)> f)
+{
+  if (this->is_err())
+  {
+    return Err<T>(f(this->e));
+  }
+  return *this;
 }
 
-}  // namespace wm
+} // namespace wm
 
-#endif  // TMCAGLWM_RESULT_HPP
+#endif // TMCAGLWM_RESULT_HPP

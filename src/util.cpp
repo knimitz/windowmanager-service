@@ -26,14 +26,17 @@
 
 #ifdef SCOPE_TRACING
 thread_local int ScopeTrace::indent = 0;
-ScopeTrace::ScopeTrace(char const *func) : f(func) {
-   fprintf(stderr, "%lu %*s%s -->\n", pthread_self(), 2 * indent++, "", this->f);
+ScopeTrace::ScopeTrace(char const *func) : f(func)
+{
+    fprintf(stderr, "%lu %*s%s -->\n", pthread_self(), 2 * indent++, "", this->f);
 }
 ScopeTrace::~ScopeTrace() { fprintf(stderr, "%lu %*s%s <--\n", pthread_self(), 2 * --indent, "", this->f); }
 #endif
 
-unique_fd::~unique_fd() {
-   if (this->fd != -1) {
-      close(this->fd);
-   }
+unique_fd::~unique_fd()
+{
+    if (this->fd != -1)
+    {
+        close(this->fd);
+    }
 }

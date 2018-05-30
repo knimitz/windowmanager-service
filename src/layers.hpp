@@ -27,87 +27,96 @@
 #include "result.hpp"
 #include "wayland_ivi_wm.hpp"
 
-namespace wm {
+namespace wm
+{
 
-struct split_layout {
-   std::string name;
-   std::string main_match;
-   std::string sub_match;
+struct split_layout
+{
+    std::string name;
+    std::string main_match;
+    std::string sub_match;
 };
 
-struct layer {
-   using json = nlohmann::json;
+struct layer
+{
+    using json = nlohmann::json;
 
-   // A more or less descriptive name?
-   std::string name = "";
-   // The actual layer ID
-   int layer_id = -1;
-   // The rectangular region surfaces are allowed to draw on
-   // this layer, note however, width and hieght of the rect
-   // can be negative, in which case they specify that
-   // the actual value is computed using MAX + 1 - w
-   // That is; allow us to specify dimensions dependent on
-   // e.g. screen dimension, w/o knowing the actual screen size.
-   compositor::rect rect;
-   // Specify a role prefix for surfaces that should be
-   // put on this layer.
-   std::string role;
-   // TODO: perhaps a zorder is needed here?
-   std::vector<struct split_layout> layouts;
+    // A more or less descriptive name?
+    std::string name = "";
+    // The actual layer ID
+    int layer_id = -1;
+    // The rectangular region surfaces are allowed to draw on
+    // this layer, note however, width and hieght of the rect
+    // can be negative, in which case they specify that
+    // the actual value is computed using MAX + 1 - w
+    // That is; allow us to specify dimensions dependent on
+    // e.g. screen dimension, w/o knowing the actual screen size.
+    compositor::rect rect;
+    // Specify a role prefix for surfaces that should be
+    // put on this layer.
+    std::string role;
+    // TODO: perhaps a zorder is needed here?
+    std::vector<struct split_layout> layouts;
 
-   mutable struct LayoutState state;
+    mutable struct LayoutState state;
 
-  // Flag of normal layout only
-   bool is_normal_layout_only;
+    // Flag of normal layout only
+    bool is_normal_layout_only;
 
-   explicit layer(nlohmann::json const &j);
+    explicit layer(nlohmann::json const &j);
 
-   json to_json() const;
+    json to_json() const;
 };
 
-struct layer_map {
-   using json = nlohmann::json;
+struct layer_map
+{
+    using json = nlohmann::json;
 
-   using storage_type = std::map<int, struct layer>;
-   using layers_type = std::vector<uint32_t>;
-   using role_to_layer_map = std::vector<std::pair<std::string, int>>;
-   using addsurf_layer_map = std::map<int, int>;
+    using storage_type = std::map<int, struct layer>;
+    using layers_type = std::vector<uint32_t>;
+    using role_to_layer_map = std::vector<std::pair<std::string, int>>;
+    using addsurf_layer_map = std::map<int, int>;
 
-   storage_type mapping;  // map surface_id to layer
-   layers_type layers;    // the actual layer IDs we have
-   int main_surface;
-   std::string main_surface_name;
-   role_to_layer_map roles;
-   addsurf_layer_map surfaces;  // additional surfaces on layers
+    storage_type mapping; // map surface_id to layer
+    layers_type layers;   // the actual layer IDs we have
+    int main_surface;
+    std::string main_surface_name;
+    role_to_layer_map roles;
+    addsurf_layer_map surfaces; // additional surfaces on layers
 
-   optional<int> get_layer_id(int surface_id);
-   optional<int> get_layer_id(std::string const &role);
-   optional<struct LayoutState*> get_layout_state(int surface_id) {
-      int layer_id = *this->get_layer_id(surface_id);
-      auto i = this->mapping.find(layer_id);
-      return i == this->mapping.end()
-                ? nullopt
-                : optional<struct LayoutState *>(&i->second.state);
-   }
-   optional<struct layer> get_layer(int layer_id) {
-      auto i = this->mapping.find(layer_id);
-      return i == this->mapping.end() ? nullopt
-                                      : optional<struct layer>(i->second);
-   }
+    optional<int> get_layer_id(int surface_id);
+    optional<int> get_layer_id(std::string const &role);
+    optional<struct LayoutState *> get_layout_state(int surface_id)
+    {
+        int layer_id = *this->get_layer_id(surface_id);
+        auto i = this->mapping.find(layer_id);
+        return i == this->mapping.end()
+                   ? nullopt
+                   : optional<struct LayoutState *>(&i->second.state);
+    }
+    optional<struct layer> get_layer(int layer_id)
+    {
+        auto i = this->mapping.find(layer_id);
+        return i == this->mapping.end() ? nullopt
+                                        : optional<struct layer>(i->second);
+    }
 
-   layers_type::size_type get_layers_count() const {
-      return this->layers.size();
-   }
+    layers_type::size_type get_layers_count() const
+    {
+        return this->layers.size();
+    }
 
-   void add_surface(int surface_id, int layer_id) {
-      this->surfaces[surface_id] = layer_id;
-   }
+    void add_surface(int surface_id, int layer_id)
+    {
+        this->surfaces[surface_id] = layer_id;
+    }
 
-   void remove_surface(int surface_id) {
-      this->surfaces.erase(surface_id);
-   }
+    void remove_surface(int surface_id)
+    {
+        this->surfaces.erase(surface_id);
+    }
 
-   json to_json() const;
+    json to_json() const;
 };
 
 struct result<struct layer_map> to_layer_map(nlohmann::json const &j);
@@ -155,6 +164,6 @@ static const nlohmann::json default_layers_json = {
       }
    }}
 };
-}  // namespace wm
+} // namespace wm
 
-#endif  // TMCAGLWM_LAYERS_H
+#endif // TMCAGLWM_LAYERS_H

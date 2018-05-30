@@ -24,7 +24,8 @@
 #include <sys/poll.h>
 
 #ifndef DO_NOT_USE_AFB
-extern "C" {
+extern "C"
+{
 #include <afb/afb-binding.h>
 };
 #endif
@@ -34,7 +35,7 @@ extern "C" {
 
 #ifdef __GNUC__
 #define ATTR_FORMAT(stringindex, firsttocheck) \
-   __attribute__((format(printf, stringindex, firsttocheck)))
+    __attribute__((format(printf, stringindex, firsttocheck)))
 #define ATTR_NORETURN __attribute__((noreturn))
 #else
 #define ATTR_FORMAT(stringindex, firsttocheck)
@@ -44,18 +45,20 @@ extern "C" {
 #ifdef AFB_BINDING_VERSION
 #define lognotice(...) AFB_NOTICE(__VA_ARGS__)
 #define logerror(...) AFB_ERROR(__VA_ARGS__)
-#define fatal(...)            \
-   do {                       \
-      AFB_ERROR(__VA_ARGS__); \
-      abort();                \
-   } while (0)
+#define fatal(...)              \
+    do                          \
+    {                           \
+        AFB_ERROR(__VA_ARGS__); \
+        abort();                \
+    } while (0)
 #else
 #define lognotice(...)
 #define logerror(...)
-#define fatal(...)            \
-   do {                       \
-      abort();                \
-   } while (0)
+#define fatal(...) \
+    do             \
+    {              \
+        abort();   \
+    } while (0)
 #endif
 
 #ifdef DEBUG_OUTPUT
@@ -77,30 +80,33 @@ extern "C" {
 #define STN(N) \
     ScopeTrace __attribute__((unused)) CONCAT(named_trace_scope_, __LINE__)(#N)
 
-struct ScopeTrace {
-   thread_local static int indent;
-   char const *f{};
-   explicit ScopeTrace(char const *func);
-   ~ScopeTrace();
+struct ScopeTrace
+{
+    thread_local static int indent;
+    char const *f{};
+    explicit ScopeTrace(char const *func);
+    ~ScopeTrace();
 };
 #endif
 
 /**
  * @struct unique_fd
  */
-struct unique_fd {
-   int fd{-1};
-   unique_fd() = default;
-   explicit unique_fd(int f) : fd{f} {}
-   operator int() const { return fd; }
-   ~unique_fd();
-   unique_fd(unique_fd const &) = delete;
-   unique_fd &operator=(unique_fd const &) = delete;
-   unique_fd(unique_fd &&o) : fd(o.fd) { o.fd = -1; }
-   unique_fd &operator=(unique_fd &&o) {
-      std::swap(this->fd, o.fd);
-      return *this;
-   }
+struct unique_fd
+{
+    int fd{-1};
+    unique_fd() = default;
+    explicit unique_fd(int f) : fd{f} {}
+    operator int() const { return fd; }
+    ~unique_fd();
+    unique_fd(unique_fd const &) = delete;
+    unique_fd &operator=(unique_fd const &) = delete;
+    unique_fd(unique_fd &&o) : fd(o.fd) { o.fd = -1; }
+    unique_fd &operator=(unique_fd &&o)
+    {
+        std::swap(this->fd, o.fd);
+        return *this;
+    }
 };
 
-#endif  // !WM_UTIL_HPP
+#endif // !WM_UTIL_HPP

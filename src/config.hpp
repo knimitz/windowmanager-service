@@ -20,30 +20,34 @@
 #include <experimental/optional>
 #include <map>
 
-namespace wm {
+namespace wm
+{
 
-using std::experimental::optional;
 using std::experimental::nullopt;
+using std::experimental::optional;
 
-struct config {
-   typedef std::map<std::string, std::string> map;
+struct config
+{
+    typedef std::map<std::string, std::string> map;
 
-   map cfg;
+    map cfg;
 
-   config();
+    config();
 
-   optional<std::string> get_string(char const *s) {
-      auto i = this->cfg.find(s);
-      return i != this->cfg.end() ? optional<std::string>(i->second) : nullopt;
-   }
+    optional<std::string> get_string(char const *s)
+    {
+        auto i = this->cfg.find(s);
+        return i != this->cfg.end() ? optional<std::string>(i->second) : nullopt;
+    }
 
-   optional<int> get_int(char const *s) {
-      auto i = this->cfg.find(s);
-      return i != this->cfg.end() ? optional<int>(std::stoi(i->second))
-                                  : nullopt;
-   }
+    optional<int> get_int(char const *s)
+    {
+        auto i = this->cfg.find(s);
+        return i != this->cfg.end() ? optional<int>(std::stoi(i->second))
+                                    : nullopt;
+    }
 };
 
-}  // namespace wm
+} // namespace wm
 
-#endif  // TMCAGLWM_CONFIG_HPP
+#endif // TMCAGLWM_CONFIG_HPP

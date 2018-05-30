@@ -22,21 +22,25 @@
 
 #include "result.hpp"
 
-namespace wm {
+namespace wm
+{
 
-struct LayoutState {
-   int main{-1};
-   int sub{-1};
+struct LayoutState
+{
+    int main{-1};
+    int sub{-1};
 
-   bool operator==(const LayoutState &b) const {
-      return main == b.main && sub == b.sub;
-   }
+    bool operator==(const LayoutState &b) const
+    {
+        return main == b.main && sub == b.sub;
+    }
 
-   bool operator!=(const LayoutState &b) const {
-      return !(*this == b);
-   }
+    bool operator!=(const LayoutState &b) const
+    {
+        return !(*this == b);
+    }
 };
 
-}  // namespace wm
+} // namespace wm
 
-#endif  // TMCAGLWM_LAYOUT_HPP
+#endif // TMCAGLWM_LAYOUT_HPP

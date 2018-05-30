@@ -27,4 +27,4 @@ json_object *to_json(compositor::screen const *s);
 json_object *to_json(compositor::controller::props_map const &s);
 json_object *to_json(std::vector<uint32_t> const &v);
 
-#endif  // TMCAGLWM_JSON_HELPER_HPP
+#endif // TMCAGLWM_JSON_HELPER_HPP

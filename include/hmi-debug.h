@@ -56,15 +56,15 @@ static void _HMI_LOG(enum LOG_LEVEL level, const char* file, const char* func, c
     unsigned int time;
 
     clock_gettime(CLOCK_REALTIME, &tp);
-	time = (tp.tv_sec * 1000000L) + (tp.tv_nsec / 1000);
+    time = (tp.tv_sec * 1000000L) + (tp.tv_nsec / 1000);
 
-	va_list args;
-	va_start(args, log);
-	if (log == NULL || vasprintf(&message, log, args) < 0)
+    va_list args;
+    va_start(args, log);
+    if (log == NULL || vasprintf(&message, log, args) < 0)
         message = NULL;
     fprintf(stderr,  "[%10.3f] [%s %s] [%s, %s(), Line:%d] >>> %s \n", time / 1000.0, prefix, ERROR_FLAG[level], file, func, line, message);
     va_end(args);
-	free(message);
+    free(message);
 }
 
 #endif  //__HMI_DEBUG_H__
