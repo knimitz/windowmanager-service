@@ -31,14 +31,16 @@ extern "C"
 #include <systemd/sd-event.h>
 }
 
-typedef struct wmClientCtxt
+typedef struct WMClientCtxt
 {
     std::string name;
-    wmClientCtxt(const char *appName)
+    std::string role;
+    WMClientCtxt(const char *appName, const char* appRole)
     {
         name = appName;
+        role = appRole;
     }
-} wmClientCtxt;
+} WMClientCtxt;
 
 struct afb_instance
 {
@@ -178,20 +180,20 @@ int binding_init() noexcept
 
 static bool checkFirstReq(afb_req req)
 {
-    wmClientCtxt *ctxt = (wmClientCtxt *)afb_req_context_get(req);
+    WMClientCtxt *ctxt = (WMClientCtxt *)afb_req_context_get(req);
     return (ctxt) ? false : true;
 }
 
 static void cbRemoveClientCtxt(void *data)
 {
-    wmClientCtxt *ctxt = (wmClientCtxt *)data;
+    WMClientCtxt *ctxt = (WMClientCtxt *)data;
     if (ctxt == nullptr)
     {
         return;
     }
     HMI_DEBUG("wm", "remove app %s", ctxt->name.c_str());
     // Lookup surfaceID and remove it because App is dead.
-    auto pSid = g_afb_instance->app.id_alloc.lookup(ctxt->name.c_str());
+    auto pSid = g_afb_instance->app.id_alloc.lookup(ctxt->role.c_str());
     if (pSid)
     {
         auto sid = *pSid;
@@ -229,7 +231,7 @@ void windowmanager_requestsurface(afb_req req) noexcept
         bool isFirstReq = checkFirstReq(req);
         if (!isFirstReq)
         {
-            wmClientCtxt *ctxt = (wmClientCtxt *)afb_req_context_get(req);
+            WMClientCtxt *ctxt = (WMClientCtxt *)afb_req_context_get(req);
             HMI_DEBUG("wm", "You're %s.", ctxt->name.c_str());
             if (ctxt->name != std::string(a_drawing_name))
             {
@@ -243,7 +245,7 @@ void windowmanager_requestsurface(afb_req req) noexcept
 
         if (isFirstReq)
         {
-            wmClientCtxt *ctxt = new wmClientCtxt(a_drawing_name);
+            WMClientCtxt *ctxt = new WMClientCtxt(afb_req_get_application_id(req), a_drawing_name);
             HMI_DEBUG("wm", "create session for %s", ctxt->name.c_str());
             afb_req_session_set_LOA(req, 1);
             afb_req_context_set(req, ctxt, cbRemoveClientCtxt);
