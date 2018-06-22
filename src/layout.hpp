@@ -17,11 +17,6 @@
 #ifndef TMCAGLWM_LAYOUT_HPP
 #define TMCAGLWM_LAYOUT_HPP
 
-#include <cstdint>
-#include <string>
-
-#include "result.hpp"
-
 namespace wm
 {
 

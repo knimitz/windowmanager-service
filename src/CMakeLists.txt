@@ -28,22 +28,13 @@ set(TARGETS_WM windowmanager-service)
 add_library(${TARGETS_WM} MODULE
    main.cpp
    wayland_ivi_wm.cpp
-   wayland_ivi_wm.hpp
    util.cpp
-   util.hpp
    layout.cpp
-   layout.hpp
    ${IVI_CON_PROTO}
    json_helper.cpp
-   json_helper.hpp
-   app.hpp app.cpp
-   result.hpp
+   app.cpp
    layers.cpp
-   layers.hpp
-   controller_hooks.hpp
-   config.cpp
-   config.hpp
-   policy.hpp)
+   config.cpp)
 
 target_include_directories(${TARGETS_WM}
     PRIVATE

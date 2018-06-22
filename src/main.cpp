@@ -18,11 +18,9 @@
 #include <algorithm>
 #include <mutex>
 #include <json.h>
-#include <json.hpp>
+#include "../include/json.hpp"
 #include "app.hpp"
-#include "result.hpp"
 #include "json_helper.hpp"
-#include "util.hpp"
 #include "wayland_ivi_wm.hpp"
 
 extern "C"

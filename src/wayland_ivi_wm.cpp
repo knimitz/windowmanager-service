@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#include <utility>
-
-#include "util.hpp"
 #include "wayland_ivi_wm.hpp"
 #include "hmi-debug.h"
 

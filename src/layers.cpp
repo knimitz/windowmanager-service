@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-#include <algorithm>
 #include <regex>
 
-#include "json_helper.hpp"
 #include "layers.hpp"
-#include "util.hpp"
 #include "hmi-debug.h"
 
 namespace wm

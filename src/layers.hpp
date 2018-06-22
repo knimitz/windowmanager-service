@@ -17,12 +17,9 @@
 #ifndef TMCAGLWM_LAYERS_H
 #define TMCAGLWM_LAYERS_H
 
-#include <json.hpp>
-
-#include <regex>
-#include <set>
 #include <string>
 
+#include "../include/json.hpp"
 #include "layout.hpp"
 #include "result.hpp"
 #include "wayland_ivi_wm.hpp"

@@ -18,18 +18,15 @@
 #define TMCAGLWM_APP_HPP
 
 #include <json-c/json.h>
-
 #include <atomic>
 #include <memory>
 #include <unordered_map>
-#include <unordered_set>
 #include <experimental/optional>
 #include "config.hpp"
 #include "controller_hooks.hpp"
 #include "layers.hpp"
 #include "layout.hpp"
 #include "policy.hpp"
-#include "result.hpp"
 #include "wayland_ivi_wm.hpp"
 #include "hmi-debug.h"
 

@@ -14,26 +14,12 @@
  * limitations under the License.
  */
 
-#include "app.hpp"
-#include "json_helper.hpp"
-#include "layers.hpp"
-#include "layout.hpp"
-#include "util.hpp"
-#include "wayland_ivi_wm.hpp"
-
-#include <cstdio>
-#include <memory>
-
-#include <cassert>
-
-#include <json-c/json.h>
-
-#include <algorithm>
-#include <csignal>
 #include <fstream>
-#include <json.hpp>
 #include <regex>
-#include <thread>
+
+#include "app.hpp"
+#include "../include/json.hpp"
+
 
 namespace wm {
 
