@@ -27,6 +27,8 @@
 #include "layout.hpp"
 #include "wayland_ivi_wm.hpp"
 #include "hmi-debug.h"
+#include "request.hpp"
+#include "wm_error.hpp"
 
 namespace wl
 {
@@ -150,7 +152,9 @@ struct App
         Event_SyncDraw,
         Event_FlushDraw,
 
-        Event_Val_Max = Event_FlushDraw,
+        Event_Error,
+
+        Event_Val_Max = Event_Error,
     };
 
     const std::vector<const char *> kListEventName{
@@ -159,7 +163,8 @@ struct App
         "visible",
         "invisible",
         "syncdraw",
-        "flushdraw"};
+        "flushdraw",
+        "error"};
 
     struct controller_hooks chooks;
 
@@ -178,8 +183,6 @@ struct App
     // Set by AFB API when wayland events need to be dispatched
     std::atomic<bool> pending_events;
 
-    std::vector<int> pending_end_draw;
-
     std::map<const char *, struct afb_event> map_afb_event;
 
     // Surface are info (x, y, w, h)
@@ -197,16 +200,14 @@ struct App
     App &operator=(App &&) = delete;
 
     int init();
-
     int dispatch_pending_events();
-
     void set_pending_events();
 
-    result<int> api_request_surface(char const *drawing_name);
-    char const *api_request_surface(char const *drawing_name, char const *ivi_id);
-    void api_activate_surface(char const *drawing_name, char const *drawing_area, const reply_func &reply);
-    void api_deactivate_surface(char const *drawing_name, const reply_func &reply);
-    void api_enddraw(char const *drawing_name);
+    result<int> api_request_surface(char const *appid, char const *drawing_name);
+    char const *api_request_surface(char const *appid, char const *drawing_name, char const *ivi_id);
+    void api_activate_surface(char const *appid, char const *drawing_name, char const *drawing_area, const reply_func &reply);
+    void api_deactivate_surface(char const *appid, char const *drawing_name, const reply_func &reply);
+    void api_enddraw(char const *appid, char const *drawing_name);
     result<json_object *> api_get_display_info();
     result<json_object *> api_get_area_info(char const *drawing_name);
     void api_ping();
@@ -217,36 +218,53 @@ struct App
     void surface_created(uint32_t surface_id);
     void surface_removed(uint32_t surface_id);
 
+    void removeClient(const std::string &appid);
+    void exceptionProcessForTransition();
+    // Do not use this function
+    void timerHandler();
+
   private:
+    bool pop_pending_events();
     optional<int> lookup_id(char const *name);
     optional<std::string> lookup_name(int id);
-
-    bool pop_pending_events();
-
-    void enqueue_flushdraw(int surface_id);
-    void check_flushdraw(int surface_id);
-
     int init_layers();
-
-    void surface_set_layout(int surface_id, optional<int> sub_surface_id = nullopt);
+    void surface_set_layout(int surface_id, const std::string& area = "");
     void layout_commit();
 
-    // TMC WM Events to clients
+    // WM Events to clients
     void emit_activated(char const *label);
     void emit_deactivated(char const *label);
     void emit_syncdraw(char const *label, char const *area, int x, int y, int w, int h);
+    void emit_syncdraw(const std::string &role, const std::string &area);
     void emit_flushdraw(char const *label);
     void emit_visible(char const *label, bool is_visible);
     void emit_invisible(char const *label);
     void emit_visible(char const *label);
 
+    WMError setRequest(const std::string &appid, const std::string &role, const std::string &area,
+                             Task task, unsigned *req_num);
+    WMError doTransition(unsigned sequence_number);
+    WMError checkPolicy(unsigned req_num);
+    WMError startTransition(unsigned req_num);
+    WMError setInvisibleTask(const std::string &role, bool split);
+
+    WMError doEndDraw(unsigned req_num);
+    WMError layoutChange(const WMAction &action);
+    WMError visibilityChange(const WMAction &action);
+    WMError setSurfaceSize(unsigned surface, const std::string& area);
+    WMError changeCurrentState(unsigned req_num);
+
+    void setTimer();
+    void stopTimer();
+    void processNextRequest();
+
+    const char *check_surface_exist(const char *drawing_name);
     void activate(int id);
     void deactivate(int id);
-
     bool can_split(struct LayoutState const &state, int new_id);
-    void try_layout(struct LayoutState &state,
-                    struct LayoutState const &new_layout,
-                    std::function<void(LayoutState const &nl)> apply);
+
+  private:
+    std::unordered_map<std::string, struct compositor::rect> area2size;
 };
 
 } // namespace wm

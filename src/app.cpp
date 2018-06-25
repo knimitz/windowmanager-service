@@ -19,9 +19,17 @@
 
 #include "app.hpp"
 #include "../include/json.hpp"
+#include "applist.hpp"
 
+extern "C"
+{
+#include <systemd/sd-event.h>
+}
 
-namespace wm {
+namespace wm
+{
+
+static const unsigned kTimeOut = 3000000UL; /* 3s */
 
 /* DrawingArea name used by "{layout}.{area}" */
 const char kNameLayoutNormal[] = "normal";
@@ -42,6 +50,9 @@ const char kKeyWidthPixel[]  = "width_pixel";
 const char kKeyHeightPixel[] = "height_pixel";
 const char kKeyWidthMm[]     = "width_mm";
 const char kKeyHeightMm[]    = "height_mm";
+
+static sd_event_source *g_timer_ev_src = nullptr;
+static AppList g_app_list;
 
 namespace
 {
@@ -79,10 +90,17 @@ struct result<layer_map> load_layer_map(char const *filename)
     return to_layer_map(jids);
 }
 
+static int processTimerHandler(sd_event_source *s, uint64_t usec, void *userdata)
+{
+    HMI_NOTICE("wm", "Time out occurs because the client replys endDraw slow, so revert the request");
+    reinterpret_cast<wm::App *>(userdata)->timerHandler();
+    return 0;
+}
+
 } // namespace
 
 /**
- * App Impl
+ * WindowManager Impl
  */
 App::App(wl::display *d)
     : chooks{this},
@@ -266,7 +284,7 @@ int App::init_layers()
     return 0;
 }
 
-void App::surface_set_layout(int surface_id, optional<int> sub_surface_id)
+void App::surface_set_layout(int surface_id, const std::string& area)
 {
     if (!this->controller->surface_exists(surface_id))
     {
@@ -285,7 +303,9 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id)
     uint32_t layer_id = *o_layer_id;
 
     auto const &layer = this->layers.get_layer(layer_id);
-    auto rect = layer.value().rect;
+    auto rect = this->layers.getAreaSize(area);
+    HMI_SEQ_DEBUG(g_app_list.currentRequestNumber(), "%s : x:%d y:%d w:%d h:%d", area.c_str(),
+                    rect.x, rect.y, rect.w, rect.h);
     auto &s = this->controller->surfaces[surface_id];
 
     int x = rect.x;
@@ -302,45 +322,6 @@ void App::surface_set_layout(int surface_id, optional<int> sub_surface_id)
     if (h < 0)
     {
         h = this->controller->output_size.h + 1 + h;
-    }
-
-    if (sub_surface_id)
-    {
-        if (o_layer_id != this->layers.get_layer_id(*sub_surface_id))
-        {
-            HMI_ERROR("wm",
-                      "surface_set_layout: layers of surfaces (%d and %d) don't match!",
-                      surface_id, *sub_surface_id);
-            return;
-        }
-
-        int x_off = 0;
-        int y_off = 0;
-
-        // split along major axis
-        if (w > h)
-        {
-            w /= 2;
-            x_off = w;
-        }
-        else
-        {
-            h /= 2;
-            y_off = h;
-        }
-
-        auto &ss = this->controller->surfaces[*sub_surface_id];
-
-        HMI_DEBUG("wm", "surface_set_layout for sub surface %u on layer %u",
-                  *sub_surface_id, layer_id);
-
-        // set destination to the display rectangle
-        ss->set_destination_rectangle(x + x_off, y + y_off, w, h);
-
-        this->area_info[*sub_surface_id].x = x;
-        this->area_info[*sub_surface_id].y = y;
-        this->area_info[*sub_surface_id].w = w;
-        this->area_info[*sub_surface_id].h = h;
     }
 
     HMI_DEBUG("wm", "surface_set_layout for surface %u on layer %u", surface_id,
@@ -365,314 +346,128 @@ void App::layout_commit()
     this->display->flush();
 }
 
-void App::api_activate_surface(char const *drawing_name, char const *drawing_area, const reply_func &reply)
+void App::api_activate_surface(char const *appid, char const *drawing_name,
+                               char const *drawing_area, const reply_func &reply)
 {
     ST();
 
-    auto const &surface_id = this->lookup_id(drawing_name);
+    std::string id = appid;
+    std::string role = drawing_name;
+    std::string area = drawing_area;
+    Task task = Task::TASK_ALLOCATE;
+    unsigned req_num = 0;
+    WMError ret = WMError::UNKNOWN;
 
-    if (!surface_id)
+    ret = this->setRequest(id, role, area, task, &req_num);
+
+    if(ret != WMError::SUCCESS)
     {
-        reply("Surface does not exist");
+        HMI_ERROR("wm", errorDescription(ret));
+        reply("Failed to set request");
         return;
     }
 
-    if (!this->controller->surface_exists(*surface_id))
-    {
-        reply("Surface does not exist in controller!");
-        return;
-    }
-
-    auto layer_id = this->layers.get_layer_id(*surface_id);
-
-    if (!layer_id)
-    {
-        reply("Surface is not on any layer!");
-        return;
-    }
-
-    auto o_state = *this->layers.get_layout_state(*surface_id);
-
-    if (o_state == nullptr)
-    {
-        reply("Could not find layer for surface");
-        return;
-    }
-
-    HMI_DEBUG("wm", "surface %d is detected", *surface_id);
     reply(nullptr);
-
-    struct LayoutState &state = *o_state;
-
-    // disable layers that are above our current layer
-    for (auto const &l : this->layers.mapping)
+    if (req_num != g_app_list.currentRequestNumber())
     {
-        if (l.second.layer_id <= *layer_id)
-        {
-            continue;
-        }
-
-        bool flush = false;
-        if (l.second.state.main != -1)
-        {
-            this->deactivate(l.second.state.main);
-            l.second.state.main = -1;
-            flush = true;
-        }
-
-        if (l.second.state.sub != -1)
-        {
-            this->deactivate(l.second.state.sub);
-            l.second.state.sub = -1;
-            flush = true;
-        }
-
-        if (flush)
-        {
-            this->layout_commit();
-        }
+        // Add request, then invoked after the previous task is finished
+        HMI_SEQ_DEBUG(req_num, "request is accepted");
+        return;
     }
 
-    auto layer = this->layers.get_layer(*layer_id);
+    /*
+     * Do allocate tasks
+     */
+    ret = this->doTransition(req_num);
 
-    if (state.main == -1)
+    if (ret != WMError::SUCCESS)
     {
-        this->try_layout(
-            state, LayoutState{*surface_id}, [&](LayoutState const &nl) {
-                HMI_DEBUG("wm", "Layout: %s", kNameLayoutNormal);
-                this->surface_set_layout(*surface_id);
-                state = nl;
+        //this->emit_error()
+        HMI_SEQ_ERROR(req_num, errorDescription(ret));
+        g_app_list.removeRequest(req_num);
+        this->processNextRequest();
+    }
+}
 
-                // Commit for configuraton
-                this->layout_commit();
+void App::api_deactivate_surface(char const *appid, char const *drawing_name,
+                                 const reply_func &reply)
+{
+    ST();
 
-                std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-                compositor::rect area_rect = this->area_info[*surface_id];
-                this->emit_syncdraw(drawing_name, str_area.c_str(),
-                                    area_rect.x, area_rect.y, area_rect.w, area_rect.h);
-                this->enqueue_flushdraw(state.main);
-            });
+    /*
+    * Check Phase
+    */
+    std::string id = appid;
+    std::string role = drawing_name;
+    std::string area = ""; //drawing_area;
+    Task task = Task::TASK_RELEASE;
+    unsigned req_num = 0;
+    WMError ret = WMError::UNKNOWN;
+
+    ret = this->setRequest(id, role, area, task, &req_num);
+
+    if (ret != WMError::SUCCESS)
+    {
+        HMI_ERROR("wm", errorDescription(ret));
+        reply("Failed to set request");
+        return;
+    }
+
+    reply(nullptr);
+    if (req_num != g_app_list.currentRequestNumber())
+    {
+        // Add request, then invoked after the previous task is finished
+        HMI_SEQ_DEBUG(req_num, "request is accepted");
+        return;
+    }
+
+    /*
+    * Do allocate tasks
+    */
+    ret = this->doTransition(req_num);
+
+    if (ret != WMError::SUCCESS)
+    {
+        //this->emit_error()
+        HMI_SEQ_ERROR(req_num, errorDescription(ret));
+        g_app_list.removeRequest(req_num);
+        this->processNextRequest();
+    }
+}
+
+void App::api_enddraw(char const *appid, char const *drawing_name)
+{
+    std::string id = appid;
+    std::string role = drawing_name;
+    unsigned current_req = g_app_list.currentRequestNumber();
+    bool result = g_app_list.setEndDrawFinished(current_req, id, role);
+
+    if (!result)
+    {
+        HMI_ERROR("wm", "%s is not in transition state", id.c_str());
+        return;
+    }
+
+    if (g_app_list.endDrawFullfilled(current_req))
+    {
+        // do task for endDraw
+        this->stopTimer();
+        WMError ret = this->doEndDraw(current_req);
+
+        if(ret != WMError::SUCCESS)
+        {
+            //this->emit_error();
+        }
+        HMI_SEQ_INFO(current_req, "Finish request status: %s", errorDescription(ret));
+
+        g_app_list.removeRequest(current_req);
+
+        this->processNextRequest();
     }
     else
     {
-        if (0 == strcmp(drawing_name, "HomeScreen"))
-        {
-            this->try_layout(
-                state, LayoutState{*surface_id}, [&](LayoutState const &nl) {
-                    HMI_DEBUG("wm", "Layout: %s", kNameLayoutNormal);
-                    std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-                    compositor::rect area_rect = this->area_info[*surface_id];
-                    this->emit_syncdraw(drawing_name, str_area.c_str(),
-                                        area_rect.x, area_rect.y, area_rect.w, area_rect.h);
-                    this->enqueue_flushdraw(state.main);
-                });
-        }
-        else
-        {
-            bool can_split = this->can_split(state, *surface_id);
-
-            if (can_split)
-            {
-                this->try_layout(
-                    state,
-                    LayoutState{state.main, *surface_id},
-                    [&](LayoutState const &nl) {
-                        HMI_DEBUG("wm", "Layout: %s", kNameLayoutSplit);
-                        std::string main =
-                            std::move(*this->lookup_name(state.main));
-
-                        this->surface_set_layout(state.main, surface_id);
-                        if (state.sub != *surface_id)
-                        {
-                            if (state.sub != -1)
-                            {
-                                this->deactivate(state.sub);
-                            }
-                        }
-                        state = nl;
-
-                        // Commit for configuration and visibility(0)
-                        this->layout_commit();
-
-                        std::string str_area_main = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaMain);
-                        std::string str_area_sub = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaSub);
-                        compositor::rect area_rect_main = this->area_info[state.main];
-                        compositor::rect area_rect_sub = this->area_info[*surface_id];
-                        this->emit_syncdraw(main.c_str(), str_area_main.c_str(),
-                                            area_rect_main.x, area_rect_main.y,
-                                            area_rect_main.w, area_rect_main.h);
-                        this->emit_syncdraw(drawing_name, str_area_sub.c_str(),
-                                            area_rect_sub.x, area_rect_sub.y,
-                                            area_rect_sub.w, area_rect_sub.h);
-                        this->enqueue_flushdraw(state.main);
-                        this->enqueue_flushdraw(state.sub);
-                    });
-            }
-            else
-            {
-                this->try_layout(
-                    state, LayoutState{*surface_id}, [&](LayoutState const &nl) {
-                        HMI_DEBUG("wm", "Layout: %s", kNameLayoutNormal);
-
-                        this->surface_set_layout(*surface_id);
-                        if (state.main != *surface_id)
-                        {
-                            this->deactivate(state.main);
-                        }
-                        if (state.sub != -1)
-                        {
-                            if (state.sub != *surface_id)
-                            {
-                                this->deactivate(state.sub);
-                            }
-                        }
-                        state = nl;
-
-                        // Commit for configuraton and visibility(0)
-                        this->layout_commit();
-
-                        std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-                        compositor::rect area_rect = this->area_info[*surface_id];
-                        this->emit_syncdraw(drawing_name, str_area.c_str(),
-                                            area_rect.x, area_rect.y, area_rect.w, area_rect.h);
-                        this->enqueue_flushdraw(state.main);
-                    });
-            }
-        }
-    }
-}
-
-void App::api_deactivate_surface(char const *drawing_name, const reply_func &reply)
-{
-    ST();
-    auto const &surface_id = this->lookup_id(drawing_name);
-
-    if (!surface_id)
-    {
-        reply("Surface does not exist");
+        HMI_SEQ_INFO(current_req, "Wait other App call endDraw");
         return;
-    }
-
-    if (*surface_id == this->layers.main_surface)
-    {
-        reply("Cannot deactivate main_surface");
-        return;
-    }
-
-    auto o_state = *this->layers.get_layout_state(*surface_id);
-
-    if (o_state == nullptr)
-    {
-        reply("Could not find layer for surface");
-        return;
-    }
-
-    struct LayoutState &state = *o_state;
-
-    if (state.main == -1)
-    {
-        reply("No surface active");
-        return;
-    }
-
-    // Check against main_surface, main_surface_name is the configuration item.
-    if (*surface_id == this->layers.main_surface)
-    {
-        HMI_DEBUG("wm", "Refusing to deactivate main_surface %d", *surface_id);
-        reply(nullptr);
-        return;
-    }
-    if ((state.main == *surface_id) && (state.sub == *surface_id))
-    {
-        reply("Surface is not active");
-        return;
-    }
-    reply(nullptr);
-
-    if (state.main == *surface_id)
-    {
-        if (state.sub != -1)
-        {
-            this->try_layout(
-                state, LayoutState{state.sub, -1}, [&](LayoutState const &nl) {
-                    std::string sub = std::move(*this->lookup_name(state.sub));
-
-                    this->deactivate(*surface_id);
-                    this->surface_set_layout(state.sub);
-                    state = nl;
-
-                    this->layout_commit();
-                    std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-                    compositor::rect area_rect = this->area_info[state.sub];
-                    this->emit_syncdraw(sub.c_str(), str_area.c_str(),
-                                        area_rect.x, area_rect.y, area_rect.w, area_rect.h);
-                    this->enqueue_flushdraw(state.sub);
-                });
-        }
-        else
-        {
-            this->try_layout(state, LayoutState{-1, -1}, [&](LayoutState const &nl) {
-                this->deactivate(*surface_id);
-                state = nl;
-                this->layout_commit();
-            });
-        }
-    }
-    else if (state.sub == *surface_id)
-    {
-        this->try_layout(
-            state, LayoutState{state.main, -1}, [&](LayoutState const &nl) {
-                std::string main = std::move(*this->lookup_name(state.main));
-
-                this->deactivate(*surface_id);
-                this->surface_set_layout(state.main);
-                state = nl;
-
-                this->layout_commit();
-                std::string str_area = std::string(kNameLayoutNormal) + "." + std::string(kNameAreaFull);
-                compositor::rect area_rect = this->area_info[state.main];
-                this->emit_syncdraw(main.c_str(), str_area.c_str(),
-                                    area_rect.x, area_rect.y, area_rect.w, area_rect.h);
-                this->enqueue_flushdraw(state.main);
-            });
-    }
-}
-
-void App::enqueue_flushdraw(int surface_id)
-{
-    this->check_flushdraw(surface_id);
-    HMI_DEBUG("wm", "Enqueuing EndDraw for surface_id %d", surface_id);
-    this->pending_end_draw.push_back(surface_id);
-}
-
-void App::check_flushdraw(int surface_id)
-{
-    auto i = std::find(std::begin(this->pending_end_draw),
-                       std::end(this->pending_end_draw), surface_id);
-    if (i != std::end(this->pending_end_draw))
-    {
-        auto n = this->lookup_name(surface_id);
-        HMI_ERROR("wm", "Application %s (%d) has pending EndDraw call(s)!",
-                  n ? n->c_str() : "unknown-name", surface_id);
-        std::swap(this->pending_end_draw[std::distance(
-                      std::begin(this->pending_end_draw), i)],
-                  this->pending_end_draw.back());
-        this->pending_end_draw.resize(this->pending_end_draw.size() - 1);
-    }
-}
-
-void App::api_enddraw(char const *drawing_name)
-{
-    for (unsigned i = 0, iend = this->pending_end_draw.size(); i < iend; i++)
-    {
-        auto n = this->lookup_name(this->pending_end_draw[i]);
-        if (n && *n == drawing_name)
-        {
-            std::swap(this->pending_end_draw[i], this->pending_end_draw[iend - 1]);
-            this->pending_end_draw.resize(iend - 1);
-            this->activate(this->pending_end_draw[i]);
-            this->emit_flushdraw(drawing_name);
-        }
     }
 }
 
@@ -738,6 +533,31 @@ void App::surface_created(uint32_t surface_id)
 void App::surface_removed(uint32_t surface_id)
 {
     HMI_DEBUG("wm", "surface_id is %u", surface_id);
+    g_app_list.removeSurface(surface_id);
+}
+
+void App::removeClient(const std::string &appid)
+{
+    HMI_DEBUG("wm", "Remove clinet %s from list", appid.c_str());
+    g_app_list.removeClient(appid);
+}
+
+void App::exceptionProcessForTransition()
+{
+    unsigned req_num = g_app_list.currentRequestNumber();
+    HMI_SEQ_NOTICE(req_num, "Process exception handling for request. Remove current request %d", req_num);
+    g_app_list.removeRequest(req_num);
+    HMI_SEQ_NOTICE(g_app_list.currentRequestNumber(), "Process next request if exists");
+    this->processNextRequest();
+}
+
+void App::timerHandler()
+{
+    unsigned req_num = g_app_list.currentRequestNumber();
+    HMI_SEQ_DEBUG(req_num, "Timer expired remove Request");
+    g_app_list.reqDump();
+    g_app_list.removeRequest(req_num);
+    this->processNextRequest();
 }
 
 void App::emit_activated(char const *label)
@@ -753,6 +573,13 @@ void App::emit_deactivated(char const *label)
 void App::emit_syncdraw(char const *label, char const *area, int x, int y, int w, int h)
 {
     this->send_event(kListEventName[Event_SyncDraw], label, area, x, y, w, h);
+}
+
+void App::emit_syncdraw(const std::string &role, const std::string &area)
+{
+    compositor::rect rect = this->layers.getAreaSize(area);
+    this->send_event(kListEventName[Event_SyncDraw],
+        role.c_str(), area.c_str(), rect.x, rect.y, rect.w, rect.h);
 }
 
 void App::emit_flushdraw(char const *label)
@@ -772,7 +599,7 @@ void App::emit_invisible(char const *label)
 
 void App::emit_visible(char const *label) { return emit_visible(label, true); }
 
-result<int> App::api_request_surface(char const *drawing_name)
+result<int> App::api_request_surface(char const *appid, char const *drawing_name)
 {
     auto lid = this->layers.get_layer_id(std::string(drawing_name));
     if (!lid)
@@ -803,6 +630,11 @@ result<int> App::api_request_surface(char const *drawing_name)
             HMI_DEBUG("wm", "Set main_surface id to %u", id);
         }
 
+        // add client into the db
+        std::string appid_str(appid);
+        std::string role(drawing_name);
+        g_app_list.addClient(appid_str, *lid, id, role);
+
         return Ok<int>(id);
     }
 
@@ -810,7 +642,7 @@ result<int> App::api_request_surface(char const *drawing_name)
     return Err<int>("Surface already present");
 }
 
-char const *App::api_request_surface(char const *drawing_name,
+char const *App::api_request_surface(char const *appid, char const *drawing_name,
                                      char const *ivi_id)
 {
     ST();
@@ -847,6 +679,11 @@ char const *App::api_request_surface(char const *drawing_name,
 
     this->controller->layers[*lid]->add_surface(sid);
     this->layout_commit();
+
+    // add client into the db
+    std::string appid_str(appid);
+    std::string role(drawing_name);
+    g_app_list.addClient(appid_str, *lid, sid, role);
 
     return nullptr;
 }
@@ -917,6 +754,606 @@ result<json_object *> App::api_get_area_info(char const *drawing_name)
     return Ok<json_object *>(object);
 }
 
+WMError App::setRequest(const std::string& appid, const std::string &role, const std::string &area,
+                            Task task, unsigned* req_num)
+{
+    if (!g_app_list.contains(appid))
+    {
+        return WMError::NOT_REGISTERED;
+    }
+
+    auto client = g_app_list.lookUpClient(appid);
+
+    /*
+     * Queueing Phase
+     */
+    unsigned current = g_app_list.currentRequestNumber();
+    unsigned requested_num = g_app_list.getRequestNumber(appid);
+    if (requested_num != 0)
+    {
+        HMI_SEQ_INFO(requested_num,
+            "%s %s %s request is already queued", appid.c_str(), role.c_str(), area.c_str());
+        return REQ_REJECTED;
+    }
+
+    WMRequest req = WMRequest(appid, role, area, task);
+    unsigned new_req = g_app_list.addRequest(req);
+    *req_num = new_req;
+    g_app_list.reqDump();
+
+    HMI_SEQ_DEBUG(current, "%s start sequence with %s, %s", appid.c_str(), role.c_str(), area.c_str());
+
+    return WMError::SUCCESS;
+}
+
+WMError App::doTransition(unsigned req_num)
+{
+    HMI_SEQ_DEBUG(req_num, "check policy");
+    WMError ret = this->checkPolicy(req_num);
+    if (ret != WMError::SUCCESS)
+    {
+        return ret;
+    }
+    HMI_SEQ_DEBUG(req_num, "Start transition.");
+    ret = this->startTransition(req_num);
+    return ret;
+}
+
+WMError App::checkPolicy(unsigned req_num)
+{
+    /*
+    * Check Policy
+    */
+    // get current trigger
+    bool found = false;
+    bool split = false;
+    WMError ret = WMError::LAYOUT_CHANGE_FAIL;
+    auto trigger = g_app_list.getRequest(req_num, &found);
+    if (!found)
+    {
+        ret = WMError::NO_ENTRY;
+        return ret;
+    }
+    std::string req_area = trigger.area;
+
+    // >>>> Compatible with current window manager until policy manager coming
+    if (trigger.task == Task::TASK_ALLOCATE)
+    {
+        HMI_SEQ_DEBUG(req_num, "Check split or not");
+        const char *msg = this->check_surface_exist(trigger.role.c_str());
+
+        if (msg)
+        {
+            HMI_SEQ_ERROR(req_num, msg);
+            ret = WMError::LAYOUT_CHANGE_FAIL;
+            return ret;
+        }
+
+        auto const &surface_id = this->lookup_id(trigger.role.c_str());
+        auto o_state = *this->layers.get_layout_state(*surface_id);
+        struct LayoutState &state = *o_state;
+
+        unsigned curernt_sid = state.main;
+        split = this->can_split(state, *surface_id);
+
+        if (split)
+        {
+            HMI_SEQ_DEBUG(req_num, "Split happens");
+            // Get current visible role
+            std::string add_role = this->lookup_name(state.main).value();
+            // Set next area
+            std::string add_area = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaMain);
+            // Change request area
+            req_area = std::string(kNameLayoutSplit) + "." + std::string(kNameAreaSub);
+            HMI_SEQ_NOTICE(req_num, "Change request area from %s to %s, because split happens",
+                                trigger.area.c_str(), req_area.c_str());
+            // set another action
+            std::string add_name = g_app_list.getAppID(curernt_sid, add_role, &found);
+            if (!found)
+            {
+                HMI_SEQ_ERROR(req_num, "Couldn't widhdraw with surfaceID : %d", curernt_sid);
+                ret = WMError::NOT_REGISTERED;
+                return ret;
+            }
+            HMI_SEQ_INFO(req_num, "Additional split app %s, role: %s, area: %s",
+                         add_name.c_str(), add_role.c_str(), add_area.c_str());
+            // Set split action
+            bool end_draw_finished = false;
+            WMAction split_action{
+                add_name,
+                add_role,
+                add_area,
+                TaskVisible::VISIBLE,
+                end_draw_finished};
+            WMError ret = g_app_list.setAction(req_num, split_action);
+            if (ret != WMError::SUCCESS)
+            {
+                HMI_SEQ_ERROR(req_num, "Failed to set action");
+                return ret;
+            }
+            g_app_list.reqDump();
+        }
+    }
+    else
+    {
+        HMI_SEQ_DEBUG(req_num, "split doesn't happen");
+    }
+
+    // Set invisible task(Remove if policy manager finish)
+    ret = this->setInvisibleTask(trigger.role, split);
+    if(ret != WMError::SUCCESS)
+    {
+        HMI_SEQ_ERROR(req_num, "Failed to set invisible task: %s", errorDescription(ret));
+        return ret;
+    }
+
+    /*  get new status from Policy Manager */
+    HMI_SEQ_NOTICE(req_num, "ATM, Policy manager does't exist, then set WMAction as is");
+    if(trigger.role == "HomeScreen")
+    {
+        // TODO : Remove when Policy Manager completed
+        HMI_SEQ_NOTICE(req_num, "Hack. This process will be removed. Change HomeScreen code!!");
+        req_area = "fullscreen";
+    }
+    TaskVisible task_visible =
+        (trigger.task == Task::TASK_ALLOCATE) ? TaskVisible::VISIBLE : TaskVisible::INVISIBLE;
+
+    ret = g_app_list.setAction(req_num, trigger.appid, trigger.role, req_area, task_visible);
+    g_app_list.reqDump();
+
+    return ret;
+}
+
+WMError App::startTransition(unsigned req_num)
+{
+    bool sync_draw_happen = false;
+    bool found = false;
+    WMError ret = WMError::SUCCESS;
+    auto actions = g_app_list.getActions(req_num, &found);
+    if (!found)
+    {
+        ret = WMError::NO_ENTRY;
+        HMI_SEQ_ERROR(req_num,
+            "Window Manager bug :%s : Action is not set", errorDescription(ret));
+        return ret;
+    }
+
+    for (const auto &action : actions)
+    {
+        if (action.visible != TaskVisible::INVISIBLE)
+        {
+            sync_draw_happen = true;
+            this->emit_syncdraw(action.role, action.area);
+            /* TODO: emit event for app not subscriber
+            if(g_app_list.contains(y.appid))
+                g_app_list.lookUpClient(y.appid)->emit_syncdraw(y.role, y.area); */
+        }
+    }
+
+    if (sync_draw_happen)
+    {
+        this->setTimer();
+    }
+    else
+    {
+        // deactivate only, no syncDraw
+        // Make it deactivate here
+        for (const auto &x : actions)
+        {
+            if (g_app_list.contains(x.appid))
+            {
+                auto client = g_app_list.lookUpClient(x.appid);
+                this->deactivate(client->surfaceID(x.role));
+            }
+        }
+        ret = NO_LAYOUT_CHANGE;
+    }
+    return ret;
+}
+
+WMError App::setInvisibleTask(const std::string &role, bool split)
+{
+    unsigned req_num = g_app_list.currentRequestNumber();
+    HMI_SEQ_DEBUG(req_num, "set current visible app to invisible task");
+    // This task is copied from original actiavete surface
+    const char *drawing_name = role.c_str();
+    auto const &surface_id = this->lookup_id(drawing_name);
+    auto layer_id = this->layers.get_layer_id(*surface_id);
+    auto o_state = *this->layers.get_layout_state(*surface_id);
+    struct LayoutState &state = *o_state;
+    std::string add_name, add_role;
+    std::string add_area = "";
+    int surface;
+    TaskVisible task_visible = TaskVisible::INVISIBLE;
+    bool end_draw_finished = true;
+    bool found = false;
+
+    for (auto const &l : this->layers.mapping)
+    {
+        if (l.second.layer_id <= *layer_id)
+        {
+            continue;
+        }
+        HMI_DEBUG("wm", "debug: main %d , sub : %d", l.second.state.main, l.second.state.sub);
+        if (l.second.state.main != -1)
+        {
+            //this->deactivate(l.second.state.main);
+            surface = l.second.state.main;
+            add_role = *this->id_alloc.lookup(surface);
+            add_name = g_app_list.getAppID(surface, add_role, &found);
+            if(!found){
+                return WMError::NOT_REGISTERED;
+            }
+            HMI_SEQ_INFO(req_num, "Invisible %s", add_name.c_str());
+            WMAction act{add_name, add_role, add_area, task_visible, end_draw_finished};
+            g_app_list.setAction(req_num, act);
+            l.second.state.main = -1;
+        }
+
+        if (l.second.state.sub != -1)
+        {
+            //this->deactivate(l.second.state.sub);
+            surface = l.second.state.sub;
+            add_role = *this->id_alloc.lookup(surface);
+            add_name = g_app_list.getAppID(surface, add_role, &found);
+            if (!found)
+            {
+                return WMError::NOT_REGISTERED;
+            }
+            HMI_SEQ_INFO(req_num, "Invisible %s", add_name.c_str());
+            WMAction act{add_name, add_role, add_area, task_visible, end_draw_finished};
+            g_app_list.setAction(req_num, act);
+            l.second.state.sub = -1;
+        }
+    }
+
+    // change current state here, but this is hack
+    auto layer = this->layers.get_layer(*layer_id);
+
+    if (state.main == -1)
+    {
+        HMI_DEBUG("wm", "Layout: %s", kNameLayoutNormal);
+    }
+    else
+    {
+        if (0 != strcmp(drawing_name, "HomeScreen"))
+        {
+            if (split)
+            {
+                if (state.sub != *surface_id)
+                {
+                    if (state.sub != -1)
+                    {
+                        //this->deactivate(state.sub);
+                        WMAction deact_sub;
+                        deact_sub.role =
+                            std::move(*this->id_alloc.lookup(state.sub));
+                        deact_sub.area = add_area;
+                        deact_sub.appid = g_app_list.getAppID(state.sub, deact_sub.role, &found);
+                        if (!found)
+                        {
+                            HMI_SEQ_ERROR(req_num, "App doesn't exist for role : %s",
+                                            deact_sub.role.c_str());
+                            return WMError::NOT_REGISTERED;
+                        }
+                        deact_sub.visible = task_visible;
+                        deact_sub.end_draw_finished = end_draw_finished;
+                        HMI_SEQ_DEBUG(req_num, "Set invisible task for %s", deact_sub.appid.c_str());
+                        g_app_list.setAction(req_num, deact_sub);
+                    }
+                }
+                //state = LayoutState{state.main, *surface_id};
+            }
+            else
+            {
+                HMI_DEBUG("wm", "Layout: %s", kNameLayoutNormal);
+
+                //this->surface_set_layout(*surface_id);
+                if (state.main != *surface_id)
+                {
+                    // this->deactivate(state.main);
+                    WMAction deact_main;
+                    deact_main.role = std::move(*this->id_alloc.lookup(state.main));
+                    ;
+                    deact_main.area = add_area;
+                    deact_main.appid = g_app_list.getAppID(state.main, deact_main.role, &found);
+                    if (!found)
+                    {
+                        HMI_SEQ_DEBUG(req_num, "sub surface ddoesn't exist");
+                        return WMError::NOT_REGISTERED;
+                    }
+                    deact_main.visible = task_visible;
+                    deact_main.end_draw_finished = end_draw_finished;
+                    HMI_SEQ_DEBUG(req_num, "sub surface doesn't exist");
+                    g_app_list.setAction(req_num, deact_main);
+                }
+                if (state.sub != -1)
+                {
+                    if (state.sub != *surface_id)
+                    {
+                        //this->deactivate(state.sub);
+                        WMAction deact_sub;
+                        deact_sub.role = std::move(*this->id_alloc.lookup(state.sub));
+                        ;
+                        deact_sub.area = add_area;
+                        deact_sub.appid = g_app_list.getAppID(state.sub, deact_sub.role, &found);
+                        if (!found)
+                        {
+                            HMI_SEQ_DEBUG(req_num, "sub surface ddoesn't exist");
+                            return WMError::NOT_REGISTERED;
+                        }
+                        deact_sub.visible = task_visible;
+                        deact_sub.end_draw_finished = end_draw_finished;
+                        HMI_SEQ_DEBUG(req_num, "sub surface doesn't exist");
+                        g_app_list.setAction(req_num, deact_sub);
+                    }
+                }
+                //state = LayoutState{*surface_id};
+            }
+        }
+    }
+    return WMError::SUCCESS;
+}
+
+WMError App::doEndDraw(unsigned req_num)
+{
+    // get actions
+    bool found;
+    auto actions = g_app_list.getActions(req_num, &found);
+    WMError ret = WMError::SUCCESS;
+    if (!found)
+    {
+        ret = WMError::NO_ENTRY;
+        return ret;
+    }
+
+    HMI_SEQ_INFO(req_num, "do endDraw");
+
+    // layout change and make it visible
+    for (const auto &act : actions)
+    {
+        // layout change
+        if(!g_app_list.contains(act.appid)){
+            ret = WMError::NOT_REGISTERED;
+        }
+        ret = this->layoutChange(act);
+        if(ret != WMError::SUCCESS)
+        {
+            HMI_SEQ_WARNING(req_num,
+                "Failed to manipulate surfaces while state change : %s", errorDescription(ret));
+            return ret;
+        }
+        ret = this->visibilityChange(act);
+        if (ret != WMError::SUCCESS)
+        {
+            HMI_SEQ_WARNING(req_num,
+                "Failed to manipulate surfaces while state change : %s", errorDescription(ret));
+            return ret;
+        }
+        HMI_SEQ_DEBUG(req_num, "visible %s", act.role.c_str());
+        //this->lm_enddraw(act.role.c_str());
+    }
+
+    // Change current state
+    this->changeCurrentState(req_num);
+
+    HMI_SEQ_INFO(req_num, "emit flushDraw");
+
+    for(const auto &act_flush : actions)
+    {
+        if(act_flush.visible != TaskVisible::INVISIBLE)
+        {
+            this->emit_flushdraw(act_flush.role.c_str());
+        }
+    }
+
+    return ret;
+}
+
+WMError App::setSurfaceSize(unsigned surface, const std::string &area)
+{
+    this->surface_set_layout(surface, area);
+
+    return WMError::SUCCESS;
+}
+
+WMError App::layoutChange(const WMAction &action)
+{
+    if (action.visible == TaskVisible::INVISIBLE)
+    {
+        // Visibility is not change -> no redraw is required
+        return WMError::SUCCESS;
+    }
+    auto client = g_app_list.lookUpClient(action.appid);
+    unsigned surface = client->surfaceID(action.role);
+    if (surface == 0)
+    {
+        HMI_SEQ_ERROR(g_app_list.currentRequestNumber(),
+                      "client doesn't have surface with role(%s)", action.role.c_str());
+        return WMError::NOT_REGISTERED;
+    }
+    // Layout Manager
+    WMError ret = this->setSurfaceSize(surface, action.area);
+    return ret;
+}
+
+WMError App::visibilityChange(const WMAction &action)
+{
+    HMI_SEQ_DEBUG(g_app_list.currentRequestNumber(), "Change visibility");
+    if(!g_app_list.contains(action.appid)){
+        return WMError::NOT_REGISTERED;
+    }
+    auto client = g_app_list.lookUpClient(action.appid);
+    unsigned surface = client->surfaceID(action.role);
+    if(surface == 0)
+    {
+        HMI_SEQ_ERROR(g_app_list.currentRequestNumber(),
+                      "client doesn't have surface with role(%s)", action.role.c_str());
+        return WMError::NOT_REGISTERED;
+    }
+
+    if (action.visible != TaskVisible::INVISIBLE)
+    {
+        this->activate(surface); // Layout Manager task
+    }
+    else
+    {
+        this->deactivate(surface); // Layout Manager task
+    }
+    return WMError::SUCCESS;
+}
+
+WMError App::changeCurrentState(unsigned req_num)
+{
+    HMI_SEQ_DEBUG(req_num, "Change current layout state");
+    bool trigger_found = false, action_found = false;
+    auto trigger = g_app_list.getRequest(req_num, &trigger_found);
+    auto actions = g_app_list.getActions(req_num, &action_found);
+    if (!trigger_found || !action_found)
+    {
+        HMI_SEQ_ERROR(req_num, "Action not found");
+        return WMError::LAYOUT_CHANGE_FAIL;
+    }
+
+    // Layout state reset
+    struct LayoutState reset_state{-1, -1};
+    HMI_SEQ_DEBUG(req_num,"Reset layout state");
+    for (const auto &action : actions)
+    {
+        if(!g_app_list.contains(action.appid)){
+            return WMError::NOT_REGISTERED;
+        }
+        auto client = g_app_list.lookUpClient(action.appid);
+        auto pCurState = *this->layers.get_layout_state((int)client->surfaceID(action.role));
+        if(pCurState == nullptr)
+        {
+            HMI_SEQ_ERROR(req_num, "Counldn't find current status");
+            continue;
+        }
+        pCurState->main = reset_state.main;
+        pCurState->sub = reset_state.sub;
+    }
+
+    HMI_SEQ_DEBUG(req_num, "Change state");
+    for (const auto &action : actions)
+    {
+        auto client = g_app_list.lookUpClient(action.appid);
+        auto pLayerCurState = *this->layers.get_layout_state((int)client->surfaceID(action.role));
+        if (pLayerCurState == nullptr)
+        {
+            HMI_SEQ_ERROR(req_num, "Counldn't find current status");
+            continue;
+        }
+        int surface = -1;
+
+        if (action.visible != TaskVisible::INVISIBLE)
+        {
+            surface = (int)client->surfaceID(action.role);
+            HMI_SEQ_INFO(req_num, "Change %s surface : %d, state visible area : %s",
+                            action.role.c_str(), surface, action.area.c_str());
+            // visible == true -> layout changes
+            if(action.area == "normal.full" || action.area == "split.main")
+            {
+                pLayerCurState->main = surface;
+            }
+            else if (action.area == "split.sub")
+            {
+                pLayerCurState->sub = surface;
+            }
+            else
+            {
+                // normalfull
+                pLayerCurState->main = surface;
+            }
+        }
+    }
+
+    return WMError::SUCCESS;
+}
+
+void App::setTimer()
+{
+    HMI_SEQ_DEBUG(g_app_list.currentRequestNumber(), "Timer set activate");
+    if (g_timer_ev_src == nullptr)
+    {
+        // firsttime set into sd_event
+        int ret = sd_event_add_time(afb_daemon_get_event_loop(), &g_timer_ev_src,
+            CLOCK_REALTIME, time(NULL) * (1000000UL) + kTimeOut, 1, processTimerHandler, this);
+        if (ret < 0)
+        {
+            HMI_ERROR("wm", "Could't set timer");
+        }
+    }
+    else
+    {
+        // update timer limitation after second time
+        sd_event_source_set_time(g_timer_ev_src, time(NULL) * (1000000UL) + kTimeOut);
+        sd_event_source_set_enabled(g_timer_ev_src, SD_EVENT_ONESHOT);
+    }
+}
+
+void App::stopTimer()
+{
+    unsigned req_num = g_app_list.currentRequestNumber();
+    HMI_SEQ_DEBUG(req_num, "Timer stop");
+    int rc = sd_event_source_set_enabled(g_timer_ev_src, SD_EVENT_OFF);
+    if (rc < 0)
+    {
+        HMI_SEQ_ERROR(req_num, "Timer stop failed");
+    }
+}
+
+void App::processNextRequest()
+{
+    g_app_list.next();
+    g_app_list.reqDump();
+    unsigned req_num = g_app_list.currentRequestNumber();
+    if (g_app_list.haveRequest())
+    {
+        HMI_SEQ_DEBUG(req_num, "Process next request");
+        WMError rc = doTransition(req_num);
+        if (rc != WMError::SUCCESS)
+        {
+            HMI_SEQ_ERROR(req_num, errorDescription(rc));
+        }
+    }
+    else
+    {
+        HMI_SEQ_DEBUG(req_num, "Nothing Request. Waiting Request");
+    }
+}
+
+const char *App::check_surface_exist(const char *drawing_name)
+{
+    auto const &surface_id = this->lookup_id(drawing_name);
+    if (!surface_id)
+    {
+        return "Surface does not exist";
+    }
+
+    if (!this->controller->surface_exists(*surface_id))
+    {
+        return "Surface does not exist in controller!";
+    }
+
+    auto layer_id = this->layers.get_layer_id(*surface_id);
+
+    if (!layer_id)
+    {
+        return "Surface is not on any layer!";
+    }
+
+    auto o_state = *this->layers.get_layout_state(*surface_id);
+
+    if (o_state == nullptr)
+    {
+        return "Could not find layer for surface";
+    }
+
+    HMI_DEBUG("wm", "surface %d is detected", *surface_id);
+    return nullptr;
+}
+
 void App::activate(int id)
 {
     auto ip = this->controller->sprops.find(id);
@@ -926,8 +1363,11 @@ void App::activate(int id)
         char const *label =
             this->lookup_name(id).value_or("unknown-name").c_str();
 
-        // FOR CES DEMO >>>
-        if ((0 == strcmp(label, "Radio")) || (0 == strcmp(label, "MediaPlayer")) || (0 == strcmp(label, "Music")) || (0 == strcmp(label, "Navigation")))
+         // FOR CES DEMO >>>
+        if ((0 == strcmp(label, "Radio"))       ||
+            (0 == strcmp(label, "MediaPlayer")) ||
+            (0 == strcmp(label, "Music"))       ||
+            (0 == strcmp(label, "Navigation")))
         {
             for (auto i = surface_bg.begin(); i != surface_bg.end(); ++i)
             {
@@ -1046,13 +1486,6 @@ bool App::can_split(struct LayoutState const &state, int new_id)
     }
 
     return false;
-}
-
-void App::try_layout(struct LayoutState & /*state*/,
-                     struct LayoutState const &new_layout,
-                     std::function<void(LayoutState const &nl)> apply)
-{
-    apply(new_layout);
 }
 
 /**

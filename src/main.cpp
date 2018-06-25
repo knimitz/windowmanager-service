@@ -213,6 +213,7 @@ static void cbRemoveClientCtxt(void *data)
         g_afb_instance->app.controller->surfaces.erase(sid);
         HMI_DEBUG("wm", "delete surfaceID %d", sid);
     }
+    g_afb_instance->app.removeClient(ctxt->name);
     delete ctxt;
 }
 
@@ -245,13 +246,14 @@ void windowmanager_requestsurface(afb_req req) noexcept
             HMI_DEBUG("wm", "You're %s.", ctxt->name.c_str());
             if (ctxt->name != std::string(a_drawing_name))
             {
-                afb_req_fail_f(req, "failed", "Don't request with other name: %s for now", a_drawing_name);
+                afb_req_fail_f(req, "failed", "Dont request with other name: %s for now", a_drawing_name);
                 HMI_DEBUG("wm", "Don't request with other name: %s for now", a_drawing_name);
                 return;
             }
         }
 
-        auto ret = g_afb_instance->app.api_request_surface(a_drawing_name);
+        auto ret = g_afb_instance->app.api_request_surface(
+            afb_req_get_application_id(req), a_drawing_name);
 
         if (isFirstReq)
         {
@@ -312,7 +314,8 @@ void windowmanager_requestsurfacexdg(afb_req req) noexcept
         }
         char const *a_ivi_id = json_object_get_string(j_ivi_id);
 
-        auto ret = g_afb_instance->app.api_request_surface(a_drawing_name, a_ivi_id);
+        auto ret = g_afb_instance->app.api_request_surface(
+            afb_req_get_application_id(req), a_drawing_name, a_ivi_id);
         if (ret != nullptr)
         {
             afb_req_fail(req, "failed", ret);
@@ -356,20 +359,23 @@ void windowmanager_activatesurface(afb_req req) noexcept
             return;
         }
 
-        g_afb_instance->app.api_activate_surface(a_drawing_name, a_drawing_area,
-                    [&req](const char *errmsg) {
-                        if (errmsg != nullptr)
-                        {
-                            HMI_ERROR("wm", errmsg);
-                            afb_req_fail(req, "failed", errmsg);
-                            return;
-                        }
-                        afb_req_success(req, NULL, "success");
-                    });
+        g_afb_instance->app.api_activate_surface(
+            afb_req_get_application_id(req),
+            a_drawing_name, a_drawing_area,
+            [&req](const char *errmsg) {
+                if (errmsg != nullptr)
+                {
+                    HMI_ERROR("wm", errmsg);
+                    afb_req_fail(req, "failed", errmsg);
+                    return;
+                }
+                afb_req_success(req, NULL, "success");
+            });
     }
     catch (std::exception &e)
     {
-        HMI_WARNING("wm", "failed", "Uncaught exception while calling activatesurface: %s", e.what());
+        HMI_WARNING("wm", "failed: Uncaught exception while calling activatesurface: %s", e.what());
+        g_afb_instance->app.exceptionProcessForTransition();
         return;
     }
 }
@@ -395,20 +401,22 @@ void windowmanager_deactivatesurface(afb_req req) noexcept
             return;
         }
 
-        g_afb_instance->app.api_deactivate_surface(a_drawing_name,
-                    [&req](const char *errmsg) {
-                        if (errmsg != nullptr)
-                        {
-                            HMI_ERROR("wm", errmsg);
-                            afb_req_fail(req, "failed", errmsg);
-                            return;
-                        }
-                        afb_req_success(req, NULL, "success");
-                    });
+        g_afb_instance->app.api_deactivate_surface(
+            afb_req_get_application_id(req), a_drawing_name,
+            [&req](const char *errmsg) {
+                if (errmsg != nullptr)
+                {
+                    HMI_ERROR("wm", errmsg);
+                    afb_req_fail(req, "failed", errmsg);
+                    return;
+                }
+                afb_req_success(req, NULL, "success");
+            });
     }
     catch (std::exception &e)
     {
-        HMI_WARNING("wm", "Uncaught exception while calling deactivatesurface: %s", e.what());
+        HMI_WARNING("wm", "failed: Uncaught exception while calling deactivatesurface: %s", e.what());
+        g_afb_instance->app.exceptionProcessForTransition();
         return;
     }
 }
@@ -435,11 +443,13 @@ void windowmanager_enddraw(afb_req req) noexcept
         }
         afb_req_success(req, NULL, "success");
 
-        g_afb_instance->app.api_enddraw(a_drawing_name);
+        g_afb_instance->app.api_enddraw(
+            afb_req_get_application_id(req), a_drawing_name);
     }
     catch (std::exception &e)
     {
-        HMI_WARNING("wm", "failed", "Uncaught exception while calling enddraw: %s", e.what());
+        HMI_WARNING("wm", "failed: Uncaught exception while calling enddraw: %s", e.what());
+        g_afb_instance->app.exceptionProcessForTransition();
         return;
     }
 }
