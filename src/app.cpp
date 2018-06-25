@@ -261,6 +261,8 @@ int App::init_layers()
 
     this->layout_commit();
 
+    this->layers.setupArea(o->width, o->height);
+
     return 0;
 }
 

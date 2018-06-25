@@ -191,4 +191,59 @@ json layer_map::to_json() const
     return j;
 }
 
+void layer_map::setupArea(int output_w, int output_h)
+{
+    compositor::rect rct;
+    // setup normal.full
+    std::string area = "normal.full";
+    std::string role = "Fallback";
+    auto l_id = this->get_layer_id(role);
+    auto l = this->get_layer(*l_id);
+    rct = l->rect;
+    if(rct.w < 0)
+        rct.w = output_w + 1 + rct.w;
+    if(rct.h < 0)
+        rct.h = output_h + 1 + rct.h;
+    this->area2size[area] = rct;
+    this->area2size["normalfull"] = rct;
+    this->area2size["normal"] = rct;
+
+    // setup split.main
+    area = "split.main";
+    rct.h = rct.h / 2;
+    this->area2size[area] = rct;
+
+    // setup split.sub
+    area = "split.sub";
+    rct.y = rct.y + rct.h;
+    this->area2size[area] = rct;
+
+    // setup homescreen
+    area = "fullscreen";
+    role = "HomeScreen";
+    rct = compositor::full_rect;
+    if (rct.w <= 0)
+        rct.w = output_w + rct.w + 1;
+    if (rct.h <= 0)
+        rct.h = output_h + rct.h + 1;
+    this->area2size[area] = rct;
+
+    // setup onscreen
+    area = "on_screen";
+    role = "OnScreen";
+    auto ons_id = this->get_layer_id(role);
+    auto l_ons = this->get_layer(*ons_id);
+    rct = l_ons->rect;
+    if (rct.w < 0)
+        rct.w = output_w + 1 + rct.w;
+    if (rct.h < 0)
+        rct.h = output_h + 1 + rct.h;
+    this->area2size[area] = rct;
+}
+
+compositor::rect layer_map::getAreaSize(const std::string &area)
+{
+    return area2size[area];
+}
+
 } // namespace wm

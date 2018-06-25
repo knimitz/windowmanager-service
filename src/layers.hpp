@@ -114,6 +114,11 @@ struct layer_map
     }
 
     json to_json() const;
+    void setupArea(int output_w, int output_h);
+    compositor::rect getAreaSize(const std::string &area);
+
+  private:
+    std::unordered_map<std::string, compositor::rect> area2size;
 };
 
 struct result<struct layer_map> to_layer_map(nlohmann::json const &j);
