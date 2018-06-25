@@ -41,6 +41,14 @@ enum LOG_LEVEL{
 #define HMI_INFO(prefix, args,...)  _HMI_LOG(LOG_LEVEL_INFO, __FILENAME__, __FUNCTION__,__LINE__, prefix, args,##__VA_ARGS__)
 #define HMI_DEBUG(prefix, args,...) _HMI_LOG(LOG_LEVEL_DEBUG, __FILENAME__, __FUNCTION__,__LINE__, prefix, args,##__VA_ARGS__)
 
+#define HMI_SEQ_ERROR(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_ERROR, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+#define HMI_SEQ_WARNING(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_WARNING, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+#define HMI_SEQ_NOTICE(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_NOTICE, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+#define HMI_SEQ_INFO(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_INFO, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+#define HMI_SEQ_DEBUG(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_DEBUG, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+
+#define DUMP(args, ...) _DUMP(LOG_LEVEL_DEBUG, args, ##__VA_ARGS__)
+
 static char ERROR_FLAG[6][20] = {"NONE", "ERROR", "WARNING", "NOTICE", "INFO", "DEBUG"};
 
 static void _HMI_LOG(enum LOG_LEVEL level, const char* file, const char* func, const int line, const char* prefix, const char* log, ...)
@@ -67,4 +75,43 @@ static void _HMI_LOG(enum LOG_LEVEL level, const char* file, const char* func, c
     free(message);
 }
 
+static void _HMI_SEQ_LOG(enum LOG_LEVEL level, const char* file, const char* func, const int line, unsigned seq_num, const char* log, ...){
+    const int log_level = (getenv("USE_HMI_DEBUG") == NULL) ? LOG_LEVEL_ERROR:atoi(getenv("USE_HMI_DEBUG"));
+    if(log_level < level)
+    {
+        return;
+    }
+
+    char *message;
+    struct timespec tp;
+    unsigned int time;
+
+    clock_gettime(CLOCK_REALTIME, &tp);
+	time = (tp.tv_sec * 1000000L) + (tp.tv_nsec / 1000);
+
+	va_list args;
+	va_start(args, log);
+	if (log == NULL || vasprintf(&message, log, args) < 0)
+        message = NULL;
+    fprintf(stderr,  "[%10.3f] [wm %s] [%s, %s(), Line:%d] >>> req %d: %s \n", time / 1000.0, ERROR_FLAG[level], file, func, line, seq_num, message);
+    va_end(args);
+	free(message);
+}
+
+static void _DUMP(enum LOG_LEVEL level, const char *log, ...)
+{
+    const int log_level = (getenv("USE_HMI_DEBUG") == NULL) ? LOG_LEVEL_ERROR : atoi(getenv("USE_HMI_DEBUG"));
+    if (log_level < level)
+    {
+        return;
+    }
+    char *message;
+    va_list args;
+    va_start(args, log);
+    if (log == NULL || vasprintf(&message, log, args) < 0)
+        message = NULL;
+    fprintf(stderr, "%s \n", message);
+    va_end(args);
+    free(message);
+}
 #endif  //__HMI_DEBUG_H__

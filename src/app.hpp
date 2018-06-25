@@ -69,7 +69,6 @@ struct id_allocator
 
     // Surfaces that where requested but not yet created
     std::unordered_map<unsigned, std::string> id2name;
-    // std::unordered_set<unsigned> pending_surfaces;
     std::unordered_map<std::string, unsigned> name2id;
 
     id_allocator(id_allocator const &) = delete;
@@ -82,7 +81,6 @@ struct id_allocator
     {
         unsigned sid = this->next++;
         this->id2name[sid] = name;
-        // this->pending_surfaces.insert({sid});
         this->name2id[name] = sid;
         HMI_DEBUG("wm", "allocated new id %u with name %s", sid, name.c_str());
         return sid;

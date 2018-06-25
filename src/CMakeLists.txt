@@ -33,7 +33,11 @@ add_library(${TARGETS_WM} MODULE
    ${IVI_CON_PROTO}
    json_helper.cpp
    app.cpp
-   layers.cpp)
+   layers.cpp
+   wm_client.cpp
+   wm_error.cpp
+   applist.cpp
+   request.cpp)
 
 target_include_directories(${TARGETS_WM}
     PRIVATE
