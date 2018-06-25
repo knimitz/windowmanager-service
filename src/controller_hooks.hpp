@@ -24,11 +24,11 @@
 namespace wm
 {
 
-struct App;
+class WindowManager;
 
 struct controller_hooks
 {
-    struct App *app;
+    WindowManager *app;
 
     void surface_created(uint32_t surface_id);
 

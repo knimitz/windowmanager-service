@@ -19,7 +19,7 @@
 #include <mutex>
 #include <json.h>
 #include "../include/json.hpp"
-#include "app.hpp"
+#include "window_manager.hpp"
 #include "json_helper.hpp"
 #include "wayland_ivi_wm.hpp"
 
@@ -43,9 +43,9 @@ typedef struct WMClientCtxt
 struct afb_instance
 {
     std::unique_ptr<wl::display> display;
-    wm::App app;
+    wm::WindowManager wmgr;
 
-    afb_instance() : display{new wl::display}, app{this->display.get()} {}
+    afb_instance() : display{new wl::display}, wmgr{this->display.get()} {}
 
     int init();
 };
@@ -55,7 +55,7 @@ std::mutex binding_m;
 
 int afb_instance::init()
 {
-    return this->app.init();
+    return this->wmgr.init();
 }
 
 int display_event_callback(sd_event_source *evs, int /*fd*/, uint32_t events,
@@ -75,8 +75,8 @@ int display_event_callback(sd_event_source *evs, int /*fd*/, uint32_t events,
     {
         {
             STN(display_read_events);
-            g_afb_instance->app.display->read_events();
-            g_afb_instance->app.set_pending_events();
+            g_afb_instance->wmgr.display->read_events();
+            g_afb_instance->wmgr.set_pending_events();
         }
         {
             // We want do dispatch pending wayland events from within
@@ -191,11 +191,11 @@ static void cbRemoveClientCtxt(void *data)
     }
     HMI_DEBUG("wm", "remove app %s", ctxt->name.c_str());
     // Lookup surfaceID and remove it because App is dead.
-    auto pSid = g_afb_instance->app.id_alloc.lookup(ctxt->role.c_str());
+    auto pSid = g_afb_instance->wmgr.id_alloc.lookup(ctxt->role.c_str());
     if (pSid)
     {
         auto sid = *pSid;
-        auto o_state = *g_afb_instance->app.layers.get_layout_state(sid);
+        auto o_state = *g_afb_instance->wmgr.layers.get_layout_state(sid);
         if (o_state != nullptr)
         {
             if (o_state->main == sid)
@@ -207,13 +207,13 @@ static void cbRemoveClientCtxt(void *data)
                 o_state->sub = -1;
             }
         }
-        g_afb_instance->app.id_alloc.remove_id(sid);
-        g_afb_instance->app.layers.remove_surface(sid);
-        g_afb_instance->app.controller->sprops.erase(sid);
-        g_afb_instance->app.controller->surfaces.erase(sid);
+        g_afb_instance->wmgr.id_alloc.remove_id(sid);
+        g_afb_instance->wmgr.layers.remove_surface(sid);
+        g_afb_instance->wmgr.controller->sprops.erase(sid);
+        g_afb_instance->wmgr.controller->surfaces.erase(sid);
         HMI_DEBUG("wm", "delete surfaceID %d", sid);
     }
-    g_afb_instance->app.removeClient(ctxt->name);
+    g_afb_instance->wmgr.removeClient(ctxt->name);
     delete ctxt;
 }
 
@@ -252,7 +252,7 @@ void windowmanager_requestsurface(afb_req req) noexcept
             }
         }
 
-        auto ret = g_afb_instance->app.api_request_surface(
+        auto ret = g_afb_instance->wmgr.api_request_surface(
             afb_req_get_application_id(req), a_drawing_name);
 
         if (isFirstReq)
@@ -314,7 +314,7 @@ void windowmanager_requestsurfacexdg(afb_req req) noexcept
         }
         char const *a_ivi_id = json_object_get_string(j_ivi_id);
 
-        auto ret = g_afb_instance->app.api_request_surface(
+        auto ret = g_afb_instance->wmgr.api_request_surface(
             afb_req_get_application_id(req), a_drawing_name, a_ivi_id);
         if (ret != nullptr)
         {
@@ -359,7 +359,7 @@ void windowmanager_activatesurface(afb_req req) noexcept
             return;
         }
 
-        g_afb_instance->app.api_activate_surface(
+        g_afb_instance->wmgr.api_activate_surface(
             afb_req_get_application_id(req),
             a_drawing_name, a_drawing_area,
             [&req](const char *errmsg) {
@@ -375,7 +375,7 @@ void windowmanager_activatesurface(afb_req req) noexcept
     catch (std::exception &e)
     {
         HMI_WARNING("wm", "failed: Uncaught exception while calling activatesurface: %s", e.what());
-        g_afb_instance->app.exceptionProcessForTransition();
+        g_afb_instance->wmgr.exceptionProcessForTransition();
         return;
     }
 }
@@ -401,7 +401,7 @@ void windowmanager_deactivatesurface(afb_req req) noexcept
             return;
         }
 
-        g_afb_instance->app.api_deactivate_surface(
+        g_afb_instance->wmgr.api_deactivate_surface(
             afb_req_get_application_id(req), a_drawing_name,
             [&req](const char *errmsg) {
                 if (errmsg != nullptr)
@@ -416,7 +416,7 @@ void windowmanager_deactivatesurface(afb_req req) noexcept
     catch (std::exception &e)
     {
         HMI_WARNING("wm", "failed: Uncaught exception while calling deactivatesurface: %s", e.what());
-        g_afb_instance->app.exceptionProcessForTransition();
+        g_afb_instance->wmgr.exceptionProcessForTransition();
         return;
     }
 }
@@ -443,13 +443,13 @@ void windowmanager_enddraw(afb_req req) noexcept
         }
         afb_req_success(req, NULL, "success");
 
-        g_afb_instance->app.api_enddraw(
+        g_afb_instance->wmgr.api_enddraw(
             afb_req_get_application_id(req), a_drawing_name);
     }
     catch (std::exception &e)
     {
         HMI_WARNING("wm", "failed: Uncaught exception while calling enddraw: %s", e.what());
-        g_afb_instance->app.exceptionProcessForTransition();
+        g_afb_instance->wmgr.exceptionProcessForTransition();
         return;
     }
 }
@@ -468,7 +468,7 @@ void windowmanager_getdisplayinfo_thunk(afb_req req) noexcept
 
     try
     {
-        auto ret = g_afb_instance->app.api_get_display_info();
+        auto ret = g_afb_instance->wmgr.api_get_display_info();
         if (ret.is_err())
         {
             afb_req_fail(req, "failed", ret.unwrap_err());
@@ -508,7 +508,7 @@ void windowmanager_getareainfo_thunk(afb_req req) noexcept
         }
         char const *a_drawing_name = json_object_get_string(j_drawing_name);
 
-        auto ret = g_afb_instance->app.api_get_area_info(a_drawing_name);
+        auto ret = g_afb_instance->wmgr.api_get_area_info(a_drawing_name);
         if (ret.is_err())
         {
             afb_req_fail(req, "failed", ret.unwrap_err());
@@ -546,8 +546,8 @@ void windowmanager_wm_subscribe(afb_req req) noexcept
             return;
         }
         int event_type = json_object_get_int(j);
-        const char *event_name = g_afb_instance->app.kListEventName[event_type];
-        struct afb_event event = g_afb_instance->app.map_afb_event[event_name];
+        const char *event_name = g_afb_instance->wmgr.kListEventName[event_type];
+        struct afb_event event = g_afb_instance->wmgr.map_afb_event[event_name];
         int ret = afb_req_subscribe(req, event);
         if (ret)
         {
@@ -578,7 +578,7 @@ void windowmanager_list_drawing_names(afb_req req) noexcept
     try
     {
 
-        nlohmann::json j = g_afb_instance->app.id_alloc.name2id;
+        nlohmann::json j = g_afb_instance->wmgr.id_alloc.name2id;
         auto ret = wm::Ok(json_tokener_parse(j.dump().c_str()));
         if (ret.is_err())
         {
@@ -610,7 +610,7 @@ void windowmanager_ping(afb_req req) noexcept
     try
     {
 
-        g_afb_instance->app.api_ping();
+        g_afb_instance->wmgr.api_ping();
 
         afb_req_success(req, NULL, "success");
     }
@@ -638,8 +638,8 @@ void windowmanager_debug_status(afb_req req) noexcept
 
         json_object *jr = json_object_new_object();
         json_object_object_add(jr, "surfaces",
-                               to_json(g_afb_instance->app.controller->sprops));
-        json_object_object_add(jr, "layers", to_json(g_afb_instance->app.controller->lprops));
+                               to_json(g_afb_instance->wmgr.controller->sprops));
+        json_object_object_add(jr, "layers", to_json(g_afb_instance->wmgr.controller->lprops));
 
         afb_req_success(req, jr, "success");
     }
@@ -664,7 +664,7 @@ void windowmanager_debug_layers(afb_req req) noexcept
 
     try
     {
-        auto ret = wm::Ok(json_tokener_parse(g_afb_instance->app.layers.to_json().dump().c_str()));
+        auto ret = wm::Ok(json_tokener_parse(g_afb_instance->wmgr.layers.to_json().dump().c_str()));
 
         afb_req_success(req, ret, "success");
     }
@@ -690,7 +690,7 @@ void windowmanager_debug_surfaces(afb_req req) noexcept
     try
     {
 
-        auto ret = wm::Ok(to_json(g_afb_instance->app.controller->sprops));
+        auto ret = wm::Ok(to_json(g_afb_instance->wmgr.controller->sprops));
         if (ret.is_err())
         {
             afb_req_fail(req, "failed", ret.unwrap_err());

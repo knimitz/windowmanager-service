@@ -32,7 +32,7 @@ add_library(${TARGETS_WM} MODULE
    layout.cpp
    ${IVI_CON_PROTO}
    json_helper.cpp
-   app.cpp
+   window_manager.cpp
    layers.cpp
    wm_client.cpp
    wm_error.cpp

@@ -17,7 +17,7 @@
 #include <fstream>
 #include <regex>
 
-#include "app.hpp"
+#include "window_manager.hpp"
 #include "../include/json.hpp"
 #include "applist.hpp"
 
@@ -93,7 +93,7 @@ struct result<layer_map> load_layer_map(char const *filename)
 static int processTimerHandler(sd_event_source *s, uint64_t usec, void *userdata)
 {
     HMI_NOTICE("wm", "Time out occurs because the client replys endDraw slow, so revert the request");
-    reinterpret_cast<wm::App *>(userdata)->timerHandler();
+    reinterpret_cast<wm::WindowManager *>(userdata)->timerHandler();
     return 0;
 }
 
@@ -102,7 +102,7 @@ static int processTimerHandler(sd_event_source *s, uint64_t usec, void *userdata
 /**
  * WindowManager Impl
  */
-App::App(wl::display *d)
+WindowManager::WindowManager(wl::display *d)
     : chooks{this},
       display{d},
       controller{},
@@ -143,7 +143,7 @@ App::App(wl::display *d)
     }
 }
 
-int App::init()
+int WindowManager::init()
 {
     if (!this->display->ok())
     {
@@ -198,7 +198,7 @@ int App::init()
     return init_layers();
 }
 
-int App::dispatch_pending_events()
+int WindowManager::dispatch_pending_events()
 {
     if (this->pop_pending_events())
     {
@@ -208,23 +208,23 @@ int App::dispatch_pending_events()
     return -1;
 }
 
-bool App::pop_pending_events()
+bool WindowManager::pop_pending_events()
 {
     bool x{true};
     return this->pending_events.compare_exchange_strong(
         x, false, std::memory_order_consume);
 }
 
-void App::set_pending_events()
+void WindowManager::set_pending_events()
 {
     this->pending_events.store(true, std::memory_order_release);
 }
 
-optional<int> App::lookup_id(char const *name)
+optional<int> WindowManager::lookup_id(char const *name)
 {
     return this->id_alloc.lookup(std::string(name));
 }
-optional<std::string> App::lookup_name(int id)
+optional<std::string> WindowManager::lookup_name(int id)
 {
     return this->id_alloc.lookup(id);
 }
@@ -232,7 +232,7 @@ optional<std::string> App::lookup_name(int id)
 /**
  * init_layers()
  */
-int App::init_layers()
+int WindowManager::init_layers()
 {
     if (!this->controller)
     {
@@ -284,7 +284,7 @@ int App::init_layers()
     return 0;
 }
 
-void App::surface_set_layout(int surface_id, const std::string& area)
+void WindowManager::surface_set_layout(int surface_id, const std::string& area)
 {
     if (!this->controller->surface_exists(surface_id))
     {
@@ -340,13 +340,13 @@ void App::surface_set_layout(int surface_id, const std::string& area)
               surface_id, layer_id, x, y, w, h);
 }
 
-void App::layout_commit()
+void WindowManager::layout_commit()
 {
     this->controller->commit_changes();
     this->display->flush();
 }
 
-void App::api_activate_surface(char const *appid, char const *drawing_name,
+void WindowManager::api_activate_surface(char const *appid, char const *drawing_name,
                                char const *drawing_area, const reply_func &reply)
 {
     ST();
@@ -389,7 +389,7 @@ void App::api_activate_surface(char const *appid, char const *drawing_name,
     }
 }
 
-void App::api_deactivate_surface(char const *appid, char const *drawing_name,
+void WindowManager::api_deactivate_surface(char const *appid, char const *drawing_name,
                                  const reply_func &reply)
 {
     ST();
@@ -435,7 +435,7 @@ void App::api_deactivate_surface(char const *appid, char const *drawing_name,
     }
 }
 
-void App::api_enddraw(char const *appid, char const *drawing_name)
+void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
 {
     std::string id = appid;
     std::string role = drawing_name;
@@ -471,9 +471,9 @@ void App::api_enddraw(char const *appid, char const *drawing_name)
     }
 }
 
-void App::api_ping() { this->dispatch_pending_events(); }
+void WindowManager::api_ping() { this->dispatch_pending_events(); }
 
-void App::send_event(char const *evname, char const *label)
+void WindowManager::send_event(char const *evname, char const *label)
 {
     HMI_DEBUG("wm", "%s: %s(%s)", __func__, evname, label);
 
@@ -487,7 +487,7 @@ void App::send_event(char const *evname, char const *label)
     }
 }
 
-void App::send_event(char const *evname, char const *label, char const *area,
+void WindowManager::send_event(char const *evname, char const *label, char const *area,
                      int x, int y, int w, int h)
 {
     HMI_DEBUG("wm", "%s: %s(%s, %s) x:%d y:%d w:%d h:%d",
@@ -514,7 +514,7 @@ void App::send_event(char const *evname, char const *label, char const *area,
 /**
  * proxied events
  */
-void App::surface_created(uint32_t surface_id)
+void WindowManager::surface_created(uint32_t surface_id)
 {
     auto layer_id = this->layers.get_layer_id(surface_id);
     if (!layer_id)
@@ -530,19 +530,19 @@ void App::surface_created(uint32_t surface_id)
     this->layout_commit();
 }
 
-void App::surface_removed(uint32_t surface_id)
+void WindowManager::surface_removed(uint32_t surface_id)
 {
     HMI_DEBUG("wm", "surface_id is %u", surface_id);
     g_app_list.removeSurface(surface_id);
 }
 
-void App::removeClient(const std::string &appid)
+void WindowManager::removeClient(const std::string &appid)
 {
     HMI_DEBUG("wm", "Remove clinet %s from list", appid.c_str());
     g_app_list.removeClient(appid);
 }
 
-void App::exceptionProcessForTransition()
+void WindowManager::exceptionProcessForTransition()
 {
     unsigned req_num = g_app_list.currentRequestNumber();
     HMI_SEQ_NOTICE(req_num, "Process exception handling for request. Remove current request %d", req_num);
@@ -551,7 +551,7 @@ void App::exceptionProcessForTransition()
     this->processNextRequest();
 }
 
-void App::timerHandler()
+void WindowManager::timerHandler()
 {
     unsigned req_num = g_app_list.currentRequestNumber();
     HMI_SEQ_DEBUG(req_num, "Timer expired remove Request");
@@ -560,46 +560,46 @@ void App::timerHandler()
     this->processNextRequest();
 }
 
-void App::emit_activated(char const *label)
+void WindowManager::emit_activated(char const *label)
 {
     this->send_event(kListEventName[Event_Active], label);
 }
 
-void App::emit_deactivated(char const *label)
+void WindowManager::emit_deactivated(char const *label)
 {
     this->send_event(kListEventName[Event_Inactive], label);
 }
 
-void App::emit_syncdraw(char const *label, char const *area, int x, int y, int w, int h)
+void WindowManager::emit_syncdraw(char const *label, char const *area, int x, int y, int w, int h)
 {
     this->send_event(kListEventName[Event_SyncDraw], label, area, x, y, w, h);
 }
 
-void App::emit_syncdraw(const std::string &role, const std::string &area)
+void WindowManager::emit_syncdraw(const std::string &role, const std::string &area)
 {
     compositor::rect rect = this->layers.getAreaSize(area);
     this->send_event(kListEventName[Event_SyncDraw],
         role.c_str(), area.c_str(), rect.x, rect.y, rect.w, rect.h);
 }
 
-void App::emit_flushdraw(char const *label)
+void WindowManager::emit_flushdraw(char const *label)
 {
     this->send_event(kListEventName[Event_FlushDraw], label);
 }
 
-void App::emit_visible(char const *label, bool is_visible)
+void WindowManager::emit_visible(char const *label, bool is_visible)
 {
     this->send_event(is_visible ? kListEventName[Event_Visible] : kListEventName[Event_Invisible], label);
 }
 
-void App::emit_invisible(char const *label)
+void WindowManager::emit_invisible(char const *label)
 {
     return emit_visible(label, false);
 }
 
-void App::emit_visible(char const *label) { return emit_visible(label, true); }
+void WindowManager::emit_visible(char const *label) { return emit_visible(label, true); }
 
-result<int> App::api_request_surface(char const *appid, char const *drawing_name)
+result<int> WindowManager::api_request_surface(char const *appid, char const *drawing_name)
 {
     auto lid = this->layers.get_layer_id(std::string(drawing_name));
     if (!lid)
@@ -642,7 +642,7 @@ result<int> App::api_request_surface(char const *appid, char const *drawing_name
     return Err<int>("Surface already present");
 }
 
-char const *App::api_request_surface(char const *appid, char const *drawing_name,
+char const *WindowManager::api_request_surface(char const *appid, char const *drawing_name,
                                      char const *ivi_id)
 {
     ST();
@@ -688,7 +688,7 @@ char const *App::api_request_surface(char const *appid, char const *drawing_name
     return nullptr;
 }
 
-result<json_object *> App::api_get_display_info()
+result<json_object *> WindowManager::api_get_display_info()
 {
     // Check controller
     if (!this->controller)
@@ -709,7 +709,7 @@ result<json_object *> App::api_get_display_info()
     return Ok<json_object *>(object);
 }
 
-result<json_object *> App::api_get_area_info(char const *drawing_name)
+result<json_object *> WindowManager::api_get_area_info(char const *drawing_name)
 {
     HMI_DEBUG("wm", "called");
 
@@ -754,7 +754,7 @@ result<json_object *> App::api_get_area_info(char const *drawing_name)
     return Ok<json_object *>(object);
 }
 
-WMError App::setRequest(const std::string& appid, const std::string &role, const std::string &area,
+WMError WindowManager::setRequest(const std::string& appid, const std::string &role, const std::string &area,
                             Task task, unsigned* req_num)
 {
     if (!g_app_list.contains(appid))
@@ -786,7 +786,7 @@ WMError App::setRequest(const std::string& appid, const std::string &role, const
     return WMError::SUCCESS;
 }
 
-WMError App::doTransition(unsigned req_num)
+WMError WindowManager::doTransition(unsigned req_num)
 {
     HMI_SEQ_DEBUG(req_num, "check policy");
     WMError ret = this->checkPolicy(req_num);
@@ -799,7 +799,7 @@ WMError App::doTransition(unsigned req_num)
     return ret;
 }
 
-WMError App::checkPolicy(unsigned req_num)
+WMError WindowManager::checkPolicy(unsigned req_num)
 {
     /*
     * Check Policy
@@ -904,7 +904,7 @@ WMError App::checkPolicy(unsigned req_num)
     return ret;
 }
 
-WMError App::startTransition(unsigned req_num)
+WMError WindowManager::startTransition(unsigned req_num)
 {
     bool sync_draw_happen = false;
     bool found = false;
@@ -951,7 +951,7 @@ WMError App::startTransition(unsigned req_num)
     return ret;
 }
 
-WMError App::setInvisibleTask(const std::string &role, bool split)
+WMError WindowManager::setInvisibleTask(const std::string &role, bool split)
 {
     unsigned req_num = g_app_list.currentRequestNumber();
     HMI_SEQ_DEBUG(req_num, "set current visible app to invisible task");
@@ -1095,7 +1095,7 @@ WMError App::setInvisibleTask(const std::string &role, bool split)
     return WMError::SUCCESS;
 }
 
-WMError App::doEndDraw(unsigned req_num)
+WMError WindowManager::doEndDraw(unsigned req_num)
 {
     // get actions
     bool found;
@@ -1150,14 +1150,14 @@ WMError App::doEndDraw(unsigned req_num)
     return ret;
 }
 
-WMError App::setSurfaceSize(unsigned surface, const std::string &area)
+WMError WindowManager::setSurfaceSize(unsigned surface, const std::string &area)
 {
     this->surface_set_layout(surface, area);
 
     return WMError::SUCCESS;
 }
 
-WMError App::layoutChange(const WMAction &action)
+WMError WindowManager::layoutChange(const WMAction &action)
 {
     if (action.visible == TaskVisible::INVISIBLE)
     {
@@ -1177,7 +1177,7 @@ WMError App::layoutChange(const WMAction &action)
     return ret;
 }
 
-WMError App::visibilityChange(const WMAction &action)
+WMError WindowManager::visibilityChange(const WMAction &action)
 {
     HMI_SEQ_DEBUG(g_app_list.currentRequestNumber(), "Change visibility");
     if(!g_app_list.contains(action.appid)){
@@ -1203,7 +1203,7 @@ WMError App::visibilityChange(const WMAction &action)
     return WMError::SUCCESS;
 }
 
-WMError App::changeCurrentState(unsigned req_num)
+WMError WindowManager::changeCurrentState(unsigned req_num)
 {
     HMI_SEQ_DEBUG(req_num, "Change current layout state");
     bool trigger_found = false, action_found = false;
@@ -1271,7 +1271,7 @@ WMError App::changeCurrentState(unsigned req_num)
     return WMError::SUCCESS;
 }
 
-void App::setTimer()
+void WindowManager::setTimer()
 {
     HMI_SEQ_DEBUG(g_app_list.currentRequestNumber(), "Timer set activate");
     if (g_timer_ev_src == nullptr)
@@ -1292,7 +1292,7 @@ void App::setTimer()
     }
 }
 
-void App::stopTimer()
+void WindowManager::stopTimer()
 {
     unsigned req_num = g_app_list.currentRequestNumber();
     HMI_SEQ_DEBUG(req_num, "Timer stop");
@@ -1303,7 +1303,7 @@ void App::stopTimer()
     }
 }
 
-void App::processNextRequest()
+void WindowManager::processNextRequest()
 {
     g_app_list.next();
     g_app_list.reqDump();
@@ -1323,7 +1323,7 @@ void App::processNextRequest()
     }
 }
 
-const char *App::check_surface_exist(const char *drawing_name)
+const char *WindowManager::check_surface_exist(const char *drawing_name)
 {
     auto const &surface_id = this->lookup_id(drawing_name);
     if (!surface_id)
@@ -1354,7 +1354,7 @@ const char *App::check_surface_exist(const char *drawing_name)
     return nullptr;
 }
 
-void App::activate(int id)
+void WindowManager::activate(int id)
 {
     auto ip = this->controller->sprops.find(id);
     if (ip != this->controller->sprops.end())
@@ -1400,7 +1400,7 @@ void App::activate(int id)
     }
 }
 
-void App::deactivate(int id)
+void WindowManager::deactivate(int id)
 {
     auto ip = this->controller->sprops.find(id);
     if (ip != this->controller->sprops.end())
@@ -1442,7 +1442,7 @@ void App::deactivate(int id)
     }
 }
 
-bool App::can_split(struct LayoutState const &state, int new_id)
+bool WindowManager::can_split(struct LayoutState const &state, int new_id)
 {
     if (state.main != -1 && state.main != new_id)
     {

@@ -133,9 +133,9 @@ struct id_allocator
     }
 };
 
-struct App
+class WindowManager
 {
-
+  public:
     typedef std::unordered_map<uint32_t, struct compositor::rect> rect_map;
     typedef std::function<void(const char *err_msg)> reply_func;
 
@@ -191,13 +191,13 @@ struct App
     // FOR CES DEMO
     std::vector<int> surface_bg;
 
-    explicit App(wl::display *d);
-    ~App() = default;
+    explicit WindowManager(wl::display *d);
+    ~WindowManager() = default;
 
-    App(App const &) = delete;
-    App &operator=(App const &) = delete;
-    App(App &&) = delete;
-    App &operator=(App &&) = delete;
+    WindowManager(WindowManager const &) = delete;
+    WindowManager &operator=(WindowManager const &) = delete;
+    WindowManager(WindowManager &&) = delete;
+    WindowManager &operator=(WindowManager &&) = delete;
 
     int init();
     int dispatch_pending_events();
