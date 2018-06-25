@@ -22,11 +22,9 @@
 #include <memory>
 #include <unordered_map>
 #include <experimental/optional>
-#include "config.hpp"
 #include "controller_hooks.hpp"
 #include "layers.hpp"
 #include "layout.hpp"
-#include "policy.hpp"
 #include "wayland_ivi_wm.hpp"
 #include "hmi-debug.h"
 
@@ -173,8 +171,6 @@ struct App
     std::unique_ptr<struct compositor::controller> controller;
     std::vector<std::unique_ptr<struct wl::output>> outputs;
 
-    struct config config;
-
     // track current layouts separately
     layer_map layers;
 
@@ -185,8 +181,6 @@ struct App
     std::atomic<bool> pending_events;
 
     std::vector<int> pending_end_draw;
-
-    Policy policy;
 
     std::map<const char *, struct afb_event> map_afb_event;
 

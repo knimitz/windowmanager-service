@@ -89,17 +89,26 @@ App::App(wl::display *d)
       display{d},
       controller{},
       outputs(),
-      config(),
       layers(),
       id_alloc{},
-      pending_events(false),
-      policy{}
+      pending_events(false)
 {
+    char const *path_layers_json = getenv("AFM_APP_INSTALL_DIR");
+    std::string path;
+    if (!path_layers_json)
+    {
+        HMI_ERROR("wm", "AFM_APP_INSTALL_DIR is not defined");
+        path = std::string(path_layers_json);
+    }
+    else
+    {
+        path = std::string(path_layers_json) + std::string("/etc/layers.json");
+    }
+
     try
     {
         {
-            auto l = load_layer_map(
-                this->config.get_string("layers.json").value().c_str());
+            auto l = load_layer_map(path.c_str());
             if (l.is_ok())
             {
                 this->layers = l.unwrap();
@@ -1072,10 +1081,7 @@ void App::try_layout(struct LayoutState & /*state*/,
                      struct LayoutState const &new_layout,
                      std::function<void(LayoutState const &nl)> apply)
 {
-    if (this->policy.layout_is_valid(new_layout))
-    {
-        apply(new_layout);
-    }
+    apply(new_layout);
 }
 
 /**
