@@ -244,7 +244,6 @@ struct App
 
     void activate(int id);
     void deactivate(int id);
-    void deactivate_main_surface();
 
     bool can_split(struct LayoutState const &state, int new_id);
     void try_layout(struct LayoutState &state,

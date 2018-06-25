@@ -731,36 +731,11 @@ void App::surface_created(uint32_t surface_id)
 
     this->controller->layers[*layer_id]->add_surface(surface_id);
     this->layout_commit();
-    // activate the main_surface right away
-    /*if (surface_id == static_cast<unsigned>(this->layers.main_surface)) {
-      HMI_DEBUG("wm", "Activating main_surface (%d)", surface_id);
-
-      this->api_activate_surface(
-         this->lookup_name(surface_id).value_or("unknown-name").c_str());
-   }*/
 }
 
 void App::surface_removed(uint32_t surface_id)
 {
     HMI_DEBUG("wm", "surface_id is %u", surface_id);
-
-    // We cannot normally deactivate the main_surface, so be explicit
-    // about it:
-    if (int(surface_id) == this->layers.main_surface)
-    {
-        this->deactivate_main_surface();
-    }
-    else
-    {
-        auto drawing_name = this->lookup_name(surface_id);
-        if (drawing_name)
-        {
-            this->api_deactivate_surface(drawing_name->c_str(), [](const char *) {});
-        }
-    }
-
-    this->id_alloc.remove_id(surface_id);
-    this->layers.remove_surface(surface_id);
 }
 
 void App::emit_activated(char const *label)
@@ -1023,12 +998,6 @@ void App::deactivate(int id)
         this->emit_deactivated(label);
         this->emit_invisible(label);
     }
-}
-
-void App::deactivate_main_surface()
-{
-    this->layers.main_surface = -1;
-    this->api_deactivate_surface(this->layers.main_surface_name.c_str(), [](const char *) {});
 }
 
 bool App::can_split(struct LayoutState const &state, int new_id)
