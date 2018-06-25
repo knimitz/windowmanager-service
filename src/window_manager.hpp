@@ -241,6 +241,8 @@ class WindowManager
     void emit_invisible(char const *label);
     void emit_visible(char const *label);
 
+    void activate(int id);
+    void deactivate(int id);
     WMError setRequest(const std::string &appid, const std::string &role, const std::string &area,
                              Task task, unsigned *req_num);
     WMError doTransition(unsigned sequence_number);
@@ -259,8 +261,7 @@ class WindowManager
     void processNextRequest();
 
     const char *check_surface_exist(const char *drawing_name);
-    void activate(int id);
-    void deactivate(int id);
+
     bool can_split(struct LayoutState const &state, int new_id);
 
   private:
