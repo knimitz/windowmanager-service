@@ -64,6 +64,7 @@ extern const char kKeyWidthPixel[];
 extern const char kKeyHeightPixel[];
 extern const char kKeyWidthMm[];
 extern const char kKeyHeightMm[];
+extern const char kKeyIds[];
 
 struct id_allocator
 {
@@ -152,6 +153,8 @@ class WindowManager
         Event_SyncDraw,
         Event_FlushDraw,
 
+        Event_ScreenUpdated,
+
         Event_Error,
 
         Event_Val_Max = Event_Error,
@@ -164,6 +167,7 @@ class WindowManager
         "invisible",
         "syncdraw",
         "flushdraw",
+        "screen_updated",
         "error"};
 
     struct controller_hooks chooks;
@@ -255,6 +259,7 @@ class WindowManager
     WMError visibilityChange(const WMAction &action);
     WMError setSurfaceSize(unsigned surface, const std::string& area);
     WMError changeCurrentState(unsigned req_num);
+    void    emitScreenUpdated(unsigned req_num);
 
     void setTimer();
     void stopTimer();

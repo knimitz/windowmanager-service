@@ -50,6 +50,7 @@ const char kKeyWidthPixel[]  = "width_pixel";
 const char kKeyHeightPixel[] = "height_pixel";
 const char kKeyWidthMm[]     = "width_mm";
 const char kKeyHeightMm[]    = "height_mm";
+const char kKeyIds[]         = "ids";
 
 static sd_event_source *g_timer_ev_src = nullptr;
 static AppList g_app_list;
@@ -414,6 +415,7 @@ void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
         {
             //this->emit_error();
         }
+        this->emitScreenUpdated(current_req);
         HMI_SEQ_INFO(current_req, "Finish request status: %s", errorDescription(ret));
 
         g_app_list.removeRequest(current_req);
@@ -1361,6 +1363,36 @@ WMError WindowManager::changeCurrentState(unsigned req_num)
     }
 
     return WMError::SUCCESS;
+}
+
+void WindowManager::emitScreenUpdated(unsigned req_num)
+{
+    // Get visible apps
+    HMI_SEQ_DEBUG(req_num, "emit screen updated");
+    bool found = false;
+    auto actions = g_app_list.getActions(req_num, &found);
+
+    // create json object
+    json_object *j = json_object_new_object();
+    json_object *jarray = json_object_new_array();
+
+    for(const auto& action: actions)
+    {
+        if(action.visible != TaskVisible::INVISIBLE)
+        {
+            json_object_array_add(jarray, json_object_new_string(action.appid.c_str()));
+        }
+    }
+    json_object_object_add(j, kKeyIds, jarray);
+    HMI_SEQ_INFO(req_num, "Visible app: %s", json_object_get_string(j));
+
+    int ret = afb_event_push(
+        this->map_afb_event[kListEventName[Event_ScreenUpdated]], j);
+    if (ret != 0)
+    {
+        HMI_DEBUG("wm", "afb_event_push failed: %m");
+    }
+    json_object_put(jarray);
 }
 
 void WindowManager::setTimer()
