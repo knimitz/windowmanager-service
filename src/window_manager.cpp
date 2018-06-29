@@ -18,7 +18,7 @@
 #include <regex>
 
 #include "window_manager.hpp"
-#include "../include/json.hpp"
+#include "json_helper.hpp"
 #include "applist.hpp"
 
 extern "C"
@@ -157,6 +157,11 @@ int WindowManager::init()
         return -1;
     }
 
+    // TODO: application requests by old role,
+    //       so create role map (old, new)
+    // Load old_role.db
+    this->loadOldRoleDb();
+
     // Make afb event
     for (int i = Event_Val_Min; i <= Event_Val_Max; i++)
     {
@@ -216,25 +221,29 @@ void WindowManager::set_pending_events()
 
 result<int> WindowManager::api_request_surface(char const *appid, char const *drawing_name)
 {
-    auto lid = this->layers.get_layer_id(std::string(drawing_name));
+    // TODO: application requests by old role,
+    //       so convert role old to new
+    const char *role = this->convertRoleOldToNew(drawing_name);
+
+    auto lid = this->layers.get_layer_id(std::string(role));
     if (!lid)
     {
         /**
        * register drawing_name as fallback and make it displayed.
        */
-        lid = this->layers.get_layer_id(std::string("Fallback"));
-        HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", drawing_name);
+        lid = this->layers.get_layer_id(std::string("fallback"));
+        HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", role);
         if (!lid)
         {
             return Err<int>("Drawing name does not match any role, Fallback is disabled");
         }
     }
 
-    auto rname = this->lookup_id(drawing_name);
+    auto rname = this->lookup_id(role);
     if (!rname)
     {
         // name does not exist yet, allocate surface id...
-        auto id = int(this->id_alloc.generate_id(drawing_name));
+        auto id = int(this->id_alloc.generate_id(role));
         this->layers.add_surface(id, *lid);
 
         // set the main_surface[_name] here and now
@@ -247,8 +256,10 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
 
         // add client into the db
         std::string appid_str(appid);
-        std::string role(drawing_name);
-        g_app_list.addClient(appid_str, *lid, id, role);
+        g_app_list.addClient(appid_str, *lid, id, std::string(role));
+
+        // Set role map of (new, old)
+        this->rolenew2old[role] = std::string(drawing_name);
 
         return Ok<int>(id);
     }
@@ -262,7 +273,11 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
 {
     ST();
 
-    auto lid = this->layers.get_layer_id(std::string(drawing_name));
+    // TODO: application requests by old role,
+    //       so convert role old to new
+    const char *role = this->convertRoleOldToNew(drawing_name);
+
+    auto lid = this->layers.get_layer_id(std::string(role));
     unsigned sid = std::stol(ivi_id);
 
     if (!lid)
@@ -270,15 +285,15 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
         /**
        * register drawing_name as fallback and make it displayed.
        */
-        lid = this->layers.get_layer_id(std::string("Fallback"));
-        HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", drawing_name);
+        lid = this->layers.get_layer_id(std::string("fallback"));
+        HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", role);
         if (!lid)
         {
             return "Drawing name does not match any role, Fallback is disabled";
         }
     }
 
-    auto rname = this->lookup_id(drawing_name);
+    auto rname = this->lookup_id(role);
 
     if (rname)
     {
@@ -286,7 +301,7 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
     }
 
     // register pair drawing_name and ivi_id
-    this->id_alloc.register_name_id(drawing_name, sid);
+    this->id_alloc.register_name_id(role, sid);
     this->layers.add_surface(sid, *lid);
 
     // this surface is already created
@@ -297,8 +312,10 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
 
     // add client into the db
     std::string appid_str(appid);
-    std::string role(drawing_name);
-    g_app_list.addClient(appid_str, *lid, sid, role);
+    g_app_list.addClient(appid_str, *lid, sid, std::string(role));
+
+    // Set role map of (new, old)
+    this->rolenew2old[role] = std::string(drawing_name);
 
     return nullptr;
 }
@@ -308,8 +325,12 @@ void WindowManager::api_activate_surface(char const *appid, char const *drawing_
 {
     ST();
 
+    // TODO: application requests by old role,
+    //       so convert role old to new
+    const char *c_role = this->convertRoleOldToNew(drawing_name);
+
     std::string id = appid;
-    std::string role = drawing_name;
+    std::string role = c_role;
     std::string area = drawing_area;
     Task task = Task::TASK_ALLOCATE;
     unsigned req_num = 0;
@@ -351,11 +372,15 @@ void WindowManager::api_deactivate_surface(char const *appid, char const *drawin
 {
     ST();
 
+    // TODO: application requests by old role,
+    //       so convert role old to new
+    const char *c_role = this->convertRoleOldToNew(drawing_name);
+
     /*
     * Check Phase
     */
     std::string id = appid;
-    std::string role = drawing_name;
+    std::string role = c_role;
     std::string area = ""; //drawing_area;
     Task task = Task::TASK_RELEASE;
     unsigned req_num = 0;
@@ -394,8 +419,12 @@ void WindowManager::api_deactivate_surface(char const *appid, char const *drawin
 
 void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
 {
+    // TODO: application requests by old role,
+    //       so convert role old to new
+    const char *c_role = this->convertRoleOldToNew(drawing_name);
+
     std::string id = appid;
-    std::string role = drawing_name;
+    std::string role = c_role;
     unsigned current_req = g_app_list.currentRequestNumber();
     bool result = g_app_list.setEndDrawFinished(current_req, id, role);
 
@@ -454,8 +483,12 @@ result<json_object *> WindowManager::api_get_area_info(char const *drawing_name)
 {
     HMI_DEBUG("wm", "called");
 
+    // TODO: application requests by old role,
+    //       so convert role old to new
+    const char *role = this->convertRoleOldToNew(drawing_name);
+
     // Check drawing name, surface/layer id
-    auto const &surface_id = this->lookup_id(drawing_name);
+    auto const &surface_id = this->lookup_id(role);
     if (!surface_id)
     {
         return Err<json_object *>("Surface does not exist");
@@ -770,10 +803,10 @@ void WindowManager::activate(int id)
             this->lookup_name(id).value_or("unknown-name").c_str();
 
          // FOR CES DEMO >>>
-        if ((0 == strcmp(label, "Radio"))       ||
-            (0 == strcmp(label, "MediaPlayer")) ||
-            (0 == strcmp(label, "Music"))       ||
-            (0 == strcmp(label, "Navigation")))
+        if ((0 == strcmp(label, "radio")) ||
+            (0 == strcmp(label, "music")) ||
+            (0 == strcmp(label, "video")) ||
+            (0 == strcmp(label, "map")))
         {
             for (auto i = surface_bg.begin(); i != surface_bg.end(); ++i)
             {
@@ -799,10 +832,15 @@ void WindowManager::activate(int id)
             }
         }
         // <<< FOR CES DEMO
+
         this->layout_commit();
 
-        this->emit_visible(label);
-        this->emit_activated(label);
+        // TODO: application requests by old role,
+        //       so convert role new to old for emitting event
+        const char* old_role = this->rolenew2old[label].c_str();
+
+        this->emit_visible(old_role);
+        this->emit_activated(old_role);
     }
 }
 
@@ -815,10 +853,10 @@ void WindowManager::deactivate(int id)
             this->lookup_name(id).value_or("unknown-name").c_str();
 
         // FOR CES DEMO >>>
-        if ((0 == strcmp(label, "Radio"))       ||
-            (0 == strcmp(label, "MediaPlayer")) ||
-            (0 == strcmp(label, "Music"))       ||
-            (0 == strcmp(label, "Navigation")))
+        if ((0 == strcmp(label, "radio")) ||
+            (0 == strcmp(label, "music")) ||
+            (0 == strcmp(label, "video")) ||
+            (0 == strcmp(label, "map")))
         {
 
             // Store id
@@ -843,8 +881,14 @@ void WindowManager::deactivate(int id)
         }
         // <<< FOR CES DEMO
 
-        this->emit_deactivated(label);
-        this->emit_invisible(label);
+        this->layout_commit();
+
+        // TODO: application requests by old role,
+        //       so convert role new to old for emitting event
+        const char* old_role = this->rolenew2old[label].c_str();
+
+        this->emit_deactivated(old_role);
+        this->emit_invisible(old_role);
     }
 }
 
@@ -983,7 +1027,7 @@ WMError WindowManager::checkPolicy(unsigned req_num)
 
     /*  get new status from Policy Manager */
     HMI_SEQ_NOTICE(req_num, "ATM, Policy manager does't exist, then set WMAction as is");
-    if(trigger.role == "HomeScreen")
+    if(trigger.role == "homescreen")
     {
         // TODO : Remove when Policy Manager completed
         HMI_SEQ_NOTICE(req_num, "Hack. This process will be removed. Change HomeScreen code!!");
@@ -1017,7 +1061,12 @@ WMError WindowManager::startTransition(unsigned req_num)
         if (action.visible != TaskVisible::INVISIBLE)
         {
             sync_draw_happen = true;
-            this->emit_syncdraw(action.role, action.area);
+
+            // TODO: application requests by old role,
+            //       so convert role new to old for emitting event
+            std::string old_role = this->rolenew2old[action.role];
+
+            this->emit_syncdraw(old_role, action.area);
             /* TODO: emit event for app not subscriber
             if(g_app_list.contains(y.appid))
                 g_app_list.lookUpClient(y.appid)->emit_syncdraw(y.role, y.area); */
@@ -1050,8 +1099,8 @@ WMError WindowManager::setInvisibleTask(const std::string &role, bool split)
     unsigned req_num = g_app_list.currentRequestNumber();
     HMI_SEQ_DEBUG(req_num, "set current visible app to invisible task");
     // This task is copied from original actiavete surface
-    const char *drawing_name = role.c_str();
-    auto const &surface_id = this->lookup_id(drawing_name);
+    const char *drawing_name = this->rolenew2old[role].c_str();
+    auto const &surface_id = this->lookup_id(role.c_str());
     auto layer_id = this->layers.get_layer_id(*surface_id);
     auto o_state = *this->layers.get_layout_state(*surface_id);
     struct LayoutState &state = *o_state;
@@ -1237,7 +1286,11 @@ WMError WindowManager::doEndDraw(unsigned req_num)
     {
         if(act_flush.visible != TaskVisible::INVISIBLE)
         {
-            this->emit_flushdraw(act_flush.role.c_str());
+            // TODO: application requests by old role,
+            //       so convert role new to old for emitting event
+            std::string old_role = this->rolenew2old[act_flush.role];
+
+            this->emit_flushdraw(old_role.c_str());
         }
     }
 
@@ -1447,6 +1500,105 @@ void WindowManager::processNextRequest()
     }
 }
 
+const char* WindowManager::convertRoleOldToNew(char const *old_role)
+{
+    const char *new_role = nullptr;
+
+    for (auto const &on : this->roleold2new)
+    {
+        std::regex regex = std::regex(on.first);
+        if (std::regex_match(old_role, regex))
+        {
+            // role is old. So convert to new.
+            new_role = on.second.c_str();
+            break;
+        }
+    }
+
+    if (nullptr == new_role)
+    {
+        // role is new or fallback.
+        new_role = old_role;
+    }
+
+    HMI_DEBUG("wm", "old:%s -> new:%s", old_role, new_role);
+
+    return new_role;
+}
+
+int WindowManager::loadOldRoleDb()
+{
+    // Get afm application installed dir
+    char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
+    HMI_DEBUG("wm", "afm_app_install_dir:%s", afm_app_install_dir);
+
+    std::string file_name;
+    if (!afm_app_install_dir)
+    {
+        HMI_ERROR("wm", "AFM_APP_INSTALL_DIR is not defined");
+    }
+    else
+    {
+        file_name = std::string(afm_app_install_dir) + std::string("/etc/old_roles.db");
+    }
+
+    // Load old_role.db
+    json_object* json_obj;
+    int ret = jh::inputJsonFilie(file_name.c_str(), &json_obj);
+    if (0 > ret)
+    {
+        HMI_ERROR("wm", "Could not open old_role.db, so use default old_role information");
+        json_obj = json_tokener_parse(kDefaultOldRoleDb);
+    }
+    HMI_DEBUG("wm", "json_obj dump:%s", json_object_get_string(json_obj));
+
+    // Perse apps
+    json_object* json_cfg;
+    if (!json_object_object_get_ex(json_obj, "old_roles", &json_cfg))
+    {
+        HMI_ERROR("wm", "Parse Error!!");
+        return -1;
+    }
+
+    int len = json_object_array_length(json_cfg);
+    HMI_DEBUG("wm", "json_cfg len:%d", len);
+    HMI_DEBUG("wm", "json_cfg dump:%s", json_object_get_string(json_cfg));
+
+    for (int i=0; i<len; i++)
+    {
+        json_object* json_tmp = json_object_array_get_idx(json_cfg, i);
+
+        const char* old_role = jh::getStringFromJson(json_tmp, "name");
+        if (nullptr == old_role)
+        {
+            HMI_ERROR("wm", "Parse Error!!");
+            return -1;
+        }
+
+        const char* new_role = jh::getStringFromJson(json_tmp, "new");
+        if (nullptr == new_role)
+        {
+            HMI_ERROR("wm", "Parse Error!!");
+            return -1;
+        }
+
+        this->roleold2new[old_role] = std::string(new_role);
+    }
+
+    // Check
+    for(auto itr = this->roleold2new.begin();
+      itr != this->roleold2new.end(); ++itr)
+    {
+        HMI_DEBUG("wm", ">>> role old:%s new:%s",
+                  itr->first.c_str(), itr->second.c_str());
+    }
+
+    // Release json_object
+    json_object_put(json_obj);
+
+    return 0;
+}
+
 const char *WindowManager::check_surface_exist(const char *drawing_name)
 {
     auto const &surface_id = this->lookup_id(drawing_name);
@@ -1523,6 +1675,75 @@ bool WindowManager::can_split(struct LayoutState const &state, int new_id)
 
     return false;
 }
+
+const char* WindowManager::kDefaultOldRoleDb = "{ \
+    \"old_roles\": [ \
+        { \
+            \"name\": \"HomeScreen\", \
+            \"new\": \"homescreen\" \
+        }, \
+        { \
+            \"name\": \"Music\", \
+            \"new\": \"music\" \
+        }, \
+        { \
+            \"name\": \"MediaPlayer\", \
+            \"new\": \"music\" \
+        }, \
+        { \
+            \"name\": \"Video\", \
+            \"new\": \"video\" \
+        }, \
+        { \
+            \"name\": \"VideoPlayer\", \
+            \"new\": \"video\" \
+        }, \
+        { \
+            \"name\": \"WebBrowser\", \
+            \"new\": \"browser\" \
+        }, \
+        { \
+            \"name\": \"Radio\", \
+            \"new\": \"radio\" \
+        }, \
+        { \
+            \"name\": \"Phone\", \
+            \"new\": \"phone\" \
+        }, \
+        { \
+            \"name\": \"Navigation\", \
+            \"new\": \"map\" \
+        }, \
+        { \
+            \"name\": \"HVAC\", \
+            \"new\": \"hvac\" \
+        }, \
+        { \
+            \"name\": \"Settings\", \
+            \"new\": \"settings\" \
+        }, \
+        { \
+            \"name\": \"Dashboard\", \
+            \"new\": \"dashboard\" \
+        }, \
+        { \
+            \"name\": \"POI\", \
+            \"new\": \"poi\" \
+        }, \
+        { \
+            \"name\": \"Mixer\", \
+            \"new\": \"mixer\" \
+        }, \
+        { \
+            \"name\": \"Restriction\", \
+            \"new\": \"restriction\" \
+        }, \
+        { \
+            \"name\": \"^OnScreen.*\", \
+            \"new\": \"on_screen\" \
+        } \
+    ] \
+}";
 
 /**
  * controller_hooks

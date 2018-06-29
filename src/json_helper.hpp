@@ -17,6 +17,7 @@
 #ifndef TMCAGLWM_JSON_HELPER_HPP
 #define TMCAGLWM_JSON_HELPER_HPP
 
+#include <json-c/json.h>
 #include "../include/json.hpp"
 #include "wayland_ivi_wm.hpp"
 
@@ -25,5 +26,10 @@ struct json_object;
 json_object *to_json(compositor::screen const *s);
 json_object *to_json(compositor::controller::props_map const &s);
 json_object *to_json(std::vector<uint32_t> const &v);
+
+namespace jh {
+const char* getStringFromJson(json_object* obj, const char* key);
+int inputJsonFilie(const char* file, json_object** obj);
+}  // namespace jh
 
 #endif // TMCAGLWM_JSON_HELPER_HPP

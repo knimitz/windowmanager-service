@@ -15,21 +15,21 @@
          "comment": "Single BackGround layer map for the Navigation, Radio and MediaPlayer"
       },
       {
-         "role": "^HomeScreen$",
+         "role": "homescreen",
          "name": "HomeScreen",
          "layer_id": 1000,
          "area": { "type": "full" },
          "comment": "Single layer map for the HomeScreen"
       },
       {
-         "role": "Music|Video|WebBrowser|MediaPlayer|Radio|Phone|Navigation|HVAC|Settings|Dashboard|POI|Mixer|Fallback",
+         "role": "music|video|browser|radio|phone|map|hvac|settings|dashboard|poi|mixer|sdl|launcher|fallback",
          "name": "apps",
          "layer_id": 1001,
          "area": { "type": "rect", "rect": { "x": 0, "y": 218, "width": -1, "height": -433 } },
          "comment": "Range of IDs that will always be placed on layer 1001, negative rect values are interpreted as output_size.dimension - $value"
       },
       {
-         "role": "^OnScreen.*",
+         "role": "^on_screen.*",
          "name": "popups",
          "layer_id": 9999,
          "area": { "type": "rect", "rect": { "x": 0, "y": 760, "width": -1, "height": 400 } },

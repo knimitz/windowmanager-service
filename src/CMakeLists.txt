@@ -110,6 +110,7 @@ add_custom_command(TARGET ${TARGETS_WM} POST_BUILD
    COMMAND cp -rf ${PROJECT_BINARY_DIR}/src/${TARGETS_WM}.so ${PROJECT_BINARY_DIR}/package/root/lib
    COMMAND mkdir -p ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/layers.json ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/db/old_roles.db ${PROJECT_BINARY_DIR}/package/root/etc
 )
 
 add_custom_target(package DEPENDS ${PROJECT_BINARY_DIR}/package/root

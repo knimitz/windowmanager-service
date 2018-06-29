@@ -17,7 +17,6 @@
 #ifndef TMCAGLWM_APP_HPP
 #define TMCAGLWM_APP_HPP
 
-#include <json-c/json.h>
 #include <atomic>
 #include <memory>
 #include <unordered_map>
@@ -29,6 +28,8 @@
 #include "hmi-debug.h"
 #include "request.hpp"
 #include "wm_error.hpp"
+
+struct json_object;
 
 namespace wl
 {
@@ -265,12 +266,19 @@ class WindowManager
     void stopTimer();
     void processNextRequest();
 
+    int loadOldRoleDb();
+    const char* convertRoleOldToNew(char const *drawing_name);
+
     const char *check_surface_exist(const char *drawing_name);
 
     bool can_split(struct LayoutState const &state, int new_id);
 
   private:
     std::unordered_map<std::string, struct compositor::rect> area2size;
+    std::unordered_map<std::string, std::string> roleold2new;
+    std::unordered_map<std::string, std::string> rolenew2old;
+
+    static const char* kDefaultOldRoleDb;
 };
 
 } // namespace wm

@@ -1,0 +1,68 @@
+{
+    "old_roles": [
+        {
+            "name": "HomeScreen",
+            "new": "homescreen"
+        },
+        {
+            "name": "Music",
+            "new": "music"
+        },
+        {
+            "name": "MediaPlayer",
+            "new": "music"
+        },
+        {
+            "name": "Video",
+            "new": "video"
+        },
+        {
+            "name": "VideoPlayer",
+            "new": "video"
+        },
+        {
+            "name": "WebBrowser",
+            "new": "browser"
+        },
+        {
+            "name": "Radio",
+            "new": "radio"
+        },
+        {
+            "name": "Phone",
+            "new": "phone"
+        },
+        {
+            "name": "Navigation",
+            "new": "map"
+        },
+        {
+            "name": "HVAC",
+            "new": "hvac"
+        },
+        {
+            "name": "Settings",
+            "new": "settings"
+        },
+        {
+            "name": "Dashboard",
+            "new": "dashboard"
+        },
+        {
+            "name": "POI",
+            "new": "poi"
+        },
+        {
+            "name": "Mixer",
+            "new": "mixer"
+        },
+        {
+            "name": "Restriction",
+            "new": "restriction"
+        },
+        {
+            "name": "^OnScreen.*",
+            "new": "on_screen"
+        }
+    ]
+}

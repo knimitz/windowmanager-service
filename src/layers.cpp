@@ -196,7 +196,7 @@ void layer_map::setupArea(int output_w, int output_h)
     compositor::rect rct;
     // setup normal.full
     std::string area = "normal.full";
-    std::string role = "Fallback";
+    std::string role = "fallback";
     auto l_id = this->get_layer_id(role);
     auto l = this->get_layer(*l_id);
     rct = l->rect;
@@ -220,7 +220,7 @@ void layer_map::setupArea(int output_w, int output_h)
 
     // setup homescreen
     area = "fullscreen";
-    role = "HomeScreen";
+    role = "homescreen";
     rct = compositor::full_rect;
     if (rct.w <= 0)
         rct.w = output_w + rct.w + 1;
@@ -230,7 +230,7 @@ void layer_map::setupArea(int output_w, int output_h)
 
     // setup onscreen
     area = "on_screen";
-    role = "OnScreen";
+    role = "on_screen";
     auto ons_id = this->get_layer_id(role);
     auto l_ons = this->get_layer(*ons_id);
     rct = l_ons->rect;
