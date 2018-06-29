@@ -1,0 +1,85 @@
+{
+    "areas": [
+        {
+            "name": "fullscreen",
+            "rect": {
+                "x": 0,
+                "y": 0,
+                "w": -1,
+                "h": -1
+            }
+        },
+        {
+            "name": "normal.full",
+            "rect": {
+                "x": 0,
+                "y": 218,
+                "w": -1,
+                "h": -433
+            }
+        },
+        {
+            "name": "split.main",
+            "rect": {
+                "x": 0,
+                "y": 218,
+                "w": -1,
+                "h": 744
+            }
+        },
+        {
+            "name": "split.sub",
+            "rect": {
+                "x": 0,
+                "y": 962,
+                "w": -1,
+                "h": 744
+            }
+        },
+        {
+            "name": "software_keyboard",
+            "rect": {
+                "x": 0,
+                "y": 962,
+                "w": -1,
+                "h": 744
+            }
+        },
+        {
+            "name": "restriction.normal",
+            "rect": {
+                "x": 0,
+                "y": 218,
+                "w": -1,
+                "h": -433
+            }
+        },
+        {
+            "name": "restriction.split.main",
+            "rect": {
+                "x": 0,
+                "y": 218,
+                "w": -1,
+                "h": 744
+            }
+        },
+        {
+            "name": "restriction.split.sub",
+            "rect": {
+                "x": 0,
+                "y": 962,
+                "w": -1,
+                "h": 744
+            }
+        },
+        {
+            "name": "on_screen",
+            "rect": {
+                "x": 0,
+                "y": 218,
+                "w": -1,
+                "h": -433
+            }
+        }
+    ]
+}

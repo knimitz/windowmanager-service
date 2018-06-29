@@ -111,6 +111,7 @@ add_custom_command(TARGET ${TARGETS_WM} POST_BUILD
    COMMAND mkdir -p ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/layers.json ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/db/old_roles.db ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/db/areas.db ${PROJECT_BINARY_DIR}/package/root/etc
 )
 
 add_custom_target(package DEPENDS ${PROJECT_BINARY_DIR}/package/root

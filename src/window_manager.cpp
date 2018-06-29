@@ -687,6 +687,7 @@ int WindowManager::init_layers()
 
     this->layout_commit();
 
+    this->layers.loadAreaDb();
     this->layers.setupArea(o->width, o->height);
 
     return 0;
@@ -720,17 +721,6 @@ void WindowManager::surface_set_layout(int surface_id, const std::string& area)
     int y = rect.y;
     int w = rect.w;
     int h = rect.h;
-
-    // less-than-0 values refer to MAX + 1 - $VALUE
-    // e.g. MAX is either screen width or height
-    if (w < 0)
-    {
-        w = this->controller->output_size.w + 1 + w;
-    }
-    if (h < 0)
-    {
-        h = this->controller->output_size.h + 1 + h;
-    }
 
     HMI_DEBUG("wm", "surface_set_layout for surface %u on layer %u", surface_id,
               layer_id);

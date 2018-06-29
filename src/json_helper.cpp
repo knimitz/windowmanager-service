@@ -124,6 +124,18 @@ const char* getStringFromJson(json_object* obj, const char* key)
     return json_object_get_string(tmp);
 }
 
+int getIntFromJson(json_object *obj, const char *key)
+{
+    json_object *tmp;
+    if (!json_object_object_get_ex(obj, key, &tmp))
+    {
+        HMI_DEBUG("wm:jh", "Not found key \"%s\"", key);
+        return 0;
+    }
+
+    return json_object_get_int(tmp);
+}
+
 int inputJsonFilie(const char* file, json_object** obj)
 {
     const int input_size = 128;

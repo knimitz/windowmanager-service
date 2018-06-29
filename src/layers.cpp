@@ -17,6 +17,7 @@
 #include <regex>
 
 #include "layers.hpp"
+#include "json_helper.hpp"
 #include "hmi-debug.h"
 
 namespace wm
@@ -29,17 +30,6 @@ layer::layer(nlohmann::json const &j)
     this->role = j["role"];
     this->name = j["name"];
     this->layer_id = j["layer_id"];
-    this->rect = compositor::full_rect;
-    if (j["area"]["type"] == "rect")
-    {
-        auto jr = j["area"]["rect"];
-        this->rect = compositor::rect{
-            jr["width"],
-            jr["height"],
-            jr["x"],
-            jr["y"],
-        };
-    }
 
     // Init flag of normal layout only
     this->is_normal_layout_only = true;
@@ -194,56 +184,207 @@ json layer_map::to_json() const
 void layer_map::setupArea(int output_w, int output_h)
 {
     compositor::rect rct;
-    // setup normal.full
-    std::string area = "normal.full";
-    std::string role = "fallback";
-    auto l_id = this->get_layer_id(role);
-    auto l = this->get_layer(*l_id);
-    rct = l->rect;
-    if(rct.w < 0)
-        rct.w = output_w + 1 + rct.w;
-    if(rct.h < 0)
-        rct.h = output_h + 1 + rct.h;
-    this->area2size[area] = rct;
+    for (auto &i : this->area2size)
+    {
+        rct = i.second;
+
+        // less-than-0 values refer to MAX + 1 - $VALUE
+        // e.g. MAX is either screen width or height
+        if(rct.w < 0)
+            rct.w = output_w + 1 + rct.w;
+        if(rct.h < 0)
+            rct.h = output_h + 1 + rct.h;
+
+        i.second = rct;
+    }
+
+    rct = this->area2size["normal.full"];
     this->area2size["normalfull"] = rct;
     this->area2size["normal"] = rct;
 
-    // setup split.main
-    area = "split.main";
-    rct.h = rct.h / 2;
-    this->area2size[area] = rct;
-
-    // setup split.sub
-    area = "split.sub";
-    rct.y = rct.y + rct.h;
-    this->area2size[area] = rct;
-
-    // setup homescreen
-    area = "fullscreen";
-    role = "homescreen";
-    rct = compositor::full_rect;
-    if (rct.w <= 0)
-        rct.w = output_w + rct.w + 1;
-    if (rct.h <= 0)
-        rct.h = output_h + rct.h + 1;
-    this->area2size[area] = rct;
-
-    // setup onscreen
-    area = "on_screen";
-    role = "on_screen";
-    auto ons_id = this->get_layer_id(role);
-    auto l_ons = this->get_layer(*ons_id);
-    rct = l_ons->rect;
-    if (rct.w < 0)
-        rct.w = output_w + 1 + rct.w;
-    if (rct.h < 0)
-        rct.h = output_h + 1 + rct.h;
-    this->area2size[area] = rct;
+    for (auto &i : this->area2size)
+    {
+        HMI_DEBUG("wm:lm", "area:%s size(after) : x:%d y:%d w:%d h:%d",
+            i.first.c_str(), i.second.x, i.second.y, i.second.w, i.second.h);
+    }
 }
 
 compositor::rect layer_map::getAreaSize(const std::string &area)
 {
     return area2size[area];
 }
+
+int layer_map::loadAreaDb()
+{
+    HMI_DEBUG("wm:lm", "Call");
+
+    // Get afm application installed dir
+    char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
+    HMI_DEBUG("wm:lm", "afm_app_install_dir:%s", afm_app_install_dir);
+
+    std::string file_name;
+    if (!afm_app_install_dir)
+    {
+        HMI_ERROR("wm:lm", "AFM_APP_INSTALL_DIR is not defined");
+    }
+    else
+    {
+        file_name = std::string(afm_app_install_dir) + std::string("/etc/areas.db");
+    }
+
+    // Load area.db
+    json_object *json_obj;
+    int ret = jh::inputJsonFilie(file_name.c_str(), &json_obj);
+    if (0 > ret)
+    {
+        HMI_DEBUG("wm:lm", "Could not open area.db, so use default area information");
+        json_obj = json_tokener_parse(kDefaultAreaDb);
+    }
+    HMI_DEBUG("wm:lm", "json_obj dump:%s", json_object_get_string(json_obj));
+
+    // Perse areas
+    HMI_DEBUG("wm:lm", "Perse areas");
+    json_object *json_cfg;
+    if (!json_object_object_get_ex(json_obj, "areas", &json_cfg))
+    {
+        HMI_ERROR("wm:lm", "Parse Error!!");
+        return -1;
+    }
+
+    int len = json_object_array_length(json_cfg);
+    HMI_DEBUG("wm:lm", "json_cfg len:%d", len);
+    HMI_DEBUG("wm:lm", "json_cfg dump:%s", json_object_get_string(json_cfg));
+
+    const char *area;
+    for (int i = 0; i < len; i++)
+    {
+        json_object *json_tmp = json_object_array_get_idx(json_cfg, i);
+        HMI_DEBUG("wm:lm", "> json_tmp dump:%s", json_object_get_string(json_tmp));
+
+        area = jh::getStringFromJson(json_tmp, "name");
+        if (nullptr == area)
+        {
+            HMI_ERROR("wm:lm", "Parse Error!!");
+            return -1;
+        }
+        HMI_DEBUG("wm:lm", "> area:%s", area);
+
+        json_object *json_rect;
+        if (!json_object_object_get_ex(json_tmp, "rect", &json_rect))
+        {
+            HMI_ERROR("wm:lm", "Parse Error!!");
+            return -1;
+        }
+        HMI_DEBUG("wm:lm", "> json_rect dump:%s", json_object_get_string(json_rect));
+
+        compositor::rect area_size;
+        area_size.x = jh::getIntFromJson(json_rect, "x");
+        area_size.y = jh::getIntFromJson(json_rect, "y");
+        area_size.w = jh::getIntFromJson(json_rect, "w");
+        area_size.h = jh::getIntFromJson(json_rect, "h");
+
+        this->area2size[area] = area_size;
+    }
+
+    // Check
+    for (auto itr = this->area2size.begin();
+         itr != this->area2size.end(); ++itr)
+    {
+        HMI_DEBUG("wm:lm", "area:%s x:%d y:%d w:%d h:%d",
+                  itr->first.c_str(), itr->second.x, itr->second.y,
+                  itr->second.w, itr->second.h);
+    }
+
+    // Release json_object
+    json_object_put(json_obj);
+
+    return 0;
+}
+
+const char* layer_map::kDefaultAreaDb = "{ \
+    \"areas\": [ \
+        { \
+            \"name\": \"fullscreen\", \
+            \"rect\": { \
+                \"x\": 0, \
+                \"y\": 0, \
+                \"w\": -1, \
+                \"h\": -1 \
+            } \
+        }, \
+        { \
+            \"name\": \"normal.full\", \
+            \"rect\": { \
+                \"x\": 0, \
+                \"y\": 218, \
+                \"w\": -1, \
+                \"h\": -433 \
+            } \
+        }, \
+        { \
+            \"name\": \"split.main\", \
+            \"rect\": { \
+                \"x\": 0, \
+                \"y\": 218, \
+                \"w\": -1, \
+                \"h\": 744 \
+            } \
+        }, \
+        { \
+            \"name\": \"split.sub\", \
+            \"rect\": { \
+                \"x\": 0, \
+                \"y\": 962, \
+                \"w\": -1, \
+                \"h\": 744 \
+            } \
+        }, \
+        { \
+            \"name\": \"software_keyboard\", \
+            \"rect\": { \
+                \"x\": 0, \
+                \"y\": 962, \
+                \"w\": -1, \
+                \"h\": 744 \
+            } \
+        }, \
+        { \
+            \"name\": \"restriction.normal\", \
+            \"rect\": { \
+                \"x\": 0, \
+                \"y\": 218, \
+                \"w\": -1, \
+                \"h\": -433 \
+            } \
+        }, \
+        { \
+            \"name\": \"restriction.split.main\", \
+            \"rect\": { \
+                \"x\": 0, \
+                \"y\": 218, \
+                \"w\": -1, \
+                \"h\": 744 \
+            } \
+        }, \
+        { \
+            \"name\": \"restriction.split.sub\", \
+            \"rect\": { \
+                \"x\": 0, \
+                \"y\": 962, \
+                \"w\": -1, \
+                \"h\": 744 \
+            } \
+        }, \
+        { \
+            \"name\": \"on_screen\", \
+            \"rect\": { \
+                \"x\": 0, \
+                \"y\": 218, \
+                \"w\": -1, \
+                \"h\": -433 \
+            } \
+        } \
+    ] \
+}";
 
 } // namespace wm
