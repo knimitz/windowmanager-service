@@ -331,7 +331,7 @@ void windowmanager_requestsurfacexdg(afb_req req) noexcept
     }
 }
 
-void windowmanager_activatesurface(afb_req req) noexcept
+void windowmanager_activatewindow(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
 #ifdef ST
@@ -380,7 +380,7 @@ void windowmanager_activatesurface(afb_req req) noexcept
     }
 }
 
-void windowmanager_deactivatesurface(afb_req req) noexcept
+void windowmanager_deactivatewindow(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
 #ifdef ST
@@ -739,8 +739,8 @@ void windowmanager_debug_terminate(afb_req req) noexcept
 const struct afb_verb_v2 windowmanager_verbs[] = {
     {"requestsurface", windowmanager_requestsurface, nullptr, nullptr, AFB_SESSION_NONE},
     {"requestsurfacexdg", windowmanager_requestsurfacexdg, nullptr, nullptr, AFB_SESSION_NONE},
-    {"activatesurface", windowmanager_activatesurface, nullptr, nullptr, AFB_SESSION_NONE},
-    {"deactivatesurface", windowmanager_deactivatesurface, nullptr, nullptr, AFB_SESSION_NONE},
+    {"activatewindow", windowmanager_activatewindow, nullptr, nullptr, AFB_SESSION_NONE},
+    {"deactivatewindow", windowmanager_deactivatewindow, nullptr, nullptr, AFB_SESSION_NONE},
     {"enddraw", windowmanager_enddraw, nullptr, nullptr, AFB_SESSION_NONE},
     {"getdisplayinfo", windowmanager_getdisplayinfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
     {"getareainfo", windowmanager_getareainfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
