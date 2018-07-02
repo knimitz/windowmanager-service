@@ -166,9 +166,9 @@ class WindowManager
         "inactive",
         "visible",
         "invisible",
-        "syncdraw",
-        "flushdraw",
-        "screen_updated",
+        "syncDraw",
+        "flushDraw",
+        "screenUpdated",
         "error"};
 
     struct controller_hooks chooks;
