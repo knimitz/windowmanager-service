@@ -36,6 +36,7 @@ add_library(${TARGETS_WM} MODULE
    layers.cpp
    wm_client.cpp
    wm_error.cpp
+   wm_config.cpp
    applist.cpp
    request.cpp)
 
@@ -112,6 +113,7 @@ add_custom_command(TARGET ${TARGETS_WM} POST_BUILD
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/layers.json ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/db/old_roles.db ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/db/areas.db ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${PROJECT_SOURCE_DIR}/conf/setting.json ${PROJECT_BINARY_DIR}/package/root/etc
 )
 
 add_custom_target(package DEPENDS ${PROJECT_BINARY_DIR}/package/root

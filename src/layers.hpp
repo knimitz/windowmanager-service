@@ -114,8 +114,8 @@ struct layer_map
     }
 
     json to_json() const;
-    void setupArea(int output_w, int output_h);
     compositor::rect getAreaSize(const std::string &area);
+    const compositor::rect getScaleDestRect(int output_w, int output_h, const std::string &aspect_setting);
     int loadAreaDb();
 
   private:

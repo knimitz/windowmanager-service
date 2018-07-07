@@ -197,6 +197,7 @@ struct layer : public controller_child
 
     // Requests
     void set_visibility(uint32_t visibility);
+    void set_source_rectangle(int32_t x, int32_t y, int32_t width, int32_t height);
     void set_destination_rectangle(int32_t x, int32_t y,
                                    int32_t width, int32_t height);
     void add_surface(uint32_t surface_id);

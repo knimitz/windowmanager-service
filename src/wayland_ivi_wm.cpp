@@ -435,6 +435,11 @@ void layer::set_visibility(uint32_t visibility)
     ivi_wm_set_layer_visibility(this->parent->proxy.get(), this->id, visibility);
 }
 
+void layer::set_source_rectangle(int32_t x, int32_t y, int32_t width, int32_t height)
+{
+    ivi_wm_set_layer_source_rectangle(this->parent->proxy.get(), this->id, x, y, width, height);
+}
+
 void layer::set_destination_rectangle(int32_t x, int32_t y,
                                       int32_t width, int32_t height)
 {
