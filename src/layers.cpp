@@ -184,19 +184,6 @@ json layer_map::to_json() const
 void layer_map::setupArea(int output_w, int output_h)
 {
     compositor::rect rct;
-    for (auto &i : this->area2size)
-    {
-        rct = i.second;
-
-        // less-than-0 values refer to MAX + 1 - $VALUE
-        // e.g. MAX is either screen width or height
-        if(rct.w < 0)
-            rct.w = output_w + 1 + rct.w;
-        if(rct.h < 0)
-            rct.h = output_h + 1 + rct.h;
-
-        i.second = rct;
-    }
 
     rct = this->area2size["normal.full"];
     this->area2size["normalfull"] = rct;
@@ -308,8 +295,8 @@ const char* layer_map::kDefaultAreaDb = "{ \
             \"rect\": { \
                 \"x\": 0, \
                 \"y\": 0, \
-                \"w\": -1, \
-                \"h\": -1 \
+                \"w\": 1080, \
+                \"h\": 1920 \
             } \
         }, \
         { \
@@ -317,8 +304,8 @@ const char* layer_map::kDefaultAreaDb = "{ \
             \"rect\": { \
                 \"x\": 0, \
                 \"y\": 218, \
-                \"w\": -1, \
-                \"h\": -433 \
+                \"w\": 1080, \
+                \"h\": 1488 \
             } \
         }, \
         { \
@@ -326,7 +313,7 @@ const char* layer_map::kDefaultAreaDb = "{ \
             \"rect\": { \
                 \"x\": 0, \
                 \"y\": 218, \
-                \"w\": -1, \
+                \"w\": 1080, \
                 \"h\": 744 \
             } \
         }, \
@@ -335,7 +322,7 @@ const char* layer_map::kDefaultAreaDb = "{ \
             \"rect\": { \
                 \"x\": 0, \
                 \"y\": 962, \
-                \"w\": -1, \
+                \"w\": 1080, \
                 \"h\": 744 \
             } \
         }, \
@@ -344,7 +331,7 @@ const char* layer_map::kDefaultAreaDb = "{ \
             \"rect\": { \
                 \"x\": 0, \
                 \"y\": 962, \
-                \"w\": -1, \
+                \"w\": 1080, \
                 \"h\": 744 \
             } \
         }, \
@@ -353,8 +340,8 @@ const char* layer_map::kDefaultAreaDb = "{ \
             \"rect\": { \
                 \"x\": 0, \
                 \"y\": 218, \
-                \"w\": -1, \
-                \"h\": -433 \
+                \"w\": 1080, \
+                \"h\": 1488 \
             } \
         }, \
         { \
@@ -362,7 +349,7 @@ const char* layer_map::kDefaultAreaDb = "{ \
             \"rect\": { \
                 \"x\": 0, \
                 \"y\": 218, \
-                \"w\": -1, \
+                \"w\": 1080, \
                 \"h\": 744 \
             } \
         }, \
@@ -371,7 +358,7 @@ const char* layer_map::kDefaultAreaDb = "{ \
             \"rect\": { \
                 \"x\": 0, \
                 \"y\": 962, \
-                \"w\": -1, \
+                \"w\": 1080, \
                 \"h\": 744 \
             } \
         }, \
@@ -380,8 +367,8 @@ const char* layer_map::kDefaultAreaDb = "{ \
             \"rect\": { \
                 \"x\": 0, \
                 \"y\": 218, \
-                \"w\": -1, \
-                \"h\": -433 \
+                \"w\": 1080, \
+                \"h\": 1488 \
             } \
         } \
     ] \
