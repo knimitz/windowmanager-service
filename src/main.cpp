@@ -184,27 +184,19 @@ static void cbRemoveClientCtxt(void *data)
         return;
     }
     HMI_DEBUG("wm", "remove app %s", ctxt->name.c_str());
-    // Lookup surfaceID and remove it because App is dead.
-    auto pSid = g_afb_instance->wmgr.id_alloc.lookup(ctxt->role.c_str());
-    if (pSid)
-    {
-        auto sid = *pSid;
-        auto o_state = *g_afb_instance->wmgr.layers.get_layout_state(sid);
-        if (o_state != nullptr)
-        {
-            if (o_state->main == sid)
+
+    // Policy Manager does not know this app was killed,
+    // so notify it by deactivate request.
+    g_afb_instance->wmgr.api_deactivate_surface(
+        ctxt->name.c_str(), ctxt->role.c_str(),
+        [](const char *errmsg) {
+            if (errmsg != nullptr)
             {
-                o_state->main = -1;
+                HMI_ERROR("wm", errmsg);
+                return;
             }
-            else if (o_state->sub == sid)
-            {
-                o_state->sub = -1;
-            }
-        }
-        g_afb_instance->wmgr.id_alloc.remove_id(sid);
-        g_afb_instance->wmgr.layers.remove_surface(sid);
-        HMI_DEBUG("wm", "delete surfaceID %d", sid);
-    }
+        });
+
     g_afb_instance->wmgr.removeClient(ctxt->name);
     delete ctxt;
 }

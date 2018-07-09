@@ -1,0 +1,40 @@
+{
+    "roles":[
+    {
+        "category": "homescreen",
+        "role": "homescreen",
+        "area": "fullscreen",
+        "layer": "homescreen",
+    },
+    {
+        "category": "debug",
+        "role": "launcher | map | poi | browser | sdl | mixer | radio | hvac | debug | phone | video | music | settings | dashboard | fallback",
+        "area": "normal.full | split.main | split.sub | fullscreen",
+        "layer": "apps",
+    },
+    {
+        "category": "software_keyboard",
+        "role": "software_keyboard",
+        "area": "software_keyboard",
+        "layer": "near_homescreen",
+    },
+    {
+        "category": "restriction",
+        "role": "restriction",
+        "area": "restriction.normal | restriction.split.main | restriction.split.sub",
+        "layer": "restriction",
+    },
+    {
+        "category": "pop_up",
+        "role": "on_screen | on_screen_phone",
+        "area": "on_screen",
+        "layer": "on_screen",
+    },
+    {
+        "category": "system_alert",
+        "role": "system_alert",
+        "area": "on_screen",
+        "layer": "on_screen",
+    }
+    ]
+}

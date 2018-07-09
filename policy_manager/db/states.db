@@ -1,0 +1,174 @@
+{
+    "states": [
+        {
+            "name": "homescreen",
+            "areas": [
+                {
+                    "name": "fullscreen",
+                    "category": "homescreen"
+                }
+            ]
+        },
+        {
+            "name": "map.normal",
+            "areas": [
+                {
+                    "name": "normal.full",
+                    "category": "map"
+                }
+            ]
+        },
+        {
+            "name": "map.split",
+            "areas": [
+                {
+                    "name": "split.main",
+                    "category": "map"
+                },
+                {
+                    "name": "split.sub",
+                    "category": "splitable"
+                }
+            ]
+        },
+        {
+            "name": "map.fullscreen",
+            "areas": [
+                {
+                    "name": "fullscreen",
+                    "category": "map"
+                }
+            ]
+        },
+        {
+            "name": "splitable.normal",
+            "areas": [
+                {
+                    "name": "normal.full",
+                    "category": "splitable"
+                }
+            ]
+        },
+        {
+            "name": "splitable.split",
+            "areas": [
+                {
+                    "name": "split.main",
+                    "category": "splitable"
+                },
+                {
+                    "name": "split.sub",
+                    "category": "splitable"
+                }
+            ]
+        },
+        {
+            "name": "general.normal",
+            "areas": [
+                {
+                    "name": "normal.full",
+                    "category": "general"
+                }
+            ]
+        },
+        {
+            "name": "system.normal",
+            "areas": [
+                {
+                    "name": "normal.full",
+                    "category": "system"
+                }
+            ]
+        },
+        {
+            "name": "software_keyboard",
+            "areas": [
+                {
+                    "name": "software_keyboard",
+                    "category": "software_keyboard"
+                }
+            ]
+        },
+        {
+            "name": "restriction.normal",
+            "areas": [
+                {
+                    "name": "restriction.normal",
+                    "category": "restriction"
+                }
+            ]
+        },
+        {
+            "name": "restriction.split.main",
+            "areas": [
+                {
+                    "name": "restriction.split.main",
+                    "category": "restriction"
+                }
+            ]
+        },
+        {
+            "name": "restriction.split.sub",
+            "areas": [
+                {
+                    "name": "restriction.split.sub",
+                    "category": "restriction"
+                }
+            ]
+        },
+        {
+            "name": "pop_up",
+            "areas": [
+                {
+                    "name": "on_screen",
+                    "category": "pop_up"
+                }
+            ]
+        },
+        {
+            "name": "system_alert",
+            "areas": [
+                {
+                    "name": "on_screen",
+                    "category": "system_alert"
+                }
+            ]
+        },
+        {
+            "name": "debug.normal",
+            "areas": [
+                {
+                    "name": "normal.full",
+                    "category": "debug"
+                }
+            ]
+        },
+        {
+            "name": "debug.split.main",
+            "areas": [
+                {
+                    "name": "split.main",
+                    "category": "debug"
+                }
+            ]
+        },
+        {
+            "name": "debug.split.sub",
+            "areas": [
+                {
+                    "name": "split.sub",
+                    "category": "debug"
+                }
+            ]
+        },
+        {
+            "name": "debug.fullscreen",
+            "areas": [
+                {
+                    "name": "fullscreen",
+                    "category": "debug"
+                }
+            ]
+        }
+    ]
+}
