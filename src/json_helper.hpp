@@ -30,6 +30,7 @@ json_object *to_json(std::vector<uint32_t> const &v);
 namespace jh {
 const char* getStringFromJson(json_object* obj, const char* key);
 int getIntFromJson(json_object *obj, const char *key);
+json_bool getBoolFromJson(json_object *obj, const char *key);
 int inputJsonFilie(const char* file, json_object** obj);
 }  // namespace jh
 

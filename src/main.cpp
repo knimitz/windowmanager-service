@@ -195,18 +195,6 @@ static void cbRemoveClientCtxt(void *data)
     if (pSid)
     {
         auto sid = *pSid;
-        auto o_state = *g_afb_instance->wmgr.layers.get_layout_state(sid);
-        if (o_state != nullptr)
-        {
-            if (o_state->main == sid)
-            {
-                o_state->main = -1;
-            }
-            else if (o_state->sub == sid)
-            {
-                o_state->sub = -1;
-            }
-        }
         g_afb_instance->wmgr.id_alloc.remove_id(sid);
         g_afb_instance->wmgr.layers.remove_surface(sid);
         g_afb_instance->wmgr.controller->sprops.erase(sid);

@@ -1,0 +1,152 @@
+{
+    "layouts": [
+        {
+            "name": "homescreen",
+            "layer": "far_homescreen",
+            "areas": [
+                {
+                    "name": "fullscreen",
+                    "category": "homescreen"
+                }
+            ]
+        },
+        {
+            "name": "map.normal",
+            "layer": "apps",
+            "areas": [
+                {
+                    "name": "normal.full",
+                    "category": "map"
+                }
+            ]
+        },
+        {
+            "name": "map.split",
+            "layer": "apps",
+            "areas": [
+                {
+                    "name": "split.main",
+                    "category": "map"
+                },
+                {
+                    "name": "split.sub",
+                    "category": "splitable"
+                }
+            ]
+        },
+        {
+            "name": "map.fullscreen",
+            "layer": "apps",
+            "areas": [
+                {
+                    "name": "fullscreen",
+                    "category": "map"
+                }
+            ]
+        },
+        {
+            "name": "splitable.normal",
+            "layer": "apps",
+            "areas": [
+                {
+                    "name": "normal.full",
+                    "category": "splitable"
+                }
+            ]
+        },
+        {
+            "name": "splitable.split",
+            "layer": "apps",
+            "areas": [
+                {
+                    "name": "split.main",
+                    "category": "splitable"
+                },
+                {
+                    "name": "split.sub",
+                    "category": "splitable"
+                }
+            ]
+        },
+        {
+            "name": "general.normal",
+            "layer": "apps",
+            "areas": [
+                {
+                    "name": "normal.full",
+                    "category": "general"
+                }
+            ]
+        },
+        {
+            "name": "system.normal",
+            "layer": "apps",
+            "areas": [
+                {
+                    "name": "normal.full",
+                    "category": "system"
+                }
+            ]
+        },
+        {
+            "name": "software_keyboard",
+            "layer": "near_homescreen",
+            "areas": [
+                {
+                    "name": "software_keyboard",
+                    "category": "software_keyboard"
+                }
+            ]
+        },
+        {
+            "name": "restriction.normal",
+            "layer": "restriction",
+            "areas": [
+                {
+                    "name": "restriction.normal",
+                    "category": "restriction"
+                }
+            ]
+        },
+        {
+            "name": "restriction.split.main",
+            "layer": "restriction",
+            "areas": [
+                {
+                    "name": "restriction.split.main",
+                    "category": "restriction"
+                }
+            ]
+        },
+        {
+            "name": "restriction.split.sub",
+            "layer": "restriction",
+            "areas": [
+                {
+                    "name": "restriction.split.sub",
+                    "category": "restriction"
+                }
+            ]
+        },
+        {
+            "name": "pop_up",
+            "layer": "on_screen",
+            "areas": [
+                {
+                    "name": "on_screen",
+                    "category": "pop_up"
+                }
+            ]
+        },
+        {
+            "name": "system_alert",
+            "layer": "on_screen",
+            "areas": [
+                {
+                    "name": "on_screen",
+                    "category": "system_alert"
+                }
+            ]
+        }
+    ]
+}

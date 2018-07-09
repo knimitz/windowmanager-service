@@ -38,20 +38,23 @@ add_library(${TARGETS_WM} MODULE
    wm_error.cpp
    wm_config.cpp
    applist.cpp
-   request.cpp)
+   request.cpp
+   pm_wrapper.cpp)
 
 target_include_directories(${TARGETS_WM}
     PRIVATE
         ${AFB_INCLUDE_DIRS}
         ${SD_INCLUDE_DIRS}
         ../include
-        ../src)
+        ../src
+        ../src/${PLUGIN_PM})
 
 target_link_libraries(${TARGETS_WM}
     PRIVATE
         ${AFB_LIBRARIES}
         ${WLC_LIBRARIES}
-        ${SD_LIBRARIES})
+        ${SD_LIBRARIES}
+        ${CMAKE_BINARY_DIR}/src/${PLUGIN_PM}/lib${PLUGIN_PM}.so)
 
 target_compile_definitions(${TARGETS_WM}
     PRIVATE
@@ -83,12 +86,12 @@ set_target_properties(${TARGETS_WM}
         C_STANDARD 99
         C_STANDARD_REQUIRED ON
 
-        LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/../export.map")
+        LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/../export.map -Wl,-rpath,'$ORIGIN'")
 
 if (LINK_LIBCXX)
    set_target_properties(${TARGETS_WM}
            PROPERTIES
-           LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/../export.map -lc++")
+           LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/../export.map -lc++ -Wl,-rpath,'$ORIGIN'")
 endif()
 
 if (NOT ${SANITIZER_MODE} STREQUAL "none" AND NOT ${SANITIZER_MODE} STREQUAL "")
@@ -114,6 +117,10 @@ add_custom_command(TARGET ${TARGETS_WM} POST_BUILD
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/db/old_roles.db ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/db/areas.db ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/conf/setting.json ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/${PLUGIN_PM}/db/layouts.db ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/${PLUGIN_PM}/db/roles.db ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${PROJECT_BINARY_DIR}/src/${PLUGIN_PM}/lib${PLUGIN_PM}.so ${PROJECT_BINARY_DIR}/package/root/lib
+   COMMAND cp -f ${PROJECT_BINARY_DIR}/src/${PLUGIN_PM}/stm/${USE_STM_NAME}/src/libstm.so ${PROJECT_BINARY_DIR}/package/root/lib
 )
 
 add_custom_target(package DEPENDS ${PROJECT_BINARY_DIR}/package/root

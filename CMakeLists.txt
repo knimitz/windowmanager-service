@@ -79,4 +79,16 @@ set(SANITIZER_MODE "none" CACHE STRING "Build using a specific sanitizer (e.g. '
 
 set(LINK_LIBCXX OFF CACHE BOOL "Link against LLVMs libc++")
 
+# Set name of PolicyManager and STM
+set(PLUGIN_PM policy_manager)
+set(USE_STM_NAME stub)
+
+# Add STM
+add_subdirectory(src/${PLUGIN_PM}/stm/${USE_STM_NAME}/src)
+include_directories(src/${PLUGIN_PM}/stm/${USE_STM_NAME}/src)
+
+# Add PolicyManager as plugin
+add_subdirectory(src/${PLUGIN_PM})
+include_directories(src/${PLUGIN_PM})
+
 add_subdirectory(src)
