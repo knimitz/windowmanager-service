@@ -20,6 +20,21 @@ pkg_check_modules(SD REQUIRED libsystemd>=222)
 
 # Set name of STM
 set(STM_DIR stub)
+#set(STM_DIR zipc)
+
+# Select roles.db
+if(zipc MATCHES ${STM_DIR})
+    # if trying to show split layout, change from OFF to ON
+    set(TRY_SPLIT_LAYOUT OFF CACHE BOOL "Enable to show split layout")
+
+    if(${TRY_SPLIT_LAYOUT})
+        set(ROLES_DB_NAME roles.db.zipc.split)
+    else()
+        set(ROLES_DB_NAME roles.db.zipc)
+    endif()
+else()
+    set(ROLES_DB_NAME roles.db)
+endif()
 
 # Add STM directory
 add_subdirectory(stm/${STM_DIR})
@@ -84,5 +99,5 @@ add_custom_command(TARGET ${TARGETS_PM} POST_BUILD
    COMMAND cp -f ${PROJECT_BINARY_DIR}/${PLUGIN_PM}/lib${PLUGIN_PM}.so ${PROJECT_BINARY_DIR}/package/root/lib
    COMMAND mkdir -p ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${PROJECT_SOURCE_DIR}/${PLUGIN_PM}/db/states.db ${PROJECT_BINARY_DIR}/package/root/etc
-   COMMAND cp -f ${PROJECT_SOURCE_DIR}/${PLUGIN_PM}/db/roles.db ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${PROJECT_SOURCE_DIR}/${PLUGIN_PM}/db/${ROLES_DB_NAME} ${PROJECT_BINARY_DIR}/package/root/etc/roles.db
 )
