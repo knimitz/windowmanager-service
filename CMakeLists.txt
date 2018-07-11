@@ -82,6 +82,7 @@ set(LINK_LIBCXX OFF CACHE BOOL "Link against LLVMs libc++")
 # Set name of PolicyManager and STM
 set(PLUGIN_PM policy_manager)
 set(USE_STM_NAME stub)
+#set(USE_STM_NAME zipc)
 
 # Add STM
 add_subdirectory(src/${PLUGIN_PM}/stm/${USE_STM_NAME}/src)
