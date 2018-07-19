@@ -30,7 +30,7 @@ extern "C"
 namespace wm
 {
 
-static const unsigned kTimeOut = 3000000UL; /* 3s */
+static const uint64_t kTimeOut = 3ULL; /* 3s */
 
 /* DrawingArea name used by "{layout}.{area}" */
 const char kNameLayoutNormal[] = "normal";
@@ -1452,12 +1452,18 @@ void WindowManager::emitScreenUpdated(unsigned req_num)
 
 void WindowManager::setTimer()
 {
+    struct timespec ts;
+    if (clock_gettime(CLOCK_BOOTTIME, &ts) != 0) {
+        HMI_ERROR("wm", "Could't set time (clock_gettime() returns with error");
+        return;
+    }
+
     HMI_SEQ_DEBUG(g_app_list.currentRequestNumber(), "Timer set activate");
     if (g_timer_ev_src == nullptr)
     {
         // firsttime set into sd_event
         int ret = sd_event_add_time(afb_daemon_get_event_loop(), &g_timer_ev_src,
-            CLOCK_REALTIME, time(NULL) * (1000000UL) + kTimeOut, 1, processTimerHandler, this);
+            CLOCK_BOOTTIME, (uint64_t)(ts.tv_sec + kTimeOut) * 1000000ULL, 1, processTimerHandler, this);
         if (ret < 0)
         {
             HMI_ERROR("wm", "Could't set timer");
@@ -1466,7 +1472,7 @@ void WindowManager::setTimer()
     else
     {
         // update timer limitation after second time
-        sd_event_source_set_time(g_timer_ev_src, time(NULL) * (1000000UL) + kTimeOut);
+        sd_event_source_set_time(g_timer_ev_src, (uint64_t)(ts.tv_sec + kTimeOut) * 1000000ULL);
         sd_event_source_set_enabled(g_timer_ev_src, SD_EVENT_ONESHOT);
     }
 }
