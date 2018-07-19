@@ -136,18 +136,6 @@ int getIntFromJson(json_object *obj, const char *key)
     return json_object_get_int(tmp);
 }
 
-json_bool getBoolFromJson(json_object *obj, const char *key)
-{
-    json_object *tmp;
-    if (!json_object_object_get_ex(obj, key, &tmp))
-    {
-        HMI_DEBUG("wm:jh", "Not found key \"%s\"", key);
-        return FALSE;
-    }
-
-    return json_object_get_boolean(tmp);
-}
-
 int inputJsonFilie(const char* file, json_object** obj)
 {
     const int input_size = 128;

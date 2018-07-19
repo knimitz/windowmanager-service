@@ -25,7 +25,6 @@
 #include "layers.hpp"
 #include "layout.hpp"
 #include "wayland_ivi_wm.hpp"
-#include "pm_wrapper.hpp"
 #include "hmi-debug.h"
 #include "request.hpp"
 #include "wm_error.hpp"
@@ -226,11 +225,8 @@ class WindowManager
 
     void removeClient(const std::string &appid);
     void exceptionProcessForTransition();
-
-    // Do not use these functions
+    // Do not use this function
     void timerHandler();
-    void startTransitionWrapper(std::vector<WMAction> &actions);
-    void processError(WMError error);
 
   private:
     bool pop_pending_events();
@@ -257,11 +253,13 @@ class WindowManager
     WMError doTransition(unsigned sequence_number);
     WMError checkPolicy(unsigned req_num);
     WMError startTransition(unsigned req_num);
+    WMError setInvisibleTask(const std::string &role, bool split);
 
     WMError doEndDraw(unsigned req_num);
     WMError layoutChange(const WMAction &action);
     WMError visibilityChange(const WMAction &action);
     WMError setSurfaceSize(unsigned surface, const std::string& area);
+    WMError changeCurrentState(unsigned req_num);
     void    emitScreenUpdated(unsigned req_num);
 
     void setTimer();
@@ -273,12 +271,12 @@ class WindowManager
 
     const char *check_surface_exist(const char *drawing_name);
 
+    bool can_split(struct LayoutState const &state, int new_id);
+
   private:
     std::unordered_map<std::string, struct compositor::rect> area2size;
     std::unordered_map<std::string, std::string> roleold2new;
     std::unordered_map<std::string, std::string> rolenew2old;
-
-    PMWrapper pmw;
 
     static const char* kDefaultOldRoleDb;
 };
