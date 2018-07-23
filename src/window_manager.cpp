@@ -738,6 +738,8 @@ void WindowManager::surface_set_layout(int surface_id, const std::string& area)
               layer_id);
 
     // set destination to the display rectangle
+    s->set_source_rectangle(0, 0, w, h);
+    this->layout_commit();
     s->set_destination_rectangle(x, y, w, h);
 
     // update area information

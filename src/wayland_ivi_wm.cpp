@@ -621,19 +621,12 @@ void controller::surface_created(uint32_t id)
         this->surfaces[id] = std::make_unique<struct surface>(id, this);
         this->chooks->surface_created(id);
 
-        // TODO: If Clipping is necessary, this process should be modified.
-        {
-            // Set surface type:IVI_WM_SURFACE_TYPE_DESKTOP)
-            // for resizing wayland surface when switching from split to full surface.
-            ivi_wm_set_surface_type(this->proxy.get(), id, IVI_WM_SURFACE_TYPE_DESKTOP);
+        // Set surface type:IVI_WM_SURFACE_TYPE_DESKTOP)
+        // for resizing wayland surface when switching from split to full surface.
+        ivi_wm_set_surface_type(this->proxy.get(), id, IVI_WM_SURFACE_TYPE_DESKTOP);
 
-            // Set source reactangle even if we should not need to set it
-            // for enable setting for destination region.
-            this->surfaces[id]->set_source_rectangle(0, 0, this->output_size.w, this->output_size.h);
-
-            // Flush display
-            this->display->flush();
-        }
+        // Flush display
+        this->display->flush();
     }
 }
 
