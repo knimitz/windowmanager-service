@@ -1102,6 +1102,15 @@ WMError WindowManager::setInvisibleTask(const std::string &role, bool split)
 {
     unsigned req_num = g_app_list.currentRequestNumber();
     HMI_SEQ_DEBUG(req_num, "set current visible app to invisible task");
+    bool found = false;
+    auto trigger = g_app_list.getRequest(req_num, &found);
+    // I don't check found == true here because this is checked in caller.
+    if(trigger.role == "homescreen")
+    {
+        HMI_SEQ_INFO(req_num, "In case of 'homescreen' visible, don't change app to invisible");
+        return WMError::SUCCESS;
+    }
+
     // This task is copied from original actiavete surface
     const char *drawing_name = this->rolenew2old[role].c_str();
     auto const &surface_id = this->lookup_id(role.c_str());
@@ -1113,7 +1122,6 @@ WMError WindowManager::setInvisibleTask(const std::string &role, bool split)
     int surface;
     TaskVisible task_visible = TaskVisible::INVISIBLE;
     bool end_draw_finished = true;
-    bool found = false;
 
     for (auto const &l : this->layers.mapping)
     {
