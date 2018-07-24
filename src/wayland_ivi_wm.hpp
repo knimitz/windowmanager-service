@@ -317,9 +317,6 @@ struct controller : public wayland_proxy<struct ivi_wm>
     void layer_destroyed(struct layer *l, uint32_t layer_id);
     void layer_error_detected(uint32_t object_id,
                               uint32_t error_code, char const *error_text);
-    void layer_configuration(struct layer *l, int32_t width, int32_t height);
-    void layer_orientation(struct layer *l, int32_t orientation);
-    void layer_screen(struct layer *l, struct wl_output *screen);
 };
 } // namespace compositor
 

@@ -675,26 +675,6 @@ void controller::layer_destination_rectangle_changed(struct layer *l, uint32_t l
     this->lprops[layer_id].dst_rect = rect{width, height, x, y};
 }
 
-void controller::layer_configuration(struct layer *l, int32_t width,
-                                     int32_t height)
-{
-    HMI_DEBUG("wm", "compositor::layer %s @ %d w %i h %i", __func__, l->id,
-              width, height);
-    this->lprops[l->id].size = size{uint32_t(width), uint32_t(height)};
-}
-
-void controller::layer_orientation(struct layer *l, int32_t orientation)
-{
-    HMI_DEBUG("wm", "compositor::layer %s @ %d o %i", __func__, l->id,
-              orientation);
-    this->lprops[l->id].orientation = orientation;
-}
-
-void controller::layer_screen(struct layer *l, struct wl_output *screen)
-{
-    HMI_DEBUG("wm", "compositor::layer %s @ %d s %p", __func__, l->id, screen);
-}
-
 void controller::layer_destroyed(struct layer *l, uint32_t layer_id)
 {
     HMI_DEBUG("wm", "compositor::layer %s @ %d", __func__, layer_id);
