@@ -1457,7 +1457,6 @@ void WindowManager::emitScreenUpdated(unsigned req_num)
     {
         HMI_DEBUG("wm", "afb_event_push failed: %m");
     }
-    json_object_put(jarray);
 }
 
 void WindowManager::setTimer()
