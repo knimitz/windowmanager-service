@@ -208,13 +208,13 @@ class WindowManager
     int dispatch_pending_events();
     void set_pending_events();
 
-    result<int> api_request_surface(char const *appid, char const *drawing_name);
-    char const *api_request_surface(char const *appid, char const *drawing_name, char const *ivi_id);
-    void api_activate_surface(char const *appid, char const *drawing_name, char const *drawing_area, const reply_func &reply);
-    void api_deactivate_surface(char const *appid, char const *drawing_name, const reply_func &reply);
-    void api_enddraw(char const *appid, char const *drawing_name);
+    result<int> api_request_surface(char const *appid, char const *role);
+    char const *api_request_surface(char const *appid, char const *role, char const *ivi_id);
+    void api_activate_surface(char const *appid, char const *role, char const *drawing_area, const reply_func &reply);
+    void api_deactivate_surface(char const *appid, char const *role, const reply_func &reply);
+    void api_enddraw(char const *appid, char const *role);
     result<json_object *> api_get_display_info();
-    result<json_object *> api_get_area_info(char const *drawing_name);
+    result<json_object *> api_get_area_info(char const *role);
     void api_ping();
     void send_event(char const *evname, char const *label);
     void send_event(char const *evname, char const *label, char const *area, int x, int y, int w, int h);
@@ -225,6 +225,7 @@ class WindowManager
 
     void removeClient(const std::string &appid);
     void exceptionProcessForTransition();
+    const char* convertRoleOldToNew(char const *role);
     // Do not use this function
     void timerHandler();
 
@@ -267,9 +268,8 @@ class WindowManager
     void processNextRequest();
 
     int loadOldRoleDb();
-    const char* convertRoleOldToNew(char const *drawing_name);
 
-    const char *check_surface_exist(const char *drawing_name);
+    const char *check_surface_exist(const char *role);
 
     bool can_split(struct LayoutState const &state, int new_id);
 

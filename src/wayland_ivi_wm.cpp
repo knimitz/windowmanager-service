@@ -216,31 +216,31 @@ void surface_visibility_changed(
     void *data, struct ivi_wm * /*ivi_wm*/,
     uint32_t surface_id, int32_t visibility)
 {
-    auto s = static_cast<struct surface *>(data);
-    s->parent->surface_visibility_changed(s, visibility);
+    auto c = static_cast<struct controller *>(data);
+    c->surface_visibility_changed(surface_id, visibility);
 }
 
 void surface_opacity_changed(void *data, struct ivi_wm * /*ivi_wm*/,
                              uint32_t surface_id, wl_fixed_t opacity)
 {
-    auto s = static_cast<struct surface *>(data);
-    s->parent->surface_opacity_changed(s, float(wl_fixed_to_double(opacity)));
+    auto c = static_cast<struct controller *>(data);
+    c->surface_opacity_changed(surface_id, float(wl_fixed_to_double(opacity)));
 }
 
 void surface_source_rectangle_changed(
     void *data, struct ivi_wm * /*ivi_wm*/, uint32_t surface_id,
     int32_t x, int32_t y, int32_t width, int32_t height)
 {
-    auto s = static_cast<struct surface *>(data);
-    s->parent->surface_source_rectangle_changed(s, x, y, width, height);
+    auto c = static_cast<struct controller *>(data);
+    c->surface_source_rectangle_changed(surface_id, x, y, width, height);
 }
 
 void surface_destination_rectangle_changed(
     void *data, struct ivi_wm * /*ivi_wm*/, uint32_t surface_id,
     int32_t x, int32_t y, int32_t width, int32_t height)
 {
-    auto s = static_cast<struct surface *>(data);
-    s->parent->surface_destination_rectangle_changed(s, x, y, width, height);
+    auto c = static_cast<struct controller *>(data);
+    c->surface_destination_rectangle_changed(surface_id, x, y, width, height);
 }
 
 void surface_created(void *data, struct ivi_wm * /*ivi_wm*/,
@@ -252,8 +252,8 @@ void surface_created(void *data, struct ivi_wm * /*ivi_wm*/,
 void surface_destroyed(
     void *data, struct ivi_wm * /*ivi_wm*/, uint32_t surface_id)
 {
-    auto s = static_cast<struct surface *>(data);
-    s->parent->surface_destroyed(s, surface_id);
+    auto c = static_cast<struct controller *>(data);
+    c->surface_destroyed(surface_id);
 }
 
 void surface_error_detected(void *data, struct ivi_wm * /*ivi_wm*/, uint32_t object_id,
@@ -267,52 +267,52 @@ void surface_size_changed(
     void *data, struct ivi_wm * /*ivi_wm*/, uint32_t surface_id,
     int32_t width, int32_t height)
 {
-    auto s = static_cast<struct surface *>(data);
-    s->parent->surface_size_changed(s, width, height);
+    auto c = static_cast<struct controller *>(data);
+    c->surface_size_changed(surface_id, width, height);
 }
 
 void surface_stats_received(void *data, struct ivi_wm * /*ivi_wm*/,
                             uint32_t surface_id, uint32_t frame_count, uint32_t pid)
 {
-    auto s = static_cast<struct surface *>(data);
-    s->parent->surface_stats_received(s, surface_id, frame_count, pid);
+    auto c = static_cast<struct controller *>(data);
+    c->surface_stats_received(surface_id, frame_count, pid);
 }
 
 void surface_added_to_layer(void *data, struct ivi_wm * /*ivi_wm*/,
                             uint32_t layer_id, uint32_t surface_id)
 {
-    auto s = static_cast<struct surface *>(data);
-    s->parent->surface_added_to_layer(s, layer_id, surface_id);
+    auto c = static_cast<struct controller *>(data);
+    c->surface_added_to_layer(layer_id, surface_id);
 }
 
 void layer_visibility_changed(void *data, struct ivi_wm * /*ivi_wm*/,
                               uint32_t layer_id, int32_t visibility)
 {
-    auto l = static_cast<struct layer *>(data);
-    l->parent->layer_visibility_changed(l, layer_id, visibility);
+    auto c = static_cast<struct controller *>(data);
+    c->layer_visibility_changed(layer_id, visibility);
 }
 
 void layer_opacity_changed(void *data, struct ivi_wm * /*ivi_wm*/,
                            uint32_t layer_id, wl_fixed_t opacity)
 {
-    auto l = static_cast<struct layer *>(data);
-    l->parent->layer_opacity_changed(l, layer_id, float(wl_fixed_to_double(opacity)));
+    auto c = static_cast<struct controller *>(data);
+    c->layer_opacity_changed(layer_id, float(wl_fixed_to_double(opacity)));
 }
 
 void layer_source_rectangle_changed(
     void *data, struct ivi_wm * /*ivi_wm*/, uint32_t layer_id,
     int32_t x, int32_t y, int32_t width, int32_t height)
 {
-    auto l = static_cast<struct layer *>(data);
-    l->parent->layer_source_rectangle_changed(l, layer_id, x, y, width, height);
+    auto c = static_cast<struct controller *>(data);
+    c->layer_source_rectangle_changed(layer_id, x, y, width, height);
 }
 
 void layer_destination_rectangle_changed(
     void *data, struct ivi_wm * /*ivi_wm*/, uint32_t layer_id,
     int32_t x, int32_t y, int32_t width, int32_t height)
 {
-    auto l = static_cast<struct layer *>(data);
-    l->parent->layer_destination_rectangle_changed(l, layer_id, x, y, width, height);
+    auto c = static_cast<struct controller *>(data);
+    c->layer_destination_rectangle_changed(layer_id, x, y, width, height);
 }
 
 void layer_created(void *data, struct ivi_wm * /*ivi_wm*/,
@@ -323,8 +323,8 @@ void layer_created(void *data, struct ivi_wm * /*ivi_wm*/,
 
 void layer_destroyed(void *data, struct ivi_wm * /*ivi_wm*/, uint32_t layer_id)
 {
-    auto l = static_cast<struct layer *>(data);
-    l->parent->layer_destroyed(l, layer_id);
+    auto c = static_cast<struct controller *>(data);
+    c->layer_destroyed(layer_id);
 }
 
 void layer_error_detected(void *data, struct ivi_wm * /*ivi_wm*/, uint32_t object_id,
@@ -556,56 +556,55 @@ void controller::layer_error_detected(uint32_t object_id,
               this->proxy.get(), object_id, error_code, error_text);
 }
 
-void controller::surface_visibility_changed(struct surface *s, int32_t visibility)
+void controller::surface_visibility_changed(uint32_t id, int32_t visibility)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d v %i", __func__, s->id,
+    HMI_DEBUG("wm", "compositor::surface %s @ %d v %i", __func__, id,
               visibility);
-    this->sprops[s->id].visibility = visibility;
-    this->chooks->surface_visibility(s->id, visibility);
+    this->sprops[id].visibility = visibility;
+    this->chooks->surface_visibility(id, visibility);
 }
 
-void controller::surface_opacity_changed(struct surface *s, float opacity)
+void controller::surface_opacity_changed(uint32_t id, float opacity)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d o %f", __func__, s->id,
-              opacity);
-    this->sprops[s->id].opacity = opacity;
+    HMI_DEBUG("wm", "compositor::surface %s @ %d o %f",
+                __func__, id, opacity);
+    this->sprops[id].opacity = opacity;
 }
 
-void controller::surface_source_rectangle_changed(struct surface *s, int32_t x,
+void controller::surface_source_rectangle_changed(uint32_t id, int32_t x,
                                                   int32_t y, int32_t width,
                                                   int32_t height)
 {
     HMI_DEBUG("wm", "compositor::surface %s @ %d x %i y %i w %i h %i", __func__,
-              s->id, x, y, width, height);
-    this->sprops[s->id].src_rect = rect{width, height, x, y};
+              id, x, y, width, height);
+    this->sprops[id].src_rect = rect{width, height, x, y};
 }
 
-void controller::surface_destination_rectangle_changed(struct surface *s, int32_t x,
+void controller::surface_destination_rectangle_changed(uint32_t id, int32_t x,
                                                        int32_t y, int32_t width,
                                                        int32_t height)
 {
     HMI_DEBUG("wm", "compositor::surface %s @ %d x %i y %i w %i h %i", __func__,
-              s->id, x, y, width, height);
-    this->sprops[s->id].dst_rect = rect{width, height, x, y};
-    this->chooks->surface_destination_rectangle(s->id, x, y, width, height);
+              id, x, y, width, height);
+    this->sprops[id].dst_rect = rect{width, height, x, y};
+    this->chooks->surface_destination_rectangle(id, x, y, width, height);
 }
 
-void controller::surface_size_changed(struct surface *s, int32_t width,
+void controller::surface_size_changed(uint32_t id, int32_t width,
                                       int32_t height)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d w %i h %i", __func__, s->id,
+    HMI_DEBUG("wm", "compositor::surface %s @ %d w %i h %i", __func__, id,
               width, height);
-    this->sprops[s->id].size = size{uint32_t(width), uint32_t(height)};
+    this->sprops[id].size = size{uint32_t(width), uint32_t(height)};
 }
 
-void controller::surface_added_to_layer(struct surface *s,
-                                        uint32_t layer_id, uint32_t surface_id)
+void controller::surface_added_to_layer(uint32_t layer_id, uint32_t surface_id)
 {
     HMI_DEBUG("wm", "compositor::surface %s @ %d l %u",
               __func__, layer_id, surface_id);
 }
 
-void controller::surface_stats_received(struct surface *s, uint32_t surface_id,
+void controller::surface_stats_received(uint32_t surface_id,
                                         uint32_t frame_count, uint32_t pid)
 {
     HMI_DEBUG("wm", "compositor::surface %s @ %d f %u pid %u",
@@ -630,7 +629,7 @@ void controller::surface_created(uint32_t id)
     }
 }
 
-void controller::surface_destroyed(struct surface *s, uint32_t surface_id)
+void controller::surface_destroyed(uint32_t surface_id)
 {
     HMI_DEBUG("wm", "compositor::surface %s @ %d", __func__, surface_id);
     this->chooks->surface_removed(surface_id);
@@ -645,19 +644,19 @@ void controller::surface_error_detected(uint32_t object_id,
               this->proxy.get(), object_id, error_code, error_text);
 }
 
-void controller::layer_visibility_changed(struct layer *l, uint32_t layer_id, int32_t visibility)
+void controller::layer_visibility_changed(uint32_t layer_id, int32_t visibility)
 {
     HMI_DEBUG("wm", "compositor::layer %s @ %d v %i", __func__, layer_id, visibility);
     this->lprops[layer_id].visibility = visibility;
 }
 
-void controller::layer_opacity_changed(struct layer *l, uint32_t layer_id, float opacity)
+void controller::layer_opacity_changed(uint32_t layer_id, float opacity)
 {
     HMI_DEBUG("wm", "compositor::layer %s @ %d o %f", __func__, layer_id, opacity);
     this->lprops[layer_id].opacity = opacity;
 }
 
-void controller::layer_source_rectangle_changed(struct layer *l, uint32_t layer_id,
+void controller::layer_source_rectangle_changed(uint32_t layer_id,
                                                 int32_t x, int32_t y,
                                                 int32_t width, int32_t height)
 {
@@ -666,7 +665,7 @@ void controller::layer_source_rectangle_changed(struct layer *l, uint32_t layer_
     this->lprops[layer_id].src_rect = rect{width, height, x, y};
 }
 
-void controller::layer_destination_rectangle_changed(struct layer *l, uint32_t layer_id,
+void controller::layer_destination_rectangle_changed(uint32_t layer_id,
                                                      int32_t x, int32_t y,
                                                      int32_t width, int32_t height)
 {
@@ -675,7 +674,7 @@ void controller::layer_destination_rectangle_changed(struct layer *l, uint32_t l
     this->lprops[layer_id].dst_rect = rect{width, height, x, y};
 }
 
-void controller::layer_destroyed(struct layer *l, uint32_t layer_id)
+void controller::layer_destroyed(uint32_t layer_id)
 {
     HMI_DEBUG("wm", "compositor::layer %s @ %d", __func__, layer_id);
     this->lprops.erase(layer_id);

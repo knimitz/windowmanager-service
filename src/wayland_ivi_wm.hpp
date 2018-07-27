@@ -292,29 +292,29 @@ struct controller : public wayland_proxy<struct ivi_wm>
     void create_screen(struct wl_output *output);
 
     // Events
-    void surface_visibility_changed(struct surface *s, int32_t visibility);
-    void surface_opacity_changed(struct surface *s, float opacity);
-    void surface_source_rectangle_changed(struct surface *s, int32_t x, int32_t y,
+    void surface_visibility_changed(uint32_t id, int32_t visibility);
+    void surface_opacity_changed(uint32_t id, float opacity);
+    void surface_source_rectangle_changed(uint32_t id, int32_t x, int32_t y,
                                           int32_t width, int32_t height);
-    void surface_destination_rectangle_changed(struct surface *s, int32_t x, int32_t y,
+    void surface_destination_rectangle_changed(uint32_t id, int32_t x, int32_t y,
                                                int32_t width, int32_t height);
     void surface_created(uint32_t id);
-    void surface_destroyed(struct surface *s, uint32_t surface_id);
+    void surface_destroyed(uint32_t surface_id);
     void surface_error_detected(uint32_t object_id,
                                 uint32_t error_code, char const *error_text);
-    void surface_size_changed(struct surface *s, int32_t width, int32_t height);
-    void surface_stats_received(struct surface *s, uint32_t surface_id,
+    void surface_size_changed(uint32_t id, int32_t width, int32_t height);
+    void surface_stats_received(uint32_t surface_id,
                                 uint32_t frame_count, uint32_t pid);
-    void surface_added_to_layer(struct surface *s, uint32_t layer_id, uint32_t surface_id);
+    void surface_added_to_layer(uint32_t layer_id, uint32_t surface_id);
 
-    void layer_visibility_changed(struct layer *l, uint32_t layer_id, int32_t visibility);
-    void layer_opacity_changed(struct layer *l, uint32_t layer_id, float opacity);
-    void layer_source_rectangle_changed(struct layer *l, uint32_t layer_id, int32_t x, int32_t y,
+    void layer_visibility_changed(uint32_t layer_id, int32_t visibility);
+    void layer_opacity_changed(uint32_t layer_id, float opacity);
+    void layer_source_rectangle_changed(uint32_t layer_id, int32_t x, int32_t y,
                                         int32_t width, int32_t height);
-    void layer_destination_rectangle_changed(struct layer *l, uint32_t layer_id, int32_t x, int32_t y,
+    void layer_destination_rectangle_changed(uint32_t layer_id, int32_t x, int32_t y,
                                              int32_t width, int32_t height);
     void layer_created(uint32_t id);
-    void layer_destroyed(struct layer *l, uint32_t layer_id);
+    void layer_destroyed(uint32_t layer_id);
     void layer_error_detected(uint32_t object_id,
                               uint32_t error_code, char const *error_text);
 };

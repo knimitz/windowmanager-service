@@ -238,7 +238,7 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
         HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", role);
         if (!lid)
         {
-            return Err<int>("Drawing name does not match any role, Fallback is disabled");
+            return Err<int>("Drawing name does not match any role, fallback is disabled");
         }
     }
 
@@ -292,7 +292,7 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
         HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", role);
         if (!lid)
         {
-            return "Drawing name does not match any role, Fallback is disabled";
+            return "Drawing name does not match any role, fallback is disabled";
         }
     }
 

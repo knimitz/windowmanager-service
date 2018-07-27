@@ -176,12 +176,6 @@ int binding_init() noexcept
     return -1;
 }
 
-static bool checkFirstReq(afb_req req)
-{
-    WMClientCtxt *ctxt = (WMClientCtxt *)afb_req_context_get(req);
-    return (ctxt) ? false : true;
-}
-
 static void cbRemoveClientCtxt(void *data)
 {
     WMClientCtxt *ctxt = (WMClientCtxt *)data;
@@ -217,6 +211,20 @@ static void cbRemoveClientCtxt(void *data)
     delete ctxt;
 }
 
+static void createSecurityContext(afb_req req, const char* appid, const char* role)
+{
+    WMClientCtxt *ctxt = (WMClientCtxt *)afb_req_context_get(req);
+    if (!ctxt)
+    {
+        // Create Security Context at first time
+        const char *new_role = g_afb_instance->wmgr.convertRoleOldToNew(role);
+        WMClientCtxt *ctxt = new WMClientCtxt(appid, new_role);
+        HMI_DEBUG("wm", "create session for %s", ctxt->name.c_str());
+        afb_req_session_set_LOA(req, 1);
+        afb_req_context_set(req, ctxt, cbRemoveClientCtxt);
+    }
+}
+
 void windowmanager_requestsurface(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
@@ -238,40 +246,16 @@ void windowmanager_requestsurface(afb_req req) noexcept
             return;
         }
 
-        /* Create Security Context */
-        bool isFirstReq = checkFirstReq(req);
-        if (!isFirstReq)
-        {
-            WMClientCtxt *ctxt = (WMClientCtxt *)afb_req_context_get(req);
-            HMI_DEBUG("wm", "You're %s.", ctxt->name.c_str());
-            if (ctxt->name != std::string(a_drawing_name))
-            {
-                afb_req_fail_f(req, "failed", "Dont request with other name: %s for now", a_drawing_name);
-                HMI_DEBUG("wm", "Don't request with other name: %s for now", a_drawing_name);
-                return;
-            }
-        }
-
+        const char *appid = afb_req_get_application_id(req);
         auto ret = g_afb_instance->wmgr.api_request_surface(
-            afb_req_get_application_id(req), a_drawing_name);
-
-        if (isFirstReq)
-        {
-            WMClientCtxt *ctxt = new WMClientCtxt(afb_req_get_application_id(req), a_drawing_name);
-            HMI_DEBUG("wm", "create session for %s", ctxt->name.c_str());
-            afb_req_session_set_LOA(req, 1);
-            afb_req_context_set(req, ctxt, cbRemoveClientCtxt);
-        }
-        else
-        {
-            HMI_DEBUG("wm", "session already created for %s", a_drawing_name);
-        }
-
+            appid, a_drawing_name);
         if (ret.is_err())
         {
             afb_req_fail(req, "failed", ret.unwrap_err());
             return;
         }
+
+        createSecurityContext(req, appid, a_drawing_name);
 
         afb_req_success(req, json_object_new_int(ret.unwrap()), "success");
     }
@@ -313,14 +297,17 @@ void windowmanager_requestsurfacexdg(afb_req req) noexcept
             return;
         }
         char const *a_ivi_id = json_object_get_string(j_ivi_id);
-
+        char const *appid = afb_req_get_application_id(req);
         auto ret = g_afb_instance->wmgr.api_request_surface(
-            afb_req_get_application_id(req), a_drawing_name, a_ivi_id);
+            appid, a_drawing_name, a_ivi_id);
+
         if (ret != nullptr)
         {
             afb_req_fail(req, "failed", ret);
             return;
         }
+
+        createSecurityContext(req, appid, a_drawing_name);
 
         afb_req_success(req, NULL, "success");
     }
