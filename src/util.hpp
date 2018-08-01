@@ -109,4 +109,58 @@ struct unique_fd
     }
 };
 
+class rectangle
+{
+  public:
+    explicit rectangle(long wd, long ht) : _right(wd - 1), _bottom(ht - 1) {};
+
+    void set_left(long l) {
+        _left = l;
+    }
+    long left() const { return _left; };
+
+    void set_right(long r) {
+        _right = r;
+    }
+    long right() const { return _right; };
+
+    void set_top(long t) {
+        _top = t;
+    }
+    long top() const { return _top; };
+
+    void set_bottom(long b) {
+        _bottom = b;
+    }
+    long bottom() const { return _bottom; }
+
+    long width() const {
+        if (is_valid())
+            return 0;
+        else
+            return _right - _left + 1;
+    }
+
+    long height() const {
+        if (is_valid())
+            return 0;
+        else
+            return _bottom - _top + 1;
+    }
+
+    void set_aspect(double ratio);
+    void fit(unsigned long to_width, unsigned long to_height);
+    void center(unsigned long outer_w, unsigned long outer_h);
+
+  private:
+    bool is_valid() const {
+        return (_top > _bottom || _left > _right);
+    }
+
+    long _left = 0;
+    long _top = 0;
+    long _right;
+    long _bottom;
+};
+
 #endif // !WM_UTIL_HPP

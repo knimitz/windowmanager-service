@@ -65,6 +65,7 @@ extern const char kKeyWidthPixel[];
 extern const char kKeyHeightPixel[];
 extern const char kKeyWidthMm[];
 extern const char kKeyHeightMm[];
+extern const char kKeyScale[];
 extern const char kKeyIds[];
 
 struct id_allocator

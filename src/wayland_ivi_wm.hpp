@@ -256,6 +256,9 @@ struct controller : public wayland_proxy<struct ivi_wm>
     size output_size;   // Display size[pixel]
     size physical_size; // Display size[mm]
 
+    // Scale for conversion CSS PX -> DP(Device Pixel)
+    double scale;
+
     wm::controller_hooks *chooks;
 
     struct wl::display *display;

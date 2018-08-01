@@ -50,6 +50,7 @@ const char kKeyWidthPixel[]  = "width_pixel";
 const char kKeyHeightPixel[] = "height_pixel";
 const char kKeyWidthMm[]     = "width_mm";
 const char kKeyHeightMm[]    = "height_mm";
+const char kKeyScale[]       = "scale";
 const char kKeyIds[]         = "ids";
 
 static sd_event_source *g_timer_ev_src = nullptr;
@@ -460,10 +461,9 @@ void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
 
 result<json_object *> WindowManager::api_get_display_info()
 {
-    // Check controller
-    if (!this->controller)
+    if (!this->display->ok())
     {
-        return Err<json_object *>("ivi_controller global not available");
+        return Err<json_object *>("Wayland compositor is not available");
     }
 
     // Set display info
@@ -475,6 +475,7 @@ result<json_object *> WindowManager::api_get_display_info()
     json_object_object_add(object, kKeyHeightPixel, json_object_new_int(o_size.h));
     json_object_object_add(object, kKeyWidthMm, json_object_new_int(p_size.w));
     json_object_object_add(object, kKeyHeightMm, json_object_new_int(p_size.h));
+    json_object_object_add(object, kKeyScale, json_object_new_double(this->controller->scale));
 
     return Ok<json_object *>(object);
 }
@@ -665,6 +666,21 @@ int WindowManager::init_layers()
     c->physical_size = compositor::size{uint32_t(o->physical_width),
                                         uint32_t(o->physical_height)};
 
+
+    HMI_DEBUG("wm", "SCALING: screen (%dx%d), physical (%dx%d)",
+              o->width, o->height, o->physical_width, o->physical_height);
+
+    this->layers.loadAreaDb();
+
+    const compositor::rect css_bg = this->layers.getAreaSize("fullscreen");
+    rectangle dp_bg(o->width, o->height);
+
+    dp_bg.set_aspect(static_cast<double>(css_bg.w) / css_bg.h);
+    dp_bg.fit(o->width, o->height);
+    dp_bg.center(o->width, o->height);
+    HMI_DEBUG("wm", "SCALING: CSS BG(%dx%d) -> DDP %dx%d,(%dx%d)",
+              css_bg.w, css_bg.h, dp_bg.left(), dp_bg.top(), dp_bg.width(), dp_bg.height());
+
     // Clear scene
     layers.clear();
 
@@ -674,9 +690,9 @@ int WindowManager::init_layers()
     // Quick and dirty setup of layers
     for (auto const &i : this->layers.mapping)
     {
-        c->layer_create(i.second.layer_id, o->width, o->height);
+        c->layer_create(i.second.layer_id, dp_bg.width(), dp_bg.height());
         auto &l = layers[i.second.layer_id];
-        l->set_destination_rectangle(0, 0, o->width, o->height);
+        l->set_destination_rectangle(dp_bg.left(), dp_bg.top(), dp_bg.width(), dp_bg.height());
         l->set_visibility(1);
         HMI_DEBUG("wm", "Setting up layer %s (%d) for surface role match \"%s\"",
                   i.second.name.c_str(), i.second.layer_id, i.second.role.c_str());
@@ -687,8 +703,8 @@ int WindowManager::init_layers()
 
     this->layout_commit();
 
-    this->layers.loadAreaDb();
-    this->layers.setupArea(o->width, o->height);
+    c->scale = static_cast<double>(dp_bg.height()) / css_bg.h;
+    this->layers.setupArea(c->scale);
 
     return 0;
 }

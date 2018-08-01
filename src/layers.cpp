@@ -181,7 +181,7 @@ json layer_map::to_json() const
     return j;
 }
 
-void layer_map::setupArea(int output_w, int output_h)
+void layer_map::setupArea(double scaling)
 {
     compositor::rect rct;
 
@@ -191,6 +191,11 @@ void layer_map::setupArea(int output_w, int output_h)
 
     for (auto &i : this->area2size)
     {
+        i.second.x = static_cast<int>(scaling * i.second.x + 0.5);
+        i.second.y = static_cast<int>(scaling * i.second.y + 0.5);
+        i.second.w = static_cast<int>(scaling * i.second.w + 0.5);
+        i.second.h = static_cast<int>(scaling * i.second.h + 0.5);
+
         HMI_DEBUG("wm:lm", "area:%s size(after) : x:%d y:%d w:%d h:%d",
             i.first.c_str(), i.second.x, i.second.y, i.second.w, i.second.h);
     }
