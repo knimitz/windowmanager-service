@@ -290,6 +290,7 @@ struct controller : public wayland_proxy<struct ivi_wm>
     void layer_create(uint32_t id, int32_t w, int32_t h);
     void surface_create(uint32_t id);
     void create_screen(struct wl_output *output);
+    void get_surface_properties(uint32_t surface_id, int param = 0);
 
     // Events
     void surface_visibility_changed(uint32_t id, int32_t visibility);
