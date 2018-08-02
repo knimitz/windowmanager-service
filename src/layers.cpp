@@ -181,60 +181,24 @@ json layer_map::to_json() const
     return j;
 }
 
+void layer_map::setupArea(int output_w, int output_h)
+{
+    compositor::rect rct;
+
+    rct = this->area2size["normal.full"];
+    this->area2size["normalfull"] = rct;
+    this->area2size["normal"] = rct;
+
+    for (auto &i : this->area2size)
+    {
+        HMI_DEBUG("wm:lm", "area:%s size(after) : x:%d y:%d w:%d h:%d",
+            i.first.c_str(), i.second.x, i.second.y, i.second.w, i.second.h);
+    }
+}
+
 compositor::rect layer_map::getAreaSize(const std::string &area)
 {
     return area2size[area];
-}
-
-const compositor::rect layer_map::getScaleDestRect(
-    int to_w, int to_h, const std::string &aspect_setting)
-{
-    compositor::rect rct;
-    rct.x = 0;
-    rct.y = 0;
-    rct.w = to_w;
-    rct.h = to_h;
-    HMI_NOTICE("wm:lm",
-               "Scaling:'%s'. Check 'fullscreen' is set.", aspect_setting.c_str());
-    // Base is "fullscreen". Crash me if "fullscreen" is not set
-    compositor::rect base = this->area2size.at("fullscreen");
-    HMI_DEBUG("wm:lm", "Output size, width: %d, height: %d / fullscreen width: %d, height: %d",
-              to_w, to_h, base.w, base.h);
-    // If full_rct.w or full_rct.h == 0, crash me on purpose
-    double scale_rate_w = double(to_w) / double(base.w);
-    double scale_rate_h = double(to_h) / double(base.h);
-    double scale;
-    if (scale_rate_h < scale_rate_w)
-    {
-        scale = scale_rate_h;
-    }
-    else
-    {
-        scale = scale_rate_w;
-    }
-    HMI_DEBUG("wm", "set scale: %5.2f", scale);
-
-    // Scaling
-    if (aspect_setting == "aspect_fit")
-    {
-        // offset
-        rct.x = (to_w - scale * base.w) / 2;
-        rct.y = (to_h - scale * base.h) / 2;
-
-        // scaling
-        rct.w = base.w * scale;
-        rct.h = base.h * scale;
-    }
-    else if (aspect_setting == "display_fit")
-    {
-        // offset is none
-        // scaling
-        rct.w = base.w * scale_rate_w;
-        rct.h = base.h * scale_rate_h;
-    }
-    HMI_DEBUG("wm:lm", "offset x: %d, y: %d", rct.x, rct.y);
-    HMI_DEBUG("wm:lm", "after scaling w: %d, h: %d", rct.w, rct.h);
-    return rct;
 }
 
 int layer_map::loadAreaDb()

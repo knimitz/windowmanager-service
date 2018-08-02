@@ -19,7 +19,6 @@
 
 #include "window_manager.hpp"
 #include "json_helper.hpp"
-#include "wm_config.hpp"
 #include "applist.hpp"
 
 extern "C"
@@ -147,7 +146,6 @@ WindowManager::WindowManager(wl::display *d)
 
 int WindowManager::init()
 {
-    int ret;
     if (!this->display->ok())
     {
         return -1;
@@ -203,8 +201,7 @@ int WindowManager::init()
     // Third level objects
     this->display->roundtrip();
 
-    ret = init_layers();
-    return ret;
+    return init_layers();
 }
 
 int WindowManager::dispatch_pending_events()
@@ -657,21 +654,11 @@ int WindowManager::init_layers()
         return -1;
     }
 
-    WMConfig wm_config;
-    wm_config.loadConfigs();
-
     auto &c = this->controller;
 
     auto &o = this->outputs.front();
     auto &s = c->screens.begin()->second;
     auto &layers = c->layers;
-
-    this->layers.loadAreaDb();
-    const compositor::rect base = this->layers.getAreaSize("fullscreen");
-
-    const std::string aspect_setting = wm_config.getConfigAspect();
-    const compositor::rect scale_rect =
-        this->layers.getScaleDestRect(o->width, o->height, aspect_setting);
 
     // Write output dimensions to ivi controller...
     c->output_size = compositor::size{uint32_t(o->width), uint32_t(o->height)};
@@ -687,11 +674,9 @@ int WindowManager::init_layers()
     // Quick and dirty setup of layers
     for (auto const &i : this->layers.mapping)
     {
-        c->layer_create(i.second.layer_id, scale_rect.w, scale_rect.h);
+        c->layer_create(i.second.layer_id, o->width, o->height);
         auto &l = layers[i.second.layer_id];
-        l->set_source_rectangle(0, 0, base.w, base.h);
-        l->set_destination_rectangle(
-            scale_rect.x, scale_rect.y, scale_rect.w, scale_rect.h);
+        l->set_destination_rectangle(0, 0, o->width, o->height);
         l->set_visibility(1);
         HMI_DEBUG("wm", "Setting up layer %s (%d) for surface role match \"%s\"",
                   i.second.name.c_str(), i.second.layer_id, i.second.role.c_str());
@@ -701,6 +686,9 @@ int WindowManager::init_layers()
     s->set_render_order(this->layers.layers);
 
     this->layout_commit();
+
+    this->layers.loadAreaDb();
+    this->layers.setupArea(o->width, o->height);
 
     return 0;
 }

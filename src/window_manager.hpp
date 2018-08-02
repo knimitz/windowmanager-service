@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef WINDOW_MANAGER_HPP
-#define WINDOW_MANAGER_HPP
+#ifndef TMCAGLWM_APP_HPP
+#define TMCAGLWM_APP_HPP
 
 #include <atomic>
 #include <memory>
@@ -283,4 +283,4 @@ class WindowManager
 
 } // namespace wm
 
-#endif // WINDOW_MANAGER_HPP
+#endif // TMCAGLWM_APP_HPP
