@@ -28,10 +28,9 @@ class WindowManager;
 
 struct controller_hooks
 {
-    WindowManager *app;
+    WindowManager *wmgr;
 
     void surface_created(uint32_t surface_id);
-
     void surface_removed(uint32_t surface_id);
     void surface_visibility(uint32_t surface_id, uint32_t v);
     void surface_destination_rectangle(uint32_t surface_id, uint32_t x, uint32_t y, uint32_t w, uint32_t h);

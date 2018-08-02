@@ -184,12 +184,12 @@ int WindowManager::init()
 
             // This protocol needs the output, so lets just add our mapping here...
             this->controller->add_proxy_to_id_mapping(
-                this->outputs.back()->proxy.get(),
+                this->outputs.front()->proxy.get(),
                 wl_proxy_get_id(reinterpret_cast<struct wl_proxy *>(
-                    this->outputs.back()->proxy.get())));
+                    this->outputs.front()->proxy.get())));
 
             // Create screen
-            this->controller->create_screen(this->outputs.back()->proxy.get());
+            this->controller->create_screen(this->outputs.front()->proxy.get());
 
             // Set display to controller
             this->controller->display = this->display;
@@ -574,6 +574,8 @@ void WindowManager::send_event(char const *evname, char const *label, char const
  */
 void WindowManager::surface_created(uint32_t surface_id)
 {
+    this->controller->get_surface_properties(surface_id, IVI_WM_PARAM_SIZE);
+
     auto layer_id = this->layers.get_layer_id(surface_id);
     if (!layer_id)
     {
@@ -742,8 +744,6 @@ void WindowManager::surface_set_layout(int surface_id, const std::string& area)
               layer_id);
 
     // set destination to the display rectangle
-    s->set_source_rectangle(0, 0, w, h);
-    this->layout_commit();
     s->set_destination_rectangle(x, y, w, h);
 
     // update area information
@@ -1292,6 +1292,7 @@ WMError WindowManager::doEndDraw(unsigned req_num)
         HMI_SEQ_DEBUG(req_num, "visible %s", act.role.c_str());
         //this->lm_enddraw(act.role.c_str());
     }
+    this->layout_commit();
 
     // Change current state
     this->changeCurrentState(req_num);
@@ -1771,12 +1772,12 @@ const char* WindowManager::kDefaultOldRoleDb = "{ \
  */
 void controller_hooks::surface_created(uint32_t surface_id)
 {
-    this->app->surface_created(surface_id);
+    this->wmgr->surface_created(surface_id);
 }
 
 void controller_hooks::surface_removed(uint32_t surface_id)
 {
-    this->app->surface_removed(surface_id);
+    this->wmgr->surface_removed(surface_id);
 }
 
 void controller_hooks::surface_visibility(uint32_t /*surface_id*/,

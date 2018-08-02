@@ -531,6 +531,11 @@ void controller::create_screen(struct wl_output *output)
     this->screen = std::make_unique<struct screen>(0, this, output);
 }
 
+void controller::get_surface_properties(uint32_t surface_id, int param)
+{
+    ivi_wm_surface_get(this->proxy.get(), surface_id, param);
+}
+
 void controller::layer_created(uint32_t id)
 {
     HMI_DEBUG("wm", "compositor::controller @ %p layer %u (%x)", this->proxy.get(), id, id);
@@ -591,6 +596,7 @@ void controller::surface_size_changed(uint32_t id, int32_t width,
     HMI_DEBUG("wm", "compositor::surface %s @ %d w %i h %i", __func__, id,
               width, height);
     this->sprops[id].size = size{uint32_t(width), uint32_t(height)};
+    this->surfaces[id]->set_source_rectangle(0, 0, width, height);
 }
 
 void controller::surface_added_to_layer(uint32_t layer_id, uint32_t surface_id)
