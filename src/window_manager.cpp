@@ -185,12 +185,12 @@ int WindowManager::init()
 
             // This protocol needs the output, so lets just add our mapping here...
             this->controller->add_proxy_to_id_mapping(
-                this->outputs.back()->proxy.get(),
+                this->outputs.front()->proxy.get(),
                 wl_proxy_get_id(reinterpret_cast<struct wl_proxy *>(
-                    this->outputs.back()->proxy.get())));
+                    this->outputs.front()->proxy.get())));
 
             // Create screen
-            this->controller->create_screen(this->outputs.back()->proxy.get());
+            this->controller->create_screen(this->outputs.front()->proxy.get());
 
             // Set display to controller
             this->controller->display = this->display;
