@@ -53,7 +53,7 @@ class WMClient
     bool removeSurfaceIfExist(unsigned surface);
     bool removeRole(const std::string& role);
 
-#ifndef GTEST_ENABLED
+#if GTEST_ENABLED
     bool subscribe(afb_req req, const std::string &event_name);
     void emitError(WM_CLIENT_ERROR_EVENT ev);
 #endif

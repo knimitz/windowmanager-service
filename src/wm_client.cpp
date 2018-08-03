@@ -174,7 +174,7 @@ bool WMClient::removeRole(const string &role)
     return ret;
 }
 
-#ifndef GTEST_ENABLED
+#if GTEST_ENABLED
 bool WMClient::subscribe(afb_req req, const string &evname)
 {
     if(evname != kKeyError){
