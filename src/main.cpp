@@ -203,8 +203,6 @@ static void cbRemoveClientCtxt(void *data)
         }
         g_afb_instance->wmgr.id_alloc.remove_id(sid);
         g_afb_instance->wmgr.layers.remove_surface(sid);
-        g_afb_instance->wmgr.controller->sprops.erase(sid);
-        g_afb_instance->wmgr.controller->surfaces.erase(sid);
         HMI_DEBUG("wm", "delete surfaceID %d", sid);
     }
     g_afb_instance->wmgr.removeClient(ctxt->name);
