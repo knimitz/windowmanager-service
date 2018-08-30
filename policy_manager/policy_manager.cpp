@@ -688,19 +688,16 @@ int PolicyManager::timerEvent(sd_event_source *source, uint64_t usec, void *data
 
 int PolicyManager::setStateTransitionProcessToSystemd(int event_id, uint64_t delay_ms, std::string role)
 {
+    struct sd_event_source *event_source;
     HMI_DEBUG("wm:pm", "event_id:0x%x delay:%d role:%s", event_id, delay_ms, role.c_str());
-
-    // Store requested role
-    this->req_role_list[event_id] = role;
 
     if (0 == delay_ms)
     {
-        int ret = sd_event_add_defer(afb_daemon_get_event_loop(), NULL,
+        int ret = sd_event_add_defer(afb_daemon_get_event_loop(), &event_source,
                                      &pm::transitionStateWrapper, new int(event_id));
         if (0 > ret)
         {
             HMI_ERROR("wm:pm", "Faild to sd_event_add_defer: errno:%d", ret);
-            this->req_role_list.erase(event_id);
             return -1;
         }
     }
@@ -708,27 +705,25 @@ int PolicyManager::setStateTransitionProcessToSystemd(int event_id, uint64_t del
     {
         // Get current time
         struct timespec time_spec;
-        clock_gettime(CLOCK_MONOTONIC, &time_spec);
+        clock_gettime(CLOCK_BOOTTIME, &time_spec);
 
         // Calculate timer fired time
         uint64_t usec = (time_spec.tv_sec * 1000000) + (time_spec.tv_nsec / 1000) + (delay_ms * 1000);
 
         // Set timer
-        struct sd_event_source *event_source;
         int ret = sd_event_add_time(afb_daemon_get_event_loop(), &event_source,
-                                    CLOCK_MONOTONIC, usec, 1,
+                                    CLOCK_BOOTTIME, usec, 1,
                                     &pm::timerEventWrapper, new int(event_id));
         if (0 > ret)
         {
             HMI_ERROR("wm:pm", "Faild to sd_event_add_time: errno:%d", ret);
-            this->req_role_list.erase(event_id);
             return -1;
         }
-
-        // Store event source
-        this->event_source_list[event_id] = event_source;
     }
-
+    // Store event source
+    this->event_source_list[event_id] = event_source;
+    // Store requested role
+    this->req_role_list[event_id] = role;
     return 0;
 }
 

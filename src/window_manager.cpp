@@ -657,6 +657,10 @@ void WindowManager::startTransitionWrapper(std::vector<WMAction> &actions)
         {
             bool found;
             auto const &surface_id = this->lookup_id(act.role.c_str());
+            if(surface_id == nullopt)
+            {
+                goto proc_remove_request;
+            }
             std::string appid = g_app_list.getAppID(*surface_id, act.role, &found);
             if (!found)
             {
