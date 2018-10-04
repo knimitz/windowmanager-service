@@ -1,6 +1,5 @@
 [gerrit]
 host=gerrit.automotivelinux.org
 port=29418
-project=apps/agl-service-windowmanager-2017
-
+project=apps/agl-service-windowmanager
 defaultbranch=flounder
