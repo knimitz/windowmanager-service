@@ -27,13 +27,6 @@
 namespace wm
 {
 
-struct split_layout
-{
-    std::string name;
-    std::string main_match;
-    std::string sub_match;
-};
-
 struct layer
 {
     using json = nlohmann::json;
@@ -43,22 +36,13 @@ struct layer
     // The actual layer ID
     int layer_id = -1;
     // The rectangular region surfaces are allowed to draw on
-    // this layer, note however, width and hieght of the rect
-    // can be negative, in which case they specify that
-    // the actual value is computed using MAX + 1 - w
-    // That is; allow us to specify dimensions dependent on
-    // e.g. screen dimension, w/o knowing the actual screen size.
+    // this layer.
     compositor::rect rect;
     // Specify a role prefix for surfaces that should be
     // put on this layer.
     std::string role;
-    // TODO: perhaps a zorder is needed here?
-    std::vector<struct split_layout> layouts;
 
     mutable struct LayoutState state;
-
-    // Flag of normal layout only
-    bool is_normal_layout_only;
 
     explicit layer(nlohmann::json const &j);
 

@@ -31,35 +31,7 @@ layer::layer(nlohmann::json const &j)
     this->name = j["name"];
     this->layer_id = j["layer_id"];
 
-    // Init flag of normal layout only
-    this->is_normal_layout_only = true;
-
-    auto split_layouts = j.find("split_layouts");
-    if (split_layouts != j.end())
-    {
-
-        // Clear flag of normal layout only
-        this->is_normal_layout_only = false;
-
-        auto &sls = j["split_layouts"];
-        // this->layouts.reserve(sls.size());
-        std::transform(std::cbegin(sls), std::cend(sls),
-                       std::back_inserter(this->layouts), [this](json const &sl) {
-                           struct split_layout l
-                           {
-                               sl["name"], sl["main_match"], sl["sub_match"]
-                           };
-                           HMI_DEBUG("wm",
-                                     "layer %d add split_layout \"%s\" (main: \"%s\") (sub: "
-                                     "\"%s\")",
-                                     this->layer_id,
-                                     l.name.c_str(), l.main_match.c_str(),
-                                     l.sub_match.c_str());
-                           return l;
-                       });
-    }
-    HMI_DEBUG("wm", "layer_id:%d is_normal_layout_only:%d\n",
-              this->layer_id, this->is_normal_layout_only);
+    HMI_DEBUG("wm", "layer_id:%d name:%s", this->layer_id, this->name.c_str());
 }
 
 struct result<struct layer_map> to_layer_map(nlohmann::json const &j)
