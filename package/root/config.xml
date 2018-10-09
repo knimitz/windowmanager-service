@@ -12,7 +12,7 @@
   <feature name="urn:AGL:widget:provided-api">
      <param name="windowmanager" value="ws" />
   </feature>
-  <feature name="urn:AGL:widget:required-api">
+  <feature name="urn:AGL:widget:required-binding">
     <param name="lib/windowmanager-service.so" value="local" />
   </feature>
 </widget>
