@@ -118,5 +118,5 @@ add_custom_command(TARGET ${TARGETS_WM} POST_BUILD
 )
 
 add_custom_target(package DEPENDS ${PROJECT_BINARY_DIR}/package/root
-   COMMAND wgtpkg-pack -f -o ${PROJECT_BINARY_DIR}/package/${TARGETS_WM}-2017.wgt ${PROJECT_BINARY_DIR}/package/root
+   COMMAND wgtpkg-pack -f -o ${PROJECT_BINARY_DIR}/package/${TARGETS_WM}.wgt ${PROJECT_BINARY_DIR}/package/root
 )
