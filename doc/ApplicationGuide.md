@@ -357,7 +357,7 @@ $ repo sync
 
 Then you can get the following recipe.
 
-* `meta-agl-devel/meta-hmi-framework/recipes-graphics/agl-service-windowmanager-2017`
+* `meta-agl-devel/meta-hmi-framework/recipes-graphics/agl-service-windowmanager`
 
 * `meta-agl-devel/meta-hmi-framework/recipes-graphics/libwindowmanager`
 
