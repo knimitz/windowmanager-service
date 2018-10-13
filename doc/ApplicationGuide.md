@@ -1,757 +1,902 @@
-**Window Manager Application Guide**
-====
-<div align="right">Revision: 0.5</div>
+# **Window Manager Application Guide**
+
+<div align="right">Revision: 0.7</div>
 <div align="right">TOYOTA MOTOR CORPORATION</div>
-<div align="right">20th/Mar/2018</div>
+<div align="right">12th/Oct/2018</div>
 
 * * *
+
 <div id="Table\ of\ content"></div>
 
-Table of content
-============
-- [Introduction](#Introduction)
-	- [Intended audience](#Intended\ audience)
-	- [Scope of this Document](#Scope\ of\ this\ Document)
-	- [Known Issues](#Known\ Issues)
-	- [External libraries](#External\ libraries)
-	- [Client Library](#Client\ Library)
-- [Concepts](#Concepts)
-	- [Layers](#Layers)
-	- [Surfaces](#Surfaces)
-- [Configuration](#Configuration)
-	- [Configuration Items](#Configuration\ Items)
-- [Building and Running](#Building\ and\ Running)
-	- [Dependencies](#Dependencies)
-	- [Build Configuration](#Build\ Configuration)
-- [Implementation Notes](#Implementation\ Notes)
-	- [Structure](#Structure)
+# Table of content
+
+- [Target reader of this document](#Target\ reader\ of\ this\ document)
+- [Overview](#Overview)
+  - [Supported usecase](#Supported\ usecase)
+- [Getting Started](#Getting\ Started)
+  - [Build](#Build)
+  - [Install](#Install)
+  - [Bitbake](#Bitbake)
+  - [Enable to call Window Manager](#Enable\ to\ call\ Window\ Manager)
+- [Software Architecture](#Software\ Architecture)
 - [Sequence](#Sequence)
-- [Binding API](#Binding\ API)
-	- [LibWindowmanager](#LibWindowmanager)
-	- [Methods](#Methods)
-	- [Errors](#Errors)
-	- [Usage](#Usage)
-	- [Events](#Events)
-- [Sample](#Sample)
+- [API reference](#API\ reference)
+  - [Request to Window Manager](#Request\ to\ Window\ Manager)
+  - [Event from Window Manager](#Event\ from\ Window\ Manager)
+  - [Client Library](#Client\ library)
+- [Sample code](#Sample\ code)
+- [Policy Manager](#Policy\ Manager)
+  - [Enabling split](#Enabling\ split)
+- [Release Note](#Release\ Note)
 
+* * *
 
-<div id="Introduction"></div>
+<div id="Target\ reader\ of\ this\ document"></div>
 
-Introduction
-============
-
-This window manager implements simple layout switching of applications on
-multiple layers and with different layer layouts.
-
-<div id="Intended\ audience"></div>
-
-Intended audience
------------------
+## Target reader of this document
 
 This document is intended for developers and system integrators who
-need to know, how the window manager works and how it is to be used.
+need to know, how Window manager works and how it is to be used.
 
-<div id="Scope\ of\ this\ Document"></div>
+### Scope of this Document
 
-Scope of this Document
-----------------------
-
-This document covers the window manager that was implemented for TMC and
+This document covers Window manager that was implemented for TMC and
 delivered to the Automotive Grade Linux (AGL) project. It includes its
 implementation details, concepts of operation, configuration and usage.
 
 It does not include
 
--   document of the underlying architecture, see
-    [HMI-Framework](https://wiki.automotivelinux.org/hmiframework).
+- document of the underlying architecture, see
+  [HMI-Framework](https://wiki.automotivelinux.org/hmiframework).
 
--   document of the AGL application framework and its technologies,
-    see [AGL Application
+- document of the AGL application framework and its technologies,
+  see [AGL Application
     Framework](https://wiki.automotivelinux.org/agl-distro/app-framework).
 
+- document of HomeScreen, see
+  [HomeScreen](http://docs.automotivelinux.org/docs/apis_services/en/dev/reference/hmi-framework/3_1-HomeScreen-Guide.html).
+
 It is highly recommended to have a good understanding of these documents
-and projects before using the window manager.
+and projects before using Window manager.
 
-<div id="Known\ Issues"></div>
+* * *
 
-Known Issues
-------------
+<div id="Overview"></div>
 
-Currently there is a one known issues:
+# Overview
 
--   Only single-surface Qt applications are support through the
-    libwindowmanager library. This is a limitation of how Qt creates surface
-    IDs for the ivi-application interface.
+Window Manager is the service process which provides **window management based on policy**.
+And implements a layout switching of applications on
+multiple layers and with different layer layouts.
+Window Manager is based on ivi layer management from GENIVI and AGL application framework.
 
-<div id="External\ libraries"></div>
+Window Manager consists of  
 
-External libraries
-------------------
+- afb-binder
+- service binding library
+- shared library for policy management
+- configuration files  
 
-This project includes a copy of version 2.1.1 the excellent [C++11 JSON
-library by Niels Lohmann](https://github.com/nlohmann/json).
+In order to understand Window Manager, the below figure shows the one of typical usecases.
+In this example, there are two mode for window management.
 
-<div id="Client\ Library"></div>
+1. Window Management in `Car Stops`
+1. Window Management in `Car Runs`
 
-Client Library
---------------
+![Figure: Typical usecase](parts/state_change_example.png)
 
-A client library implementation that internally uses the *libafbwsc*, is
-provided in the `libwindowmanager`.
+The important points are:
 
-<div id="Concepts"></div>
+- **Window transition should be done by Window Manager**  
+ Window Manager switch application displayed on top layer by user operation(touch shortcut button).
+ In this example, when an user touches `navigation` shortcut button, Window Manager displays `navigation` and hide `launcher`. Next, when an user touches `videoplayer` shortcut button, Window Manager divides a screen into two parts and display two applications.
 
-Concepts
-========
+- **There is a priority `role` for each application.**  
+ Window Manager realizes state transition change based on the policy which consists of `role`.
+ According to the state transition table, it controls the visibility of application window, layout change, and so on.
+ The reasons why this is necessary are
 
-The window manager implements a couple of concepts in order to allow
-efficient implementation.
+  - to support user driving
+  - not to disturb a driver concerns on driving for safety  
+
+  In this example, for safety, when the car starts running, Window Manager set up the role `videoplayer`
+  to be masked and uncontrollable by user not to disturb driver concerns.
+  And, for supporting driving, set up `navigation` role to be displayed 3 seconds after the car ran.  
+  In `Car Run` state, the user can't switch to other application from Navigation application until car stops.
+
+<div id="Supported\ usecase"></div>
+
+## Supported usecase
+
+1. Window Management
+- When an user chooses a different application, Window Manager changes the layout and then displays the application.
+- When an user chooses a different application, Window Manager changes the layout and then hides the displayed application.
+2. Policy Management
+- Window Manager changes layout according to policy table based on `role`.
+3. Define Layout by `area` configuration
+- Window Manager realizes the abstracted `area` and can resize the window by using it. User can easily edit this configuration.
+
+* * *
+
+<div id="Getting\ Started"></div>
+
+# Getting Started
+
+<div id="Build"></div>
+
+## Build
+
+```bash
+git clone https://gerrit.automotivelinux.org/gerrit/apps/agl-service-windowmanager
+cd agl-service-windowmanager
+mkdir build
+cd build
+source <your SDK path> // normally this is /opt/agl-sdk/environment
+cmake ..
+make
+make package
+```
+
+The widget package is populated in the 'package' directory.
+
+```bash
+ls package/
+root  windowmanager-service.wgt
+```
+
+<div id="Install"></div>
+
+## Install
+
+Copy windowmanager-service.wgt to the file system then execute the following command.
+
+```bash
+afm-util install windowmanager-service.wgt
+```
+
+<div id="Bitbake"></div>
+
+## Bitbake
+
+You can make Window Manager object files with the following two stage operations.
+
+### Download recipe
+
+```bash
+mkdir WORK
+cd WORK
+repo init -u https://gerrit.automotivelinux.org/gerrit/AGL/AGL-repo
+repo sync
+```
+
+### Execute Bitbake
+
+```bash
+source meta-agl/scripts/aglsetup.sh -m m3ulcb agl-demo hmi-framework
+bitbake agl-demo-platform
+```
+
+* * *
+
+<div id="Enable\ to\ call\ Window\ Manager"></div>
+
+## Enable to call Window Manager
+
+To call Window Manager, it is important to enable the permission from security framework.  
+To use Window Manager API, an application or a service shall add the following configuration definition into "config.xml" of your application.
+
+```xml
+<feature name="urn:AGL:widget:required-api">
+    <param name="windowmanager" value="ws" />
+</feature>
+```
+
+To call Window Manager function easily, Window Manager provides a library which is called "libwindowmanager".
+This library provides a function style API calling interface.  
+So you can include the libwindowmanager.hpp header file, and can link against this library.
+Please also refer to the sample application.
+
+See also our [Sample code](#Sample\ code).
+
+* * *
+
+<div id="Software\ Architecture"></div>
+
+# Software Architecture
+
+The static relationship with other components is shown below.
+The actual logic of Window Manager is the binding in Binder(afb-daemon).
+Window Manager is based on AGL application framework,
+so the IPC via websocket is protected by AGL application framework.
+
+The upper binder is for the application side security context.  
+The lower binder is the Window Manager for the server side security context.
+Usually an application side binder has some business logic for each application, so the number of binders depend on the number of applications which use Window Manager.  
+On the other hand, regarding lower binder there is only one module in the system. This binder receives messages from multiple applications.
+
+An application can use libwindowmanager.so to call Window Manager API simply.
+
+Window Manager is based on the GENIVI layer management system.
+
+![software-stack.png](parts/software-stack.png)
+
+## Layers
+
+Layers are entities that means the application stack group defined in `layers.json`.
+This doesn't mean layer ID defined in GENIVI ivi layer.
+The layer ID is used for application itself in Window Manager.
+Currently, application can't have multiple surfaces in Window Manager.
 
 <div id="Layers"></div>
 
-Layers
-------
+## Surfaces
 
-Layers are entities that are stacked on top of each other. Each layer
-has an ID which is used for the ivi-controller interface, but this ID
-also implicitly specifies its stacking order, from lowest to highest.
-
-Layers are always full-screen. We do not use layer dimensions as a way
-to setup the scene, rather - each layer has a layout attached to it,
-which specifies an area that is used by surfaces to draw on.
-
-Additionally, layers will generally leave surfaces on below layers
-activated, and only disable surfaces on layers the are above the
-currently used layer.
-
-It is possible to deactivate these surfaces on lower layers explicitly
-using the `DeactivateSurface` API call.
-
-<div id="Surfaces"></div>
-
-Surfaces
---------
-
-Surfaces are *placed* on layers according to their name. The surface
-will then be resized to dimensions, according to the layer's layout
-configuration.
-
+Surfaces are *placed* on layers . The surface
+will then be resized to dimensions, according to the name of `areas.db`
+application requests by `activateWindow` or policy management.
+As default, `normal.full` is set by libwindowmanager for native application.
 
 <div id="Configuration"></div>
 
-Configuration
-=============
+## Configuration
 
-The window manager is configured with the *layers.json* configuration
-file, by default it is searched in `${AFM_APP_INSTALL_DIR}/etc/layers.json`.
-Note, that the window manager will use default configuration unless this configuration is found.
+The window manager is configured with the *layers.json*, *areas.db*, *roles.db* configuration
+files. By default they are searched in `${AFM_APP_INSTALL_DIR}/etc/`.
 
-A sample configuration is provided with the window manager
-implementation, this sample is installed to ${AFM_APP_INSTALL_DIR}/etc/layers.json.
+Sample configurations are provided with the window manager
+implementation, these samples are installed to ${AFM_APP_INSTALL_DIR}/etc/ .
 
-Note:
-Currently, window manager doesn't block the application displaying because "Fallback" is set by default. If the "Fallback" is not set in layers.json, window manager blocks the application displaying. In such a situation, you have to add your role(application name) at "role" in layers.json.
+This configuration is supposed to be configured by policy designer which means OEM or Tier1.
 
-<div id="Configuration\ Items"></div>
+### layers.json
 
-Configuration Items
--------------------
+`layers.json` has three roles.  
+First, to create application containers `Layer`.  
+Second, to set id range for applications.  
+Third, to attach application to `Layer` according to the role application requests.
 
-This section describes configuration items available through
-`layers.json`. It will do this, by first providing an example, and then
-going into its components.
+The sample configuration is here
 
-### main\_surface
+```json
+{
+   "comment": "Surface ID to Layer ID mapping",
 
-    "main_surface": {
-       "surface_role": "HomeScreen",
-    },
+   "main_surface": {
+      "surface_role": "HomeScreen",
+      "comment": "This surface should never be made invisible (The HomeScreen)"
+   },
 
-The `main_surface` object describes a surface that will internally be
-treated as the main surface - usually this mean *HomeScreen*. The only
-special handling this surface receives, is that it is not allowed to
-deactivate it. Placement of this surface on an layer is done by the
-other configuration described below.
-
--   `surface_role` this configuration item specifies the name of the
-    main surface. Set this to e.g. `HomeScreen`.
-
-### mappings
-
-This configuration item is a list of surface-name to layer mappings.
-
-#### surface to layer mapping
-
-    "mappings": [
+   "mappings": [
       {
-         "role": "^HomeScreen$",
-         "name": "HomeScreen",
+         "role": "BackGroundLayer",
+         "name": "BackGroundLayer",
+         "layer_id": 999,
+         "comment": "Single BackGround layer map for the map, radio, music and video"
+      },
+      {
+         "role": "homescreen",
+         "name": "FarHomeScreen",
          "layer_id": 1000,
-         "area": { "type": "full" },
-         "comment": "Single layer map for the HomeScreen"
+         "comment": "FarHomeScreen is the part of HomeScreen. The z order of this layer is lower than NearHomeScreen"
       },
       {
-         "role": "MediaPlayer|Radio|Phone|Navigation|HVAC|Settings|Dashboard|POI|Mixer",
-         "name": "apps",
+         "role": "music|video|browser|radio|phone|map|hvac|settings|dashboard|poi|mixer|sdl|launcher|fallback",
+         "name": "Apps",
          "layer_id": 1001,
-         "area": { "type": "rect", "rect": { "x": 0, "y": 218, "width": -1, "height": -433 } },
-         "comment": "Range of IDs that will always be placed on layer 1001, negative rect values are interpreted as output_size.dimension - $value",
-
-         "split_layouts": [
-            {
-               "name": "Navigation",
-               "main_match": "Navigation",
-               "sub_match": "HVAC|MediaPlayer",
-               "priority": 1000
-            }
-         ]
+         "comment": "Range of IDs that will always be placed on layer 1001"
       },
       {
-         "role": "^OnScreen.*",
-         "name": "popups",
+         "role": "^on_screen.*",
+         "name": "OnScreen",
          "layer_id": 9999,
-         "area": { "type": "rect", "rect": { "x": 0, "y": 760, "width": -1, "height": 400 } },
-         "comment": "Range of IDs that will always be placed on the popup layer, that gets a very high 'dummy' id of 9999"
+         "comment": "Range of IDs that will always be placed on the OnScreen layer, that gets a very high 'dummy' id of 9999"
       }
-    ]
+   ]
+}
+```
 
 Each mapping defines the following items to map corresponding surfaces
 to a layer.
 
--   `role` defines a regular expression that application drawing names
+- `role` defines what kind of ability the application has. And the application will be attached to `Layer` according to the `role`.
+    A regular expression that application drawing names
     are matched against. If applications match this regular expression,
     the surface will be visible on this layer.
 
--   `name` is just a name definition for this layer, it has no
+- `name` is just a name definition for `Layer`, it has no
     functional use apart from identifying a layer with a name.
+- `layer_id` is the id used in GENIVI IVI layer management control.
 
--   `layer_id` specifies which ID this layer will use.
+`Layer` stacks from beginning to end.  
+The above `Layer` example image is below.
 
--   `area` is an object that defines the area assigned to surfaces.
+![wm_layer_stack.png](parts/wm_layer_stack.png)
 
--   `split_layouts` is an optional item, that - if present - defines a
-    number of possible split-screen layouts for this layer.
+Note:
+"fallback" role is the special role. This role is set if the role application requests doesn't exist
+in `layers.json`. Then, Window Manager will accept any applications.
+If the "fallback" is not set in layers.json, window manager blocks the application displaying in such case.
+In such a situation, you have to add your role(application name) at "role" in layers.json.
 
-#### Area
+Note:
+`BackGroundLayer` name of `Layer` is exception for work around. This layer is fallback layer not to stop event loop of application when it becomes invisible.
+The problem is issued in <https://jira.automotivelinux.org/browse/SPEC-1484>.
 
-Areas can be either `full` or `rect`, whereas `full` means a full-screen
-layer, this is mostly useful for the main\_surface or HomeScreen layer.
-`rect` declares a layer drawing area specified as a rectangle with start
-coordinates `x` and `y` as well as its dimensions `width` and `height`.
+<div id="Configuration\ Items"></div>
 
-The dimensions can be specified relative to the screen dimensions. For
-this negative values for width and height must be used.
+### areas.db
 
-For example, a full-screen surface can have the following `rect`
-definition:
+Area means abstract expressions of 2-dimensional size and position.  
+areas.db defines the area which an application is set.
 
-    "rect": { "x": 0,
-              "y": 0,
-              "width": -1,
-              "height": -1 }
-
-A surface that leaves a 200pixel margin on the top and bottom can use
-the following `rect` definition:
-
-    "rect": { "x": 0,
-              "y": 200,
-              "width": -1,
-              "height": -401 }
-
-So the expression for the actual surface dimensions when using
-screen-size-relative values will be:
-
-    actual_width = screen_width + 1 + width
-    actual_height = screen_height + 1 + height
-
-Or in other words, to leave an `N` wide border around a surface, the
-actual value in the dimension configuration needs to be `-N - 1`, and
-appropriate offsets need to be set for `x` and `y`.
-
-#### split\_layouts
-
-This configuration item allows the specification of split-screen layouts
-on layers for certain surfaces.
-
-A split screen layout always has a *main* surface and a *sub* surface.
-In order to enter a split screen layout, first the *main* surface of the
-layout must be activated, and then the *sub* surface. In order to
-disable the split layout, one of the two participating surface must be
-deactivated (or a surface on a layer below the current one must be
-activated).
-
-    "split_layouts": [
-       {
-           "name": "Navigation",
-           "main_match": "Navigation",
-           "sub_match": "HVAC|MediaPlayer",
-       }
+```json
+{
+    "areas": [
+        {
+            "name": "fullscreen",
+            "rect": {
+                "x": 0,
+                "y": 0,
+                "w": 1080,
+                "h": 1920
+            }
+        },
+        {
+            "name": "normal.full",
+            "rect": {
+                "x": 0,
+                "y": 218,
+                "w": 1080,
+                "h": 1488
+            }
+        },
+        {
+            "name": "split.main",
+            "rect": {
+                "x": 0,
+                "y": 218,
+                "w": 1080,
+                "h": 744
+            }
+        },
+        {
+            "name": "split.sub",
+            "rect": {
+                "x": 0,
+                "y": 962,
+                "w": 1080,
+                "h": 744
+            }
+        }
     ]
-
-A split layout object has the following attributes:
-
--   `name` defines its name, it has no actual function other then a way
-    to identify this split layout.
-
--   `main_match` is a regular expression that matches for the *main*
-    surface of this split layout.
-
--   `sub_match` is a regular expression that matches for the *sub*
-    surface of this layout.
-
-In the above example only the surface with drawing name
-`Navigation` will be used as the *main* surface, and the surfaces
-with drawing name `HVAC` or `MediaPlayer` can be used as a *sub* surface for
-this layout.
-
-The names must still match the layer's role match!
-
-<div id="Building\ and\ Running"></div>
-
-Building and Running
-====================
-
-<div id="Dependencies"></div>
-
-Dependencies
-------------
-
-Build dependencies are as follows:
-
--   afb-daemon &gt;= 1.0
-
--   libsystemd &gt;= 222
-
--   wayland-client &gt;= 1.11
-
--   wayland-ivi-extension &gt;= 2.0.2 (until eel, wayland-ivi-extension &gt;= 1.13)
-
--   cmake &gt;= 2.8
-
-<div id="Supported environment"></div>
-
-Supported environment
--------------------
-
-| Item        | Description                       |
-|:------------|:----------------------------------|
-| AGL version | Electric Eel                      |
-| Hardware    | Renesas R-Car Starter Kit Pro(M3) |
-
-
-<div id="Build\ Configuration"></div>
-
-Build Configuration
--------------------
-
-**Download recipe**
-If repo is already done, please start with git clone
-
-```
-$ mkdir WORK
-$ cd WORK
-$ repo init -u https://gerrit.automotivelinux.org/gerrit/AGL/AGL-repo
-$ repo sync
-
+}
 ```
 
-Then you can get the following recipe.
+The image of the above setting is described below.  
+![wm_area.png](parts/wm_area.png)
 
-* `meta-agl-devel/meta-hmi-framework/recipes-graphics/agl-service-windowmanager`
+- `name` is an abstract data of rectangle.
 
-* `meta-agl-devel/meta-hmi-framework/recipes-graphics/libwindowmanager`
+- `rect` has 4 arguments. `x`, `y` means the offset from (0, 0) of screen.`w` means the width of the area, and `h` means the height of the area. The dimensions can be specified relative to the screen dimensions.
 
-**Bitbake**
+The dimensions can be specified absolute to the screen dimensions. But if `fullscreen` is not suitable to screen dimensions, Window Manager scales the area automatically.
 
-```
-$ source meta-agl/scripts/aglsetup.sh -m m3ulcb agl-demo
-$ bitbake agl-demo-platform
-```
+Note:  
+`fullscreen` must be set because this is the base size of scaling in Window Manger.
 
-<div id="Implementation\ Notes"></div>
+Note:  
+The direction of the coordinates depends on `transform` in weston.ini.
+Currently, agl-demo-platform set `transform=270`.
+This suppose to use screen vertically.
 
-Implementation Notes
-====================
+### roles.db
 
-The window manager is implemented as a app-framework-binder binding.
-That means, the build produces one shared object that exports a binding
-interface.
-
-<div id="Structure"></div>
-
-Structure
----------
-
-The implementation is loosely split across the following source files:
-
--   `main.cpp`: The program entry point as used by the afb-daemon. This
-    file defines the afbBindingV2 symbol that is used by the afb-daemon
-    in order to load a binding. It also defines the wayland fd event
-    dispatcher and some globals to be used (as context for the afb calls
-    we receive).
-
--   `app.cpp` / `app.hpp`: This is the main window manager
-    logic implementation.
-
--   `config.cpp` / `config.hpp`: Very simple configuration
-    item interface.
-
--   `controller_hooks.hpp`: hook functions called by the wayland
-    controller to call into the window manager instance. Only a very limited number
-    of events are passed to the window manager, which allowed the usage of
-    such a simple interface.
-
--   `json_helper.cpp` / `json_helper.hpp`: Smaller json related
-    helper functions.
-
--   `layers.cpp` / `layers.hpp`: Actually hold all the data from
-    layers.json configuration, do some transformations and service the
-    window manager implementation.
-
--   `layout.cpp` / `layout.hpp`: Very simple layout state for the
-    implementation of split layouts and tracking of the
-    surfaces involved.
-
--   `policy.hpp`: PolicyManager implementation stub. Gets passed the
-    current and new layout on layout switch and can decide upon it being
-    valid or not.
-
--   `result.hpp`: Simple result class around
-    `std::experimental::optional` that additionally can hold a
-    `char const *` to describe the error.
-
--   `util.cpp` / `util.hpp`: general utility functions and structs - and
-    preprocessor definitions (e.g. `log*()` to AFB logging functions.
-
--   `wayland_ivi_wm.cpp` / `wayland_ivi_wm.hpp`: A C++ object-oriented
-    libwayland-client wrapper. It is instanced in `main.cpp` and handles
-    all our wayland needs. These files are in master. In eel, the name
-    of these files are `wayland.cpp` / `wayland.hpp`
+* * *
 
 <div id="Sequence"></div>
 
-Sequence
-===============
+# Sequence
 
-To understand the sequence between application and window manager, refer to the [spec document](https://wiki.automotivelinux.org/windowmanager).
+To understand the sequence between application and window manager, refer to the [spec document](https://wiki.automotivelinux.org/hmiframework).
 
+The typical sequence to render your application, follow the sequence below.
 
-<div id="Binding\ API"></div>
+1. Register your role (and request surfaceID)
 
-Binding API
-===============
+![request_role.png](parts/request_role.png)
 
-Each function returns a reply containing at least a failed or successful
-result of the call, additionally, when calls return something, it is
-noted.
+The above sequence is the initialization phase of your application to use Window Manager.
+An Application has to register your `role` to Window Manager. For ivi-shell application, Window Manager generates surfaceID to input it into the function
+to create surface.  
+And also it is important for synchronization to get `syncDraw` event for receiving the request for resize and redraw, and notifying Window Manager of `endDraw`, so register callback function with setEventHandler for `syncDraw`.
 
-<div id="LibWindowmanager"></div>
+[requestSurface](#requestSurface)  
+[setEventHandler](#wm_subscribe)
 
-LibWindowmanager
-------
+setEventHandler is API of libwindowmanager. This calls wm_subscribe internally.
 
-This is the public interface of the class `LibWindowmanager`.
+2. Display your window
 
-    class LibWindowmanager
-    {
-    public:
-        LibWindowmanager();
-        ~LibWindowmanager();
+![hmi_framework_designed_seq_toyota.png](parts/hmi_framework_designed_seq_toyota.png)
 
-        enum EventType {
-           Event_Active = 0,
-           Event_Inactive,
+To display your window, your application has to request `activateWindow` with `role` and `area` to Window Manager.
+Window Manager checks the app should be visible on the `area` according to the policy table using `role` .
+If it is accepted, afb_req_success will be returned, and next Window Manager
+will push the event `syncDraw` to applications which will be displayed.
+If it is denied, afb_req_fail will be returned.  
+In this sample sequence, `syncDraw` is emitted to the apps who requested only,
+but this shall be emitted to other applications whose size shall be changed.
 
-           Event_Visible,
-           Event_Invisible,
+[activateWindow](#activateWindow)  
+[syncDraw](#syncDraw)  
+[endDraw](#endDraw)  
+[flushDraw](#flushDraw)
 
-           Event_SyncDraw,
-           Event_FlushDraw,
-        };
+3. Activate OnScreen Window
 
-        int init(int port, char const *token);
+![deactivate_window.png](parts/deactivate_window.png)
 
-        // Window manager API
-        int requestSurface(json_object *object);
-        int requestSurfaceXDG(json_object *object);
-        int activateSurface(json_object *object);
-        int deactivateSurface(json_object *object);
-        int endDraw(json_object *object);
-        int getDisplayInfo(json_object *object);
-        int getAreaInfo(json_object *in_obj, json_object *out_obj);
+[deactivateWindow](#deactivateWindow)  
+[See sample code for more detail about OnScreen Window.](https://gerrit.automotivelinux.org/gerrit/gitweb?p=apps%2Fonscreenapp.git;a=summary)
 
-        int getAreaInfo(const char *label, json_object *out_obj);
+The above sequence shows the sample of OnScreen Window.
+If the role is high priority than NormapApp, Window Manager rejects NormalApp
+request when OnScreenApp is displayed.
 
-        void set_event_handler(enum EventType et, handler_fun f);
+Note : Above repository is currently empty, so please refer to the sandbox branch.
 
-    };
+* * *
 
-<div id="Methods"></div>
+<div id="API\ reference"></div>
 
-Methods
--------
+# API reference
 
-### init(int port, char const *token)
+## Request to Window Manager
 
-Initialize the Binding communication.
+| Use | verb | version |
+|:-:|:-:|:-:|
+| Initialize | requestSurface | from 0.7 |
+|            | wm_subscribe | from 0.7 |
+|            | requestSurfaceXDG | from 0.7 |
+|Activate/Deactivate| activateWindow | from 0.7 |
+|            | deactivateWindow | from 0.7 |
+|            | endDraw | from 0.7 |
+| Get Infomation | getDisplayInfo | from 0.7 |
 
-The `token` parameter is a string consisting of only alphanumeric characters.
-If these conditions are not met, the LibWindowmanager instance will not initialize,
-i.e. this call will return `-EINVAL`.
+Note: We created this table from 0.7
 
-The `port` parameter is the port the afb daemon is listening on, an
-invalid port will lead to a failure of the call and return `-EINVAL`.
+The data of IPC via websocket consists of JSON.
+This section describes the verb of API and key.
+Normally, the body of requesting API will be here.
 
-### requestSurface(json_object *object)
+<div id="Request\ to\ Widnow \Manager"></div>
 
-**args: `{ 'kKeyDrawingName': 'application name' }`**
-This method requests a surface with the label given from the *Window Manager*.
-It will return `surface id` a client application can use, and
-`-errno` on failure. Additionally, on the standard error, messages are
-logged to help debugging the issue.
+## Initialize
 
-### requestSurfaceXDG(json_object *object)
+<div id="requestSurface"></div>
 
-**args: `{ 'kKeyDrawingName': 'application name', 'kKeyIviId': 'ivi id' }`**
-This method is mainly intended for *xdglauncher* that controls xdg application such as chromium.
-It will return `surface id` xdglauncher uses, and
-`-errno` on failure. Additionally, on the standard error, messages are
-logged to help debugging the issue.
+### *requestSurface*
 
-### activateSurface(json_object *object)
+Register your role to Window Manager and get surfaceID for ivi-shell.
+The role is used for policy management.  
+SurfaceID is supposed to be set to the API  `ivi_application_surface_create` of ivi-application protocol or set it to environment variable `QT_IVI_SURFACE_ID` if your app is Qt and integrate ivi-shell.
 
-**args: `{ 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout'  }`**
-This method is mainly intended for *manager* applications that control
-other applications (think an application manager or the *HomeScreen*).
-It instructs the window manager to activate the surface with the given
-*label*.
+- verb : "requestSurface"  
+- argument : {"drawing_name":"your role"}
 
-This method only is effective after the actual window or surface was
-created by the application.
+the value must be selected in layers.json.
 
-### deactivateSurface(json_object *object)
+argument example :
 
-**args: `{ 'kKeyDrawingName': 'application name' }`**
-This method is mainly intended for *manager* applications that control other applications.
-In adition, this is for applications that overrides other applications such like popup message.
-In this case, popup surface requests to be hidden. It instructs the window manager to deactivate the surface associated with the given label. Note, that deactivating a surface also means to implicitly activate another (the last active or if not available *main surface* or *HomeScreen*.)
+```json
+{
+  "drawing_name" : "navigation"
+}
+```
 
-This method only is effective after the actual window or surface was
-created by the application.
+### *requestSurfaceXDG*
 
-### endDraw(json_object *object)
+This API is for XDGLauncher, so it is not necessary for normal application.
+XDGLauncher is created for XDG application for desktop app without editing for HMI-Framework.
+Please see the repository in detail.
+<https://gerrit.automotivelinux.org/gerrit/gitweb?p=staging%2Fxdg-launcher.git;a=summary>
 
-**args: `{ 'kKeyDrawingName': 'application name' }`**
-This function is called from a client application when it is done
-drawing its surface content.
+<div id="wm_subscribe"></div>
 
-It is not crucial to make this call at every time a drawing is finished
-- it is mainly intended to allow the window manager to synchronize
-drawing in case of layout switch. The exact semantics are explained in
-the next [Events](#_events) Section.
+### *wm_subscribe*
 
-### getDisplayInfo(json_object *object)
+Subscribe the Window Manager's event.
+Application must subscribe `syncDraw` event.
 
-**args: `{ }`**
-This function gets the display information as follows:
- - width[pixel]
- - height[pixel]
- - width[mm]
- - height[mm]
+- verb : "wm_subscribe"  
+- argument : {"event" : *event number*}
 
-It outputs the display information for json_object in the argument as follows:
-  `{"width_pixel": int value of width[pixel], "height_pixel": int value of height[pixel],
-    "width_mm": int value of width[mm], "height_mm": int value of height[mm]}`
+argument example :
 
-It should be called after calling init().
-It should not be called in the event handler because it occurs hang-up.
+```json
+{
+  "event" : 5
+}
+```
 
-#### NOTE
-It uses wl_output::geometry() for getting physical width[mm] and height[mm] of the display,
-but the value is different with measured value.
+The event is abstracted with a number (enumeration).
 
- - value from wl_output::geometry(): width:320 height:520
- - measured value                  : width:193 height:343
+| Number | Event |
+|:-:|:-:|
+| 0 | "active" |
+| 1 | "inactive" |
+| 2 | "visible" |
+| 3 | "invisible" |
+| 4 | "syncDraw" |
+| 5 | "flushDraw" |
+| 6 | "screenUpdated" |
 
-### getAreaInfo(json_object *in_obj, json_object *out_obj)
+## Activate/Deactivate
 
-**args1: `{ 'kKeyDrawingName': 'application name' }`**
-**args2: `{ }`**
-This function gets the information of area drawn by the application as follows:
- - x-coordinate
- - y-coordinate
- - width
- - height
+<div id="activateWindow"></div>
 
-It outputs the area information for json_object in the 2nd argument as follows:
-  `{"x": int value of x-coordinate, "y": int value of y-coordinate,
-    "width": int value of width, "height": int value of height}`
+### *activateWindow*
 
-It should be called after calling activateSurface().
-It should not be called in the event handler because it occurs hang-up.
+Request to display your application with `role` on the `area` to Window Manager.
+Window Manager checks the app should be visible on the `area` and change layout according to the policy table using `role` .
+If it is accepted, afb_req_success will be returned, and next Window Manager
+will push the event `syncDraw` to applications which will be displayed.
+If it is denied, afb_req_fail will be returned.
 
-#### NOTE
-The same information can given by SyncDraw event.
+- verb : "activateWindow"  
+- argument : {"drawing_name" : "your role", "drawing_area" : "your area"}
 
-### getAreaInfo(const char *label, json_object *out_obj)
+the value must be selected among layers.json.
 
-**args1: String of application name**
-**args2: `{ }`**
-This function is same with `getAreaInfo(json_object *in_obj, json_object *out_obj)`,
-but only has difference of 1st argument.
+argument example :
 
-### set\_event\_handler(enum EventType et, handler_fun f)
+```json
+{
+  "drawing_name" : "navigation",
+  "drawing_area" : "normal.full"
+}
+```
+
+<div id="deactivateWindow"></div>
 
-This method needs to be used to register event handlers for the WM
-events described in the EventType enum. Only one hendler for each
-EventType is possible, i.e. if it is called multiple times with the same
-EventType the previous handler will be replaced.
+### *deactivateWindow*
 
-The `func` handler functions will receive the label of the surface this
-event is targeted at.
+Request to hide your application to Window Manager.
+This verb is supposed to be used by high priority application which
+are for example popup application or system UI application such like alert.
+If Window Manager set the priority of popup high in the policy, Window Manager may not hide the popup even if normal applications
+send `activateWindow` until popup application send `deactivateWindow` . This behavior depends on the policy table.  
+After this request, Window Manager checks which app should be visible
+and change layout according to the policy table.
 
-See Section [Events](#_events) for more detailed information about event
-delivery to client applications.
+- verb : "deactivateWindow"  
+- argument : None
 
-<div id="Errors"></div>
+<div id="endDraw"></div>
+
+### *endDraw*
 
-Errors
-------
+Notify Window Manager of application finishes drawing.
+This function must be sent in event `syncDraw`.
+Otherwise, Window Manager will roll back to previous state and reject your request `activateWindow` .
 
-Methods returning an `int` signal successful operation when returning
-`0`. In case of an error, an error value is returned as a negative errno
-value. E.g. `-EINVAL` to signal that some input value was invalid.
+- verb : "endDraw"
+- argument : {"drawing_name" : "your role"}
 
-Additionally, logging of error messages is done on the standard error
-file descriptor to help debugging the issue.
+argument example :
 
-<div id="Usage"></div>
+```json
+{
+  "drawing_name" : "navigation",
+}
+```
+
+## Get Information
+
+### *getDisplayInfo*
 
-Usage
------
+Get screen information such as resolution.
 
-### Initialization of LibWindowmanager
+- verb : "getDisplayInfo"
+- argument : None
 
-Before usage of the LibWindowmanager, the method `init()` must be
-called once, it will return `-errno` in case of an error and log
-diagnostic messages to stderr.
+Return : The screen information will return.  
+Return example :
 
-### Request a surface
+```json
+{
+    "response":{
+        "width_pixel":1080,
+        "height_pixel":1920,
+        "width_mm":320,
+        "height_mm":520,
+        "scale":1
+    },
+    "jtype" : "afb-reply",
+    "request":{
+        "status":"success",
+        "info":"success",
+        "uuid":"05ae219a-0e56-4f46-af9f-3186a18cb110"
+    }
+}
+```
+
+Note :  
+"width_mm", "height_mm" is from output which is one of the wayland object.
+These items lack reliability, so recommend not to use.
+
+<div id="Event\ from\ Window \Manager"></div>
+
+## Event from Window Manager
+
+| Number | Event | version |
+|:-:|:-:|:-:|
+| 0 | "active" | from 0.7|
+| 1 | "inactive" | from 0.7 |
+| 2 | "visible" | from 0.7 |
+| 3 | "invisible" | from 0.7 |
+| 4 | "syncDraw" | from 0.7 |
+| 5 | "flushDraw" | from 0.7 |
+| 6 | "screenUpdated" | from 0.7 |
 
-When creating a surface with *Qt* - it is necessary to request a surface
-from the WM, internally this will communicate with the window manager
-binding. Only after `requestSurface()` was successful, a surface should
-be created.
+Events also consists of JSON.
+The data of event is contained in `data` such like
 
-This is also true for *QML* applications, where only after the
-`requestSurface()` should the load of the resource be done. The method
-returns `surface id` a client application can use
-after the surface was requested successfully.
+```json
+{
+    "event":"windowmanager\/active",
+    "date":{
+        "drawing_name":"navigation"
+    },
+    "jtype":"afb-event"
+}
+```
 
-#### Workings of requestSurface()
+"event" is the event name.
+"data" is the data object from Window Manager and contains
+the message of event.
+This section describes "event" and the contents of "data".
+
+### active
+
+This event means when the application becomes active state.
+
+example :
+
+```json
+{
+  "event":"windowmanager\/active",
+  "data":{
+    "drawing_name":"launcher"
+    }
+  },
+  "jtype":"afb-event"
+}
+```
 
-`LibWindowmanager::requestSurface()` calls the AFB binding verb
-`requestsurface` of the `windowmanager` API. This API call will return a
-numeric ID to be used when creating the surface. This ID is never
-explicitly returned to the client application, instead, it is set in the
-application environment in order for *Qt* to then use it when creating
-the surface.
+### inactive
 
-With the current *Qt* implementation this means, that only one surface
-will be available to client applications, as subsequent windows will
-increment this numeric ID internally - which then will lead to IDs that
-cannot be known by the window manager as there is no direct
-communication from *Qt* to the WM.
+This event means when the application becomes inactive state.
 
-<div id="Events"></div>
+example :
 
-Events
-------
+```json
+{
+  "event":"windowmanager\/inactive",
+  "data":{
+    "drawing_name":"launcher"
+    }
+  },
+  "jtype":"afb-event"
+}
+```
 
-Events are a way for the *Window Manager* to propagate information to
-client applications. It was vital for the project to implement a number
-of events, that mirror functionality that is already present in the
-wayland protocol.
+### visible
+
+This event is issued when the application is visible state.
+
+example :
+
+```json
+{
+  "event":"windowmanager\/visible",
+  "data":{
+    "drawing_name":"launcher"
+    }
+  },
+  "jtype":"afb-event"
+}
+```
+
+### invisible
+
+This event is issued when the application is invisible state.
+
+example :
+
+```json
+{
+  "event":"windowmanager\/invisible",
+  "data":{
+    "drawing_name":"launcher"
+    }
+  },
+  "jtype":"afb-event"
+}
+```
 
-All events have the surface label as argument - a way to enable future
-multi-surface applications.
+<div id="syncDraw"></div>
 
-As already stated above, this is currently not possible with the way
-*Qt* implements its surface ID setting.
+### syncDraw
 
-### Active and Inactive Events
+This event is issued by Window Manager state change operation in policy to the following cases.
 
-These events signal an application that it was activated or deactivated
-respectively. Usually this means it was switched visible - which means
-the surface will now be on the screen and therefor continue to render.
+- Your app requested `activateWindow` then your application will be resized or visible.
+- Other app requested `activateWindow` then your application will be resized or visible.
+- Window Manager change layout due to vehicle condition.
 
--   `Active(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
-    Signal that the surface with the name
-    `kKeyDrawingName` is now active.
+This event is the requests from Window Manager to
 
--   `Inactive(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
-    Signal that the surface with the
-    name `kKeyDrawingName` is now inactive. This usually means, the layout
-    got changed, and the surface is now considered inactive
-    (or sleeping).
+- request your app to callback `endDraw` to Window Manager.
+- request your app to resize and redraw according to "drawing_area".
 
-### Visible and Invisible
+This is the abstract word then the real size is given in "drawing_rect".
 
-These events signal an application that it was switched to be visible or
-invisible respectively. These events also are handled implicitly through
-the wayland protocol by means of `wl_surface::enter` and
-`wl_surface::leave` events to the client.
+example :
 
--   `Visible(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
-    Signal applications, that the
-    surface with name `kKeyDrawingName` is now visible.
+```json
+{
+  "event":"windowmanager\/syncDraw",
+  "data":{
+    "drawing_name":"radio",
+    "drawing_area":"normal.full",
+    "drawing_rect":{
+      "x":0,
+      "y":218,
+      "width":1080,
+      "height":1488
+    }
+  },
+  "jtype":"afb-event"
+}
+```
 
--   `Invisible(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
-    Signal applications that the
-    surface with name `kKeyDrawingName` is now invisible.
+An application which gets this event must send `endDraw`.
+For details, please see the sequence.
 
-### SyncDraw and FlushDraw
+<div id="flushDraw"></div>
 
-These events instruct applications that they should redraw their surface
-contents - again, this is handled implicitly by the wayland protocol.
+### flushDraw
 
-`SyncDraw` is sent to the application when it has to redraw its surface.
+This event is issued after Window Manager receives all `endDraw` from applications who recieved `syncDraw` .  
+After this event, Window Manager expects applications to update its surface.
 
-`FlushDraw` is sent to the application when it should swap its buffers,
-that is *signal* the compositor that its surface contains new content.
+example :
 
--   `SyncDraw(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name', 'kKeyDrawingArea': 'layout',
-            'kKeyDrawingRect': { "x": int value of x-coordinate, "y": int value of y-coordinate,
-                                 "width": int value of width, "height": int value of height } }
-    Signal applications, that the
-    surface with name `kKeyDrawingArea` needs to redraw its content
-    in the layout with name `kKeyDrawingArea` - this
-    usually is sent when the surface geometry changed.
-    And the area position and size are included with name `kKeyDrawingRect`.
+```json
+{
+  "event":"windowmanager\/flushDraw",
+  "data":{
+    "drawing_name":"launcher"
+    }
+  },
+  "jtype":"afb-event"
+}
+```
 
--   `FlushDraw(json_object *object)`
-    args: { 'kKeyDrawingName': 'application name' }
-    Signal applications, that the
-    surface with name `kKeyDrawingArea` can now be swapped to its newly
-    drawn content as the window manager is ready to activate a new
-    layout (i.e. a new surface geometry).
+### screenUpdated
 
-<div id="Sample"></div>
+This event is issued after the visible application changes as a state transition change. This contains resized applications and visible applications. This event is issued to all subscriber.  
+Typical usecase is only for HomeScreen. If HomeScreen has an animation until the started application is visible such as progress bar, this signal may become a switch to stop the animation.
 
-Sample
-============
+```json
+{
+  "event":"windowmanager\/screenUpdated",
+  "data":{
+    "ids":[
+      "mediaplayer",
+      "navi"
+    ]
+  },
+  "jtype":"afb-event"
+}
+```
 
-In order to enable application to use the `WM` surface registration
-function the above described steps need to be implemented.
+"ids" is the application_id described in config.xml of application.
+
+<div id="Client library"></div>
+
+## Client library
+
+A client library implementation that internally uses the *libafbwsc*, is
+provided in the `libwindowmanager`.
+This library is for C++ native application.
+
+Regarding more detail, please refer to <https://gerrit.automotivelinux.org/gerrit/gitweb?p=src%2Flibwindowmanager.git;a=summary>
+
+* * *
+
+<div id="Sample\ Code"></div>
+
+# Sample code
+
+In order to enable application to activate application(render on layer),
+above described steps need to be implemented.
 
 As a minimal example the usage and initialization can look like the
 following.
 
-Repo: `apps/agl-service-homescreen-2017`
-Path: `sample/template/main.c`
+Repo: `git clone https://gerrit.automotivelinux.org/gerrit/src/libhomescreen`  
+Path: `sample/simple-egl/main.c`  
+Typical implementation of C++ application.
 
+Repo: `git clone https://gerrit.automotivelinux.org/gerrit/apps/radio`  
+Typical implementation of Qt application.
+
+Repo: `git clone https://gerrit.automotivelinux.org/gerrit/apps/videoplayer`  
+This is the good example to write more simply for Qt application using QtAGLExtra.
+
+<div id="Policy Manager"></div>
+
+# Policy Manager
+
+## Concepts
+
+Policy Manager decides next layout by using input event data and current state
+based on the policy table.
+
+And PolicyManager is plugin for WindowManager.
+Therefore the OEMs can replace it.
+
+<div id="Enabling\ split"></div>
+
+## Enabling split
+
+Window Manager supports split layout to change policy and `areas.db`.
+This section describes how to play split layout.  
+The sample image is here.
+
+![example_split.png](parts/example_split.png)
+
+To play the split layout,
+
+1. Edit in `policy_manager/CMakeLists.txt` as follows:  
+  #set(STM_DIR stub)  
+  set(STM_DIR zipc)  
+  This results in using source code generated by ZIPC.
+1. Set bool value "ON" to TRY_SPLIT_LAYOUT at line 28 in policy_manager/CMakeLists.txt as follows:
+  set(TRY_SPLIT_LAYOUT ON CACHE BOOL "Enable to show split layout")
+1. compile
+1. copy window manager to your board
+1. re-install windowmanager and reboot
+
+As a result, if application requests `navi` with `activateWindow` when current layout is `video` or `mediaplayer`, Window Manager change layout to split window. The reverse is true.
+
+Note:  
+Currently, the policy manager force application change the size even if the application which has the role doesn't have the split design.  
+In that case, the view of application may be ugly.  
+Window Manager supposes that applications may have multi designs according to system design by OEM.
+For example, if OEM sets 2 pattern layout for `navi`, the application which requests `navi` should have 2 pattern designs.
+
+* * *
+
+<div id="Release\ Note"></div>
+
+# Release Note
+
+## version: 0.7
+
+### New Feature
+
+- Add Policy Manager
+
+### Limitation
+
+- Only single-surface Qt applications are support through the
+  libwindowmanager library. This is a limitation of how Qt creates surface
+  IDs for the ivi-application interface.
+
+- Currenly, Window Manager supports only one screen. Dual display is not supported.
+- As implemented in sample code, Qt application has to wait requesting `activateWindow` until `frameSwapped` is emitted.
+- Qt application conceals, wayland and openGL processes, so it is difficult to call `swapBuffer` after `flushDraw` event described in the architecture document. But no problem if you use toolkit such as Qt, because it is automatically processed between applications and compositor(weston).
+- Editing ZIPC is difficult for open source developer due to licence.
