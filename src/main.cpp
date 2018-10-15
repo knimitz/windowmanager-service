@@ -183,13 +183,7 @@ static void cbRemoveClientCtxt(void *data)
     // so notify it by deactivate request.
     g_afb_instance->wmgr.api_deactivate_surface(
         ctxt->name.c_str(), ctxt->role.c_str(),
-        [](const char *errmsg) {
-            if (errmsg != nullptr)
-            {
-                HMI_ERROR(errmsg);
-                return;
-            }
-        });
+        [](const char *) {});
 
     g_afb_instance->wmgr.removeClient(ctxt->name);
     delete ctxt;
@@ -227,18 +221,26 @@ void windowmanager_requestsurface(afb_req req) noexcept
             return;
         }
 
-        const char *appid = afb_req_get_application_id(req);
-        auto ret = g_afb_instance->wmgr.api_request_surface(
-            appid, a_drawing_name);
-        if (ret.is_err())
+        char *appid = afb_req_get_application_id(req);
+        if(appid)
         {
-            afb_req_fail(req, "failed", ret.unwrap_err());
-            return;
+            auto ret = g_afb_instance->wmgr.api_request_surface(
+                appid, a_drawing_name);
+            if (ret.is_err())
+            {
+                afb_req_fail(req, "failed", ret.unwrap_err());
+            }
+            else
+            {
+                createSecurityContext(req, appid, a_drawing_name);
+                afb_req_success(req, json_object_new_int(ret.unwrap()), "success");
+            }
+            free(appid);
         }
-
-        createSecurityContext(req, appid, a_drawing_name);
-
-        afb_req_success(req, json_object_new_int(ret.unwrap()), "success");
+        else
+        {
+            afb_req_fail(req, "failed", nullptr);
+        }
     }
     catch (std::exception &e)
     {
@@ -275,19 +277,23 @@ void windowmanager_requestsurfacexdg(afb_req req) noexcept
             return;
         }
         char const *a_ivi_id = json_object_get_string(j_ivi_id);
-        char const *appid = afb_req_get_application_id(req);
-        auto ret = g_afb_instance->wmgr.api_request_surface(
-            appid, a_drawing_name, a_ivi_id);
-
-        if (ret != nullptr)
+        char *appid = afb_req_get_application_id(req);
+        if(appid)
         {
-            afb_req_fail(req, "failed", ret);
-            return;
+            auto ret = g_afb_instance->wmgr.api_request_surface(
+                appid, a_drawing_name, a_ivi_id);
+
+            if (ret != nullptr)
+            {
+                afb_req_fail(req, "failed", ret);
+            }
+            else
+            {
+                createSecurityContext(req, appid, a_drawing_name);
+                afb_req_success(req, NULL, "success");
+            }
+            free(appid);
         }
-
-        createSecurityContext(req, appid, a_drawing_name);
-
-        afb_req_success(req, NULL, "success");
     }
     catch (std::exception &e)
     {
@@ -321,18 +327,22 @@ void windowmanager_activatewindow(afb_req req) noexcept
             return;
         }
 
-        g_afb_instance->wmgr.api_activate_surface(
-            afb_req_get_application_id(req),
-            a_drawing_name, a_drawing_area,
-            [&req](const char *errmsg) {
-                if (errmsg != nullptr)
-                {
-                    HMI_ERROR(errmsg);
-                    afb_req_fail(req, "failed", errmsg);
-                    return;
-                }
-                afb_req_success(req, NULL, "success");
-            });
+        char* appid = afb_req_get_application_id(req);
+        if(appid)
+        {
+            g_afb_instance->wmgr.api_activate_surface(
+                appid, a_drawing_name, a_drawing_area,
+                [&req](const char *errmsg) {
+                    if (errmsg != nullptr)
+                    {
+                        HMI_ERROR(errmsg);
+                        afb_req_fail(req, "failed", errmsg);
+                        return;
+                    }
+                    afb_req_success(req, NULL, "success");
+                });
+            free(appid);
+        }
     }
     catch (std::exception &e)
     {
@@ -360,17 +370,22 @@ void windowmanager_deactivatewindow(afb_req req) noexcept
             return;
         }
 
-        g_afb_instance->wmgr.api_deactivate_surface(
-            afb_req_get_application_id(req), a_drawing_name,
-            [&req](const char *errmsg) {
-                if (errmsg != nullptr)
-                {
-                    HMI_ERROR(errmsg);
-                    afb_req_fail(req, "failed", errmsg);
-                    return;
-                }
-                afb_req_success(req, NULL, "success");
-            });
+        char* appid = afb_req_get_application_id(req);
+        if(appid)
+        {
+            g_afb_instance->wmgr.api_deactivate_surface(
+                appid, a_drawing_name,
+                [&req](const char *errmsg) {
+                    if (errmsg != nullptr)
+                    {
+                        HMI_ERROR(errmsg);
+                        afb_req_fail(req, "failed", errmsg);
+                        return;
+                    }
+                    afb_req_success(req, NULL, "success");
+                });
+            free(appid);
+        }
     }
     catch (std::exception &e)
     {
@@ -399,8 +414,12 @@ void windowmanager_enddraw(afb_req req) noexcept
         }
         afb_req_success(req, NULL, "success");
 
-        g_afb_instance->wmgr.api_enddraw(
-            afb_req_get_application_id(req), a_drawing_name);
+        char* appid = afb_req_get_application_id(req);
+        if(appid)
+        {
+            g_afb_instance->wmgr.api_enddraw(appid, a_drawing_name);
+            free(appid);
+        }
     }
     catch (std::exception &e)
     {
