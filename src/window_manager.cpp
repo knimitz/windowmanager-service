@@ -673,7 +673,9 @@ void WindowManager::startTransitionWrapper(vector<WMAction> &actions)
                     goto error;
                 }
             }
-            act.appid = appid;
+            auto client = g_app_list.lookUpClient(appid);
+            act.req_num = req_num;
+            act.client = client;
         }
 
         ret = g_app_list.setAction(req_num, act);
@@ -1129,9 +1131,9 @@ WMError WindowManager::startTransition(unsigned req_num)
         // Make it deactivate here
         for (const auto &x : actions)
         {
-            if (g_app_list.contains(x.appid))
+            if (g_app_list.contains(x.client->appID()))
             {
-                auto client = g_app_list.lookUpClient(x.appid);
+                auto client = g_app_list.lookUpClient(x.client->appID());
                 this->deactivate(client->surfaceID(x.role));
             }
         }
@@ -1160,7 +1162,7 @@ WMError WindowManager::doEndDraw(unsigned req_num)
         if(act.visible != TaskVisible::NO_CHANGE)
         {
             // layout change
-            if(!g_app_list.contains(act.appid)){
+            if(!g_app_list.contains(act.client->appID())){
                 ret = WMError::NOT_REGISTERED;
             }
             ret = this->layoutChange(act);
@@ -1207,7 +1209,7 @@ WMError WindowManager::layoutChange(const WMAction &action)
         // Visibility is not change -> no redraw is required
         return WMError::SUCCESS;
     }
-    auto client = g_app_list.lookUpClient(action.appid);
+    auto client = g_app_list.lookUpClient(action.client->appID());
     unsigned surface = client->surfaceID(action.role);
     if (surface == 0)
     {
@@ -1223,10 +1225,11 @@ WMError WindowManager::layoutChange(const WMAction &action)
 WMError WindowManager::visibilityChange(const WMAction &action)
 {
     HMI_SEQ_DEBUG(g_app_list.currentRequestNumber(), "Change visibility");
-    if(!g_app_list.contains(action.appid)){
+    if(!g_app_list.contains(action.client->appID()))
+    {
         return WMError::NOT_REGISTERED;
     }
-    auto client = g_app_list.lookUpClient(action.appid);
+    auto client = g_app_list.lookUpClient(action.client->appID());
     unsigned surface = client->surfaceID(action.role);
     if(surface == 0)
     {
@@ -1268,7 +1271,7 @@ void WindowManager::emitScreenUpdated(unsigned req_num)
     {
         if(action.visible != TaskVisible::INVISIBLE)
         {
-            json_object_array_add(jarray, json_object_new_string(action.appid.c_str()));
+            json_object_array_add(jarray, json_object_new_string(action.client->appID().c_str()));
         }
     }
     json_object_object_add(j, kKeyIds, jarray);

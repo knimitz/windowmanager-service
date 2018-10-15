@@ -65,7 +65,7 @@ AppList::~AppList() {}
  * @attention This function should be called once for the app
  *            Caller should take care not to be called more than once.
  */
-void AppList::addClient(const std::string &appid, unsigned layer, unsigned surface, const std::string &role)
+void AppList::addClient(const string &appid, unsigned layer, unsigned surface, const string &role)
 {
     std::lock_guard<std::mutex> lock(this->mtx);
     shared_ptr<WMClient> client = std::make_shared<WMClient>(appid, layer, surface, role);
@@ -351,7 +351,7 @@ WMError AppList::setAction(unsigned req_num, const struct WMAction &action)
  *            otherwise (visible is false) app should be invisible. Then enddraw_finished param is set to true.
  *            This function doesn't support actions for focus yet.
  */
-WMError AppList::setAction(unsigned req_num, const string &appid, const string &role, const string &area, TaskVisible visible)
+WMError AppList::setAction(unsigned req_num, shared_ptr<WMClient> client, const string &role, const string &area, TaskVisible visible)
 {
     std::lock_guard<std::mutex> lock(this->mtx);
     WMError result = WMError::FAIL;
@@ -363,7 +363,7 @@ WMError AppList::setAction(unsigned req_num, const string &appid, const string &
         }
         // If visible task is not invisible, redraw is required -> true
         bool edraw_f = (visible != TaskVisible::INVISIBLE) ? false : true;
-        WMAction action{appid, role, area, visible, edraw_f};
+        WMAction action{req_num, client, role, area, visible, edraw_f};
 
         x.sync_draw_req.push_back(action);
         result = WMError::SUCCESS;
@@ -399,7 +399,7 @@ bool AppList::setEndDrawFinished(unsigned req_num, const string &appid, const st
         {
             for (auto &y : x.sync_draw_req)
             {
-                if (y.appid == appid && y.role == role)
+                if (y.client->appID() == appid && y.role == role)
                 {
                     HMI_SEQ_INFO(req_num, "Role %s finish redraw", y.role.c_str());
                     y.end_draw_finished = true;
@@ -514,7 +514,7 @@ void AppList::reqDump()
         {
             DUMP(
                 "Action  : (APPID :%s, ROLE :%s, AREA :%s, VISIBLE : %s, END_DRAW_FINISHED: %d)",
-                y.appid.c_str(),
+                y.client->appID().c_str(),
                 y.role.c_str(),
                 y.area.c_str(),
                 (y.visible == TaskVisible::INVISIBLE) ? "invisible" : "visible",

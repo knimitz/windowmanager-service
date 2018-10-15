@@ -56,7 +56,7 @@ class AppList
     unsigned getRequestNumber(const std::string &appid) const;
     unsigned addRequest(WMRequest req);
     WMError setAction(unsigned req_num, const struct WMAction &action);
-    WMError setAction(unsigned req_num, const std::string &appid,
+    WMError setAction(unsigned req_num, std::shared_ptr<WMClient> client,
                     const std::string &role, const std::string &area, TaskVisible visible);
     bool setEndDrawFinished(unsigned req_num, const std::string &appid, const std::string &role);
     bool endDrawFullfilled(unsigned req_num);

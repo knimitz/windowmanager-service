@@ -192,7 +192,8 @@ void PMWrapper::createLayoutChangeAction(json_object *json_out, std::vector<WMAc
                     bool end_draw_finished = false;
                     WMAction act
                     {
-                        "",
+                        0,
+                        nullptr,
                         role_name,
                         area_name,
                         TaskVisible::VISIBLE,
@@ -214,7 +215,8 @@ void PMWrapper::createLayoutChangeAction(json_object *json_out, std::vector<WMAc
                         bool end_draw_finished = false;
                         WMAction act
                         {
-                            "",
+                            0,
+                            nullptr,
                             role_name,
                             area_name,
                             TaskVisible::VISIBLE,
@@ -238,7 +240,8 @@ void PMWrapper::createLayoutChangeAction(json_object *json_out, std::vector<WMAc
                 bool end_draw_finished = true;
                 WMAction act
                 {
-                    "",
+                    0,
+                    nullptr,
                     i_prv.first,
                     "",
                     TaskVisible::INVISIBLE,

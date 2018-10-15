@@ -19,9 +19,12 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace wm
 {
+
+class WMClient;
 
 enum Task
 {
@@ -47,7 +50,8 @@ struct WMTrigger
 
 struct WMAction
 {
-    std::string appid;
+    unsigned req_num;
+    std::shared_ptr<WMClient> client;
     std::string role;
     std::string area;
     TaskVisible visible;
