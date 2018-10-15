@@ -26,6 +26,9 @@ extern "C"
 #include <systemd/sd-event.h>
 }
 
+using std::string;
+using std::vector;
+
 namespace wm
 {
 
@@ -100,7 +103,7 @@ static int processTimerHandler(sd_event_source *s, uint64_t usec, void *userdata
     return 0;
 }
 
-static void onStateTransitioned(std::vector<WMAction> actions)
+static void onStateTransitioned(vector<WMAction> actions)
 {
     g_context->startTransitionWrapper(actions);
 }
@@ -124,15 +127,15 @@ WindowManager::WindowManager(wl::display *d)
       pending_events(false)
 {
     char const *path_layers_json = getenv("AFM_APP_INSTALL_DIR");
-    std::string path;
+    string path;
     if (!path_layers_json)
     {
         HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
-        path = std::string(path_layers_json);
+        path = string(path_layers_json);
     }
     else
     {
-        path = std::string(path_layers_json) + std::string("/etc/layers.json");
+        path = string(path_layers_json) + string("/etc/layers.json");
     }
 
     try
@@ -245,13 +248,13 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
     //       so convert role old to new
     const char *role = this->convertRoleOldToNew(drawing_name);
 
-    auto lid = this->layers.get_layer_id(std::string(role));
+    auto lid = this->layers.get_layer_id(string(role));
     if (!lid)
     {
         /**
        * register drawing_name as fallback and make it displayed.
        */
-        lid = this->layers.get_layer_id(std::string("fallback"));
+        lid = this->layers.get_layer_id(string("fallback"));
         HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
         if (!lid)
         {
@@ -275,11 +278,11 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
         }
 
         // add client into the db
-        std::string appid_str(appid);
-        g_app_list.addClient(appid_str, *lid, id, std::string(role));
+        string appid_str(appid);
+        g_app_list.addClient(appid_str, *lid, id, string(role));
 
         // Set role map of (new, old)
-        this->rolenew2old[role] = std::string(drawing_name);
+        this->rolenew2old[role] = string(drawing_name);
 
         return Ok<int>(id);
     }
@@ -295,7 +298,7 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
     //       so convert role old to new
     const char *role = this->convertRoleOldToNew(drawing_name);
 
-    auto lid = this->layers.get_layer_id(std::string(role));
+    auto lid = this->layers.get_layer_id(string(role));
     unsigned sid = std::stol(ivi_id);
 
     if (!lid)
@@ -303,7 +306,7 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
         /**
        * register drawing_name as fallback and make it displayed.
        */
-        lid = this->layers.get_layer_id(std::string("fallback"));
+        lid = this->layers.get_layer_id(string("fallback"));
         HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
         if (!lid)
         {
@@ -329,11 +332,11 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
     this->layout_commit();
 
     // add client into the db
-    std::string appid_str(appid);
-    g_app_list.addClient(appid_str, *lid, sid, std::string(role));
+    string appid_str(appid);
+    g_app_list.addClient(appid_str, *lid, sid, string(role));
 
     // Set role map of (new, old)
-    this->rolenew2old[role] = std::string(drawing_name);
+    this->rolenew2old[role] = string(drawing_name);
 
     return nullptr;
 }
@@ -345,9 +348,9 @@ void WindowManager::api_activate_surface(char const *appid, char const *drawing_
     //       so convert role old to new
     const char *c_role = this->convertRoleOldToNew(drawing_name);
 
-    std::string id = appid;
-    std::string role = c_role;
-    std::string area = drawing_area;
+    string id = appid;
+    string role = c_role;
+    string area = drawing_area;
     Task task = Task::TASK_ALLOCATE;
     unsigned req_num = 0;
     WMError ret = WMError::UNKNOWN;
@@ -393,9 +396,9 @@ void WindowManager::api_deactivate_surface(char const *appid, char const *drawin
     /*
     * Check Phase
     */
-    std::string id = appid;
-    std::string role = c_role;
-    std::string area = ""; //drawing_area;
+    string id = appid;
+    string role = c_role;
+    string area = ""; //drawing_area;
     Task task = Task::TASK_RELEASE;
     unsigned req_num = 0;
     WMError ret = WMError::UNKNOWN;
@@ -437,8 +440,8 @@ void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
     //       so convert role old to new
     const char *c_role = this->convertRoleOldToNew(drawing_name);
 
-    std::string id = appid;
-    std::string role = c_role;
+    string id = appid;
+    string role = c_role;
     unsigned current_req = g_app_list.currentRequestNumber();
     bool result = g_app_list.setEndDrawFinished(current_req, id, role);
 
@@ -602,7 +605,7 @@ void WindowManager::surface_removed(uint32_t surface_id)
     g_app_list.removeSurface(surface_id);
 }
 
-void WindowManager::removeClient(const std::string &appid)
+void WindowManager::removeClient(const string &appid)
 {
     HMI_DEBUG("Remove clinet %s from list", appid.c_str());
     g_app_list.removeClient(appid);
@@ -626,7 +629,7 @@ void WindowManager::timerHandler()
     this->processNextRequest();
 }
 
-void WindowManager::startTransitionWrapper(std::vector<WMAction> &actions)
+void WindowManager::startTransitionWrapper(vector<WMAction> &actions)
 {
     WMError ret;
     unsigned req_num = g_app_list.currentRequestNumber();
@@ -655,7 +658,7 @@ void WindowManager::startTransitionWrapper(std::vector<WMAction> &actions)
             {
                 goto proc_remove_request;
             }
-            std::string appid = g_app_list.getAppID(*surface_id, act.role, &found);
+            string appid = g_app_list.getAppID(*surface_id, act.role, &found);
             if (!found)
             {
                 if (TaskVisible::INVISIBLE == act.visible)
@@ -731,9 +734,9 @@ bool WindowManager::pop_pending_events()
 
 optional<int> WindowManager::lookup_id(char const *name)
 {
-    return this->id_alloc.lookup(std::string(name));
+    return this->id_alloc.lookup(string(name));
 }
-optional<std::string> WindowManager::lookup_name(int id)
+optional<string> WindowManager::lookup_name(int id)
 {
     return this->id_alloc.lookup(id);
 }
@@ -809,7 +812,7 @@ int WindowManager::init_layers()
     return 0;
 }
 
-void WindowManager::surface_set_layout(int surface_id, const std::string& area)
+void WindowManager::surface_set_layout(int surface_id, const string& area)
 {
     if (!this->controller->surface_exists(surface_id))
     {
@@ -875,7 +878,7 @@ void WindowManager::emit_syncdraw(char const *label, char const *area, int x, in
     this->send_event(kListEventName[Event_SyncDraw], label, area, x, y, w, h);
 }
 
-void WindowManager::emit_syncdraw(const std::string &role, const std::string &area)
+void WindowManager::emit_syncdraw(const string &role, const string &area)
 {
     compositor::rect rect = this->layers.getAreaSize(area);
     this->send_event(kListEventName[Event_SyncDraw],
@@ -998,7 +1001,7 @@ void WindowManager::deactivate(int id)
     }
 }
 
-WMError WindowManager::setRequest(const std::string& appid, const std::string &role, const std::string &area,
+WMError WindowManager::setRequest(const string& appid, const string &role, const string &area,
                             Task task, unsigned* req_num)
 {
     if (!g_app_list.contains(appid))
@@ -1051,7 +1054,7 @@ WMError WindowManager::checkPolicy(unsigned req_num)
         ret = WMError::NO_ENTRY;
         return ret;
     }
-    std::string req_area = trigger.area;
+    string req_area = trigger.area;
 
     if (trigger.task == Task::TASK_ALLOCATE)
     {
@@ -1107,7 +1110,7 @@ WMError WindowManager::startTransition(unsigned req_num)
 
             // TODO: application requests by old role,
             //       so convert role new to old for emitting event
-            std::string old_role = this->rolenew2old[action.role];
+            string old_role = this->rolenew2old[action.role];
 
             this->emit_syncdraw(old_role, action.area);
             /* TODO: emit event for app not subscriber
@@ -1188,7 +1191,7 @@ WMError WindowManager::doEndDraw(unsigned req_num)
         {
             // TODO: application requests by old role,
             //       so convert role new to old for emitting event
-            std::string old_role = this->rolenew2old[act_flush.role];
+            string old_role = this->rolenew2old[act_flush.role];
 
             this->emit_flushdraw(old_role.c_str());
         }
@@ -1243,7 +1246,7 @@ WMError WindowManager::visibilityChange(const WMAction &action)
     return WMError::SUCCESS;
 }
 
-WMError WindowManager::setSurfaceSize(unsigned surface, const std::string &area)
+WMError WindowManager::setSurfaceSize(unsigned surface, const string &area)
 {
     this->surface_set_layout(surface, area);
 
@@ -1369,14 +1372,14 @@ int WindowManager::loadOldRoleDb()
     char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
     HMI_DEBUG("afm_app_install_dir:%s", afm_app_install_dir);
 
-    std::string file_name;
+    string file_name;
     if (!afm_app_install_dir)
     {
         HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
     }
     else
     {
-        file_name = std::string(afm_app_install_dir) + std::string("/etc/old_roles.db");
+        file_name = string(afm_app_install_dir) + string("/etc/old_roles.db");
     }
 
     // Load old_role.db
@@ -1419,7 +1422,7 @@ int WindowManager::loadOldRoleDb()
             return -1;
         }
 
-        this->roleold2new[old_role] = std::string(new_role);
+        this->roleold2new[old_role] = string(new_role);
     }
 
     // Check
