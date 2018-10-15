@@ -16,30 +16,14 @@
 
 #include "util.hpp"
 
-#include <cerrno>
-#include <cstdarg>
-#include <cstdio>
-#include <cstdlib>
-#include <ctime>
+#include <time.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
 
 #include <unistd.h>
 
-#ifdef SCOPE_TRACING
-thread_local int ScopeTrace::indent = 0;
-ScopeTrace::ScopeTrace(char const *func) : f(func)
-{
-    fprintf(stderr, "%lu %*s%s -->\n", pthread_self(), 2 * indent++, "", this->f);
-}
-ScopeTrace::~ScopeTrace() { fprintf(stderr, "%lu %*s%s <--\n", pthread_self(), 2 * --indent, "", this->f); }
-#endif
-
-unique_fd::~unique_fd()
-{
-    if (this->fd != -1)
-    {
-        close(this->fd);
-    }
-}
+static char ERROR_FLAG[6][20] = {"NONE", "ERROR", "WARNING", "NOTICE", "INFO", "DEBUG"};
 
 void rectangle::fit(unsigned long to_width, unsigned long to_height)
 {
@@ -93,3 +77,66 @@ void rectangle::set_aspect(double ratio)
     }
 }
 
+void _HMI_LOG(enum LOG_LEVEL level, const char* file, const char* func, const int line, const char* prefix, const char* log, ...)
+{
+    const int log_level = (getenv("USE_HMI_DEBUG") == NULL)?LOG_LEVEL_ERROR:atoi(getenv("USE_HMI_DEBUG"));
+    if(log_level < level)
+    {
+        return;
+    }
+
+    char *message;
+    struct timespec tp;
+    unsigned int time;
+
+    clock_gettime(CLOCK_REALTIME, &tp);
+    time = (tp.tv_sec * 1000000L) + (tp.tv_nsec / 1000);
+
+    va_list args;
+    va_start(args, log);
+    if (log == NULL || vasprintf(&message, log, args) < 0)
+        message = NULL;
+    fprintf(stderr,  "[%10.3f] [%s %s] [%s, %s(), Line:%d] >>> %s \n", time / 1000.0, prefix, ERROR_FLAG[level], file, func, line, message);
+    va_end(args);
+    free(message);
+}
+
+void _HMI_SEQ_LOG(enum LOG_LEVEL level, const char* file, const char* func, const int line, unsigned seq_num, const char* log, ...){
+    const int log_level = (getenv("USE_HMI_DEBUG") == NULL) ? LOG_LEVEL_ERROR:atoi(getenv("USE_HMI_DEBUG"));
+    if(log_level < level)
+    {
+        return;
+    }
+
+    char *message;
+    struct timespec tp;
+    unsigned int time;
+
+    clock_gettime(CLOCK_REALTIME, &tp);
+	time = (tp.tv_sec * 1000000L) + (tp.tv_nsec / 1000);
+
+	va_list args;
+	va_start(args, log);
+	if (log == NULL || vasprintf(&message, log, args) < 0)
+        message = NULL;
+    fprintf(stderr,  "[%10.3f] [wm %s] [%s, %s(), Line:%d] >>> req %d: %s \n", time / 1000.0, ERROR_FLAG[level], file, func, line, seq_num, message);
+    va_end(args);
+	free(message);
+}
+
+void _DUMP(enum LOG_LEVEL level, const char *log, ...)
+{
+    const int log_level = (getenv("USE_HMI_DEBUG") == NULL) ? LOG_LEVEL_ERROR : atoi(getenv("USE_HMI_DEBUG"));
+    if (log_level < level)
+    {
+        return;
+    }
+    char *message;
+    va_list args;
+    va_start(args, log);
+    if (log == NULL || vasprintf(&message, log, args) < 0)
+        message = NULL;
+    fprintf(stderr, "%s \n", message);
+    va_end(args);
+    free(message);
+}

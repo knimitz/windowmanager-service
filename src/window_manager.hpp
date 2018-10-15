@@ -14,21 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef TMCAGLWM_APP_HPP
-#define TMCAGLWM_APP_HPP
+#ifndef WINDOW_MANAGER_HPP
+#define WINDOW_MANAGER_HPP
 
 #include <atomic>
 #include <memory>
 #include <unordered_map>
 #include <experimental/optional>
+#include "util.hpp"
 #include "controller_hooks.hpp"
 #include "layers.hpp"
 #include "layout.hpp"
 #include "wayland_ivi_wm.hpp"
 #include "pm_wrapper.hpp"
-#include "hmi-debug.h"
 #include "request.hpp"
 #include "wm_error.hpp"
+extern "C"
+{
+#include <afb/afb-binding.h>
+}
 
 struct json_object;
 
@@ -88,7 +92,7 @@ struct id_allocator
         unsigned sid = this->next++;
         this->id2name[sid] = name;
         this->name2id[name] = sid;
-        HMI_DEBUG("wm", "allocated new id %u with name %s", sid, name.c_str());
+        HMI_DEBUG("allocated new id %u with name %s", sid, name.c_str());
         return sid;
     }
 
@@ -97,7 +101,7 @@ struct id_allocator
     {
         this->id2name[sid] = name;
         this->name2id[name] = sid;
-        HMI_DEBUG("wm", "register id %u with name %s", sid, name.c_str());
+        HMI_DEBUG("register id %u with name %s", sid, name.c_str());
         return;
     }
 
@@ -286,4 +290,4 @@ class WindowManager
 
 } // namespace wm
 
-#endif // TMCAGLWM_APP_HPP
+#endif // WINDOW_MANAGER_HPP

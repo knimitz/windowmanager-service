@@ -16,7 +16,7 @@
 
 #include <json-c/json.h>
 #include "wm_client.hpp"
-#include "hmi-debug.h"
+#include "util.hpp"
 
 #define INVALID_SURFACE_ID 0
 
@@ -137,10 +137,10 @@ void WMClient::registerLayer(unsigned layer)
  */
 bool WMClient::addSurface(const string &role, unsigned surface)
 {
-    HMI_DEBUG("wm", "Add role %s with surface %d", role.c_str(), surface);
+    HMI_DEBUG("Add role %s with surface %d", role.c_str(), surface);
     if (0 != this->role2surface.count(role))
     {
-        HMI_NOTICE("wm", "override surfaceID %d with %d", this->role2surface[role], surface);
+        HMI_NOTICE("override surfaceID %d with %d", this->role2surface[role], surface);
     }
     this->role2surface[role] = surface;
     return true;
@@ -153,7 +153,7 @@ bool WMClient::removeSurfaceIfExist(unsigned surface)
     {
         if (surface == x.second)
         {
-            HMI_INFO("wm", "Remove surface from client %s: role %s, surface: %d",
+            HMI_INFO("Remove surface from client %s: role %s, surface: %d",
                                 this->id.c_str(), x.first.c_str(), x.second);
             this->role2surface.erase(x.first);
             ret = true;
@@ -178,13 +178,13 @@ bool WMClient::removeRole(const string &role)
 bool WMClient::subscribe(afb_req req, const string &evname)
 {
     if(evname != kKeyError){
-        HMI_DEBUG("wm", "error is only enabeled for now");
+        HMI_DEBUG("error is only enabeled for now");
         return false;
     }
     int ret = afb_req_subscribe(req, this->event2list[evname]);
     if (ret)
     {
-        HMI_DEBUG("wm", "Failed to subscribe %s", evname.c_str());
+        HMI_DEBUG("Failed to subscribe %s", evname.c_str());
         return false;
     }
     return true;
@@ -193,18 +193,18 @@ bool WMClient::subscribe(afb_req req, const string &evname)
 void WMClient::emitError(WM_CLIENT_ERROR_EVENT ev)
 {
     if (!afb_event_is_valid(this->event2list[kKeyError])){
-        HMI_ERROR("wm", "event err is not valid");
+        HMI_ERROR("event err is not valid");
         return;
     }
     json_object *j = json_object_new_object();
     json_object_object_add(j, kKeyError, json_object_new_int(ev));
     json_object_object_add(j, kKeyErrorDesc, json_object_new_string(kErrorDescription[ev].c_str()));
-    HMI_DEBUG("wm", "error: %d, description:%s", ev, kErrorDescription[ev].c_str());
+    HMI_DEBUG("error: %d, description:%s", ev, kErrorDescription[ev].c_str());
 
     int ret = afb_event_push(this->event2list[kKeyError], j);
     if (ret != 0)
     {
-        HMI_DEBUG("wm", "afb_event_push failed: %m");
+        HMI_DEBUG("afb_event_push failed: %m");
     }
 }
 #endif

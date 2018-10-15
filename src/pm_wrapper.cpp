@@ -16,7 +16,7 @@
 
 #include "pm_wrapper.hpp"
 #include "json_helper.hpp"
-#include "hmi-debug.h"
+#include "util.hpp"
 
 namespace wm
 {
@@ -33,7 +33,7 @@ static void onStateTransitioned(json_object *json_out)
 
 static void onError(json_object *json_out)
 {
-    HMI_DEBUG("wm", "error message from PolicyManager:%s",
+    HMI_DEBUG("error message from PolicyManager:%s",
               json_object_get_string(json_out));
 
     g_context->processError();
@@ -50,7 +50,7 @@ int PMWrapper::initialize()
     ret = this->pm.initialize();
     if (0 > ret)
     {
-        HMI_ERROR("wm:pmw", "Faild to initialize PolicyManager");
+        HMI_ERROR("Faild to initialize PolicyManager");
     }
 
     g_context = this;
@@ -95,7 +95,7 @@ int PMWrapper::setInputEventData(Task task, std::string role, std::string area)
     ret = this->pm.setInputEventData(json_in);
     if (0 > ret)
     {
-        HMI_ERROR("wm:pmw", "Faild to set input event data to PolicyManager");
+        HMI_ERROR("Faild to set input event data to PolicyManager");
     }
     json_object_put(json_in);
 
@@ -108,7 +108,7 @@ int PMWrapper::executeStateTransition()
     ret = this->pm.executeStateTransition();
     if (0 > ret)
     {
-        HMI_ERROR("wm:pmw", "Failed to execute state transition for PolicyManager");
+        HMI_ERROR("Failed to execute state transition for PolicyManager");
     }
 
     return ret;
@@ -125,7 +125,7 @@ void PMWrapper::updateStates(json_object *json_out)
 {
     std::vector<WMAction> actions;
 
-    HMI_DEBUG("wm", "json_out dump:%s", json_object_get_string(json_out));
+    HMI_DEBUG("json_out dump:%s", json_object_get_string(json_out));
 
     this->createLayoutChangeAction(json_out, actions);
 
@@ -138,12 +138,12 @@ void PMWrapper::createLayoutChangeAction(json_object *json_out, std::vector<WMAc
     json_object *json_layers;
     if (!json_object_object_get_ex(json_out, "layers", &json_layers))
     {
-        HMI_DEBUG("wm", "Not found key \"layers\"");
+        HMI_DEBUG("Not found key \"layers\"");
         return;
     }
 
     int len = json_object_array_length(json_layers);
-    HMI_DEBUG("wm", "json_layers len:%d", len);
+    HMI_DEBUG("json_layers len:%d", len);
 
     for (int i = 0; i < len; i++)
     {
@@ -151,19 +151,19 @@ void PMWrapper::createLayoutChangeAction(json_object *json_out, std::vector<WMAc
 
         std::string layer_name = jh::getStringFromJson(json_tmp, "name");
         json_bool changed = jh::getBoolFromJson(json_tmp, "changed");
-        HMI_DEBUG("wm", "layer:%s changed:%d", layer_name.c_str(), changed);
+        HMI_DEBUG("layer:%s changed:%d", layer_name.c_str(), changed);
 
         if (changed)
         {
             json_object *json_areas;
             if (!json_object_object_get_ex(json_tmp, "areas", &json_areas))
             {
-                HMI_DEBUG("wm", "Not found key \"areas\"");
+                HMI_DEBUG("Not found key \"areas\"");
                 return;
             }
 
             int len = json_object_array_length(json_areas);
-            HMI_DEBUG("wm", "json_layers len:%d", len);
+            HMI_DEBUG("json_layers len:%d", len);
 
             // Store previous role state in this layer
             this->prvlayer2rolestate[layer_name] = this->crrlayer2rolestate[layer_name];
@@ -180,13 +180,13 @@ void PMWrapper::createLayoutChangeAction(json_object *json_out, std::vector<WMAc
                 crr_roles[role_name] = area_name;
 
                 auto i_prv = prv_roles.find(role_name);
-                HMI_DEBUG("wm", "current role:%s area:%s",
+                HMI_DEBUG("current role:%s area:%s",
                           role_name.c_str(), area_name.c_str());
 
                 // If current role does not exist in previous
                 if (prv_roles.end() == i_prv)
                 {
-                    HMI_DEBUG("wm", "current role does not exist in previous");
+                    HMI_DEBUG("current role does not exist in previous");
 
                     // Set activate action
                     bool end_draw_finished = false;
@@ -202,13 +202,13 @@ void PMWrapper::createLayoutChangeAction(json_object *json_out, std::vector<WMAc
                 }
                 else
                 {
-                    HMI_DEBUG("wm", "previous role:%s area:%s",
+                    HMI_DEBUG("previous role:%s area:%s",
                               i_prv->first.c_str(), i_prv->second.c_str());
 
                     // If current role exists in previous and area is different with previous
                     if (area_name != i_prv->second)
                     {
-                        HMI_DEBUG("wm", "current role exists in previous and area is different with previous");
+                        HMI_DEBUG("current role exists in previous and area is different with previous");
 
                         // Set activate action
                         bool end_draw_finished = false;
@@ -232,7 +232,7 @@ void PMWrapper::createLayoutChangeAction(json_object *json_out, std::vector<WMAc
             // because these are not displayed in current layout
             for (auto i_prv : prv_roles)
             {
-                HMI_DEBUG("wm", "Deactivate role:%s", i_prv.first.c_str());
+                HMI_DEBUG("Deactivate role:%s", i_prv.first.c_str());
 
                 // Set deactivate action
                 bool end_draw_finished = true;

@@ -18,7 +18,6 @@
 #include <algorithm>
 #include <mutex>
 #include <json.h>
-#include "../include/json.hpp"
 #include "window_manager.hpp"
 #include "json_helper.hpp"
 #include "wayland_ivi_wm.hpp"
@@ -61,11 +60,9 @@ int afb_instance::init()
 int display_event_callback(sd_event_source *evs, int /*fd*/, uint32_t events,
                            void * /*data*/)
 {
-    ST();
-
     if ((events & EPOLLHUP) != 0)
     {
-        HMI_ERROR("wm", "The compositor hung up, dying now.");
+        HMI_ERROR("The compositor hung up, dying now.");
         delete g_afb_instance;
         g_afb_instance = nullptr;
         goto error;
@@ -74,17 +71,14 @@ int display_event_callback(sd_event_source *evs, int /*fd*/, uint32_t events,
     if ((events & EPOLLIN) != 0u)
     {
         {
-            STN(display_read_events);
             g_afb_instance->wmgr.display->read_events();
             g_afb_instance->wmgr.set_pending_events();
         }
         {
             // We want do dispatch pending wayland events from within
             // the API context
-            STN(winman_ping_api_call);
             afb_service_call("windowmanager", "ping", json_object_new_object(),
                             [](void *c, int st, json_object *j) {
-                                STN(winman_ping_api_call_return);
                             },
                             nullptr);
         }
@@ -103,17 +97,17 @@ error:
 
 int _binding_init()
 {
-    HMI_NOTICE("wm", "WinMan ver. %s", WINMAN_VERSION_STRING);
+    HMI_NOTICE("WinMan ver. %s", WINMAN_VERSION_STRING);
 
     if (g_afb_instance != nullptr)
     {
-        HMI_ERROR("wm", "Wayland context already initialized?");
+        HMI_ERROR("Wayland context already initialized?");
         return 0;
     }
 
     if (getenv("XDG_RUNTIME_DIR") == nullptr)
     {
-        HMI_ERROR("wm", "Environment variable XDG_RUNTIME_DIR not set");
+        HMI_ERROR("Environment variable XDG_RUNTIME_DIR not set");
         goto error;
     }
 
@@ -126,10 +120,10 @@ int _binding_init()
             cnt++;
             if (20 <= cnt)
             {
-                HMI_ERROR("wm", "Could not connect to compositor");
+                HMI_ERROR("Could not connect to compositor");
                 goto error;
             }
-            HMI_ERROR("wm", "Wait to start weston ...");
+            HMI_ERROR("Wait to start weston ...");
             sleep(1);
             delete g_afb_instance;
             g_afb_instance = new afb_instance;
@@ -138,7 +132,7 @@ int _binding_init()
 
     if (g_afb_instance->init() == -1)
     {
-        HMI_ERROR("wm", "Could not connect to compositor");
+        HMI_ERROR("Could not connect to compositor");
         goto error;
     }
 
@@ -148,7 +142,7 @@ int _binding_init()
                                   display_event_callback, g_afb_instance);
         if (ret < 0)
         {
-            HMI_ERROR("wm", "Could not initialize afb_instance event handler: %d", -ret);
+            HMI_ERROR("Could not initialize afb_instance event handler: %d", -ret);
             goto error;
         }
     }
@@ -171,7 +165,7 @@ int binding_init() noexcept
     }
     catch (std::exception &e)
     {
-        HMI_ERROR("wm", "Uncaught exception in binding_init(): %s", e.what());
+        HMI_ERROR("Uncaught exception in binding_init(): %s", e.what());
     }
     return -1;
 }
@@ -183,7 +177,7 @@ static void cbRemoveClientCtxt(void *data)
     {
         return;
     }
-    HMI_DEBUG("wm", "remove app %s", ctxt->name.c_str());
+    HMI_DEBUG("remove app %s", ctxt->name.c_str());
 
     // Policy Manager does not know this app was killed,
     // so notify it by deactivate request.
@@ -192,7 +186,7 @@ static void cbRemoveClientCtxt(void *data)
         [](const char *errmsg) {
             if (errmsg != nullptr)
             {
-                HMI_ERROR("wm", errmsg);
+                HMI_ERROR(errmsg);
                 return;
             }
         });
@@ -209,7 +203,7 @@ static void createSecurityContext(afb_req req, const char* appid, const char* ro
         // Create Security Context at first time
         const char *new_role = g_afb_instance->wmgr.convertRoleOldToNew(role);
         WMClientCtxt *ctxt = new WMClientCtxt(appid, new_role);
-        HMI_DEBUG("wm", "create session for %s", ctxt->name.c_str());
+        HMI_DEBUG("create session for %s", ctxt->name.c_str());
         afb_req_session_set_LOA(req, 1);
         afb_req_context_set(req, ctxt, cbRemoveClientCtxt);
     }
@@ -218,9 +212,6 @@ static void createSecurityContext(afb_req req, const char* appid, const char* ro
 void windowmanager_requestsurface(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -259,9 +250,6 @@ void windowmanager_requestsurface(afb_req req) noexcept
 void windowmanager_requestsurfacexdg(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -311,9 +299,6 @@ void windowmanager_requestsurfacexdg(afb_req req) noexcept
 void windowmanager_activatewindow(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -342,7 +327,7 @@ void windowmanager_activatewindow(afb_req req) noexcept
             [&req](const char *errmsg) {
                 if (errmsg != nullptr)
                 {
-                    HMI_ERROR("wm", errmsg);
+                    HMI_ERROR(errmsg);
                     afb_req_fail(req, "failed", errmsg);
                     return;
                 }
@@ -351,7 +336,7 @@ void windowmanager_activatewindow(afb_req req) noexcept
     }
     catch (std::exception &e)
     {
-        HMI_WARNING("wm", "failed: Uncaught exception while calling activatesurface: %s", e.what());
+        HMI_WARNING("failed: Uncaught exception while calling activatesurface: %s", e.what());
         g_afb_instance->wmgr.exceptionProcessForTransition();
         return;
     }
@@ -360,9 +345,6 @@ void windowmanager_activatewindow(afb_req req) noexcept
 void windowmanager_deactivatewindow(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -383,7 +365,7 @@ void windowmanager_deactivatewindow(afb_req req) noexcept
             [&req](const char *errmsg) {
                 if (errmsg != nullptr)
                 {
-                    HMI_ERROR("wm", errmsg);
+                    HMI_ERROR(errmsg);
                     afb_req_fail(req, "failed", errmsg);
                     return;
                 }
@@ -392,7 +374,7 @@ void windowmanager_deactivatewindow(afb_req req) noexcept
     }
     catch (std::exception &e)
     {
-        HMI_WARNING("wm", "failed: Uncaught exception while calling deactivatesurface: %s", e.what());
+        HMI_WARNING("failed: Uncaught exception while calling deactivatesurface: %s", e.what());
         g_afb_instance->wmgr.exceptionProcessForTransition();
         return;
     }
@@ -401,9 +383,6 @@ void windowmanager_deactivatewindow(afb_req req) noexcept
 void windowmanager_enddraw(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -425,7 +404,7 @@ void windowmanager_enddraw(afb_req req) noexcept
     }
     catch (std::exception &e)
     {
-        HMI_WARNING("wm", "failed: Uncaught exception while calling enddraw: %s", e.what());
+        HMI_WARNING("failed: Uncaught exception while calling enddraw: %s", e.what());
         g_afb_instance->wmgr.exceptionProcessForTransition();
         return;
     }
@@ -434,9 +413,6 @@ void windowmanager_enddraw(afb_req req) noexcept
 void windowmanager_getdisplayinfo_thunk(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -464,9 +440,6 @@ void windowmanager_getdisplayinfo_thunk(afb_req req) noexcept
 void windowmanager_getareainfo_thunk(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -504,9 +477,6 @@ void windowmanager_getareainfo_thunk(afb_req req) noexcept
 void windowmanager_wm_subscribe(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -543,9 +513,6 @@ void windowmanager_wm_subscribe(afb_req req) noexcept
 void windowmanager_list_drawing_names(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -575,9 +542,6 @@ void windowmanager_list_drawing_names(afb_req req) noexcept
 void windowmanager_ping(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -601,9 +565,6 @@ void windowmanager_ping(afb_req req) noexcept
 void windowmanager_debug_status(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -630,9 +591,6 @@ void windowmanager_debug_status(afb_req req) noexcept
 void windowmanager_debug_layers(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -655,9 +613,6 @@ void windowmanager_debug_layers(afb_req req) noexcept
 void windowmanager_debug_surfaces(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
@@ -686,9 +641,6 @@ void windowmanager_debug_surfaces(afb_req req) noexcept
 void windowmanager_debug_terminate(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
-#ifdef ST
-    ST();
-#endif
     if (g_afb_instance == nullptr)
     {
         afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");

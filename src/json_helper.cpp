@@ -15,9 +15,7 @@
  */
 
 #include "json_helper.hpp"
-#include "hmi-debug.h"
-
-#include <json.h>
+#include "util.hpp"
 
 json_object *to_json(compositor::surface_properties const &s)
 {
@@ -117,7 +115,7 @@ const char* getStringFromJson(json_object* obj, const char* key)
     json_object* tmp;
     if (!json_object_object_get_ex(obj, key, &tmp))
     {
-        HMI_DEBUG("wm:jh", "Not found key \"%s\"", key);
+        HMI_DEBUG("Not found key \"%s\"", key);
         return nullptr;
     }
 
@@ -129,7 +127,7 @@ int getIntFromJson(json_object *obj, const char *key)
     json_object *tmp;
     if (!json_object_object_get_ex(obj, key, &tmp))
     {
-        HMI_DEBUG("wm:jh", "Not found key \"%s\"", key);
+        HMI_DEBUG("Not found key \"%s\"", key);
         return 0;
     }
 
@@ -141,7 +139,7 @@ json_bool getBoolFromJson(json_object *obj, const char *key)
     json_object *tmp;
     if (!json_object_object_get_ex(obj, key, &tmp))
     {
-        HMI_DEBUG("wm:jh", "Not found key \"%s\"", key);
+        HMI_DEBUG("Not found key \"%s\"", key);
         return FALSE;
     }
 
@@ -153,13 +151,13 @@ int inputJsonFilie(const char* file, json_object** obj)
     const int input_size = 128;
     int ret = -1;
 
-    HMI_DEBUG("wm:jh", "Input file: %s", file);
+    HMI_DEBUG("Input file: %s", file);
 
     // Open json file
     FILE *fp = fopen(file, "rb");
     if (nullptr == fp)
     {
-        HMI_ERROR("wm:jh", "Could not open file");
+        HMI_ERROR("Could not open file");
         return ret;
     }
 
@@ -174,7 +172,7 @@ int inputJsonFilie(const char* file, json_object** obj)
         *obj = json_tokener_parse_ex(tokener, buffer, len);
         if (nullptr != *obj)
         {
-            HMI_DEBUG("wm:jh", "File input is success");
+            HMI_DEBUG("File input is success");
             ret = 0;
             break;
         }
@@ -183,9 +181,9 @@ int inputJsonFilie(const char* file, json_object** obj)
         if ((json_tokener_continue != json_error)
             || (input_size > len))
         {
-            HMI_ERROR("wm:jh", "Failed to parse file (byte:%d err:%s)",
+            HMI_ERROR("Failed to parse file (byte:%d err:%s)",
                       (input_size * block_cnt), json_tokener_error_desc(json_error));
-            HMI_ERROR("wm:jh", "\n%s", buffer);
+            HMI_ERROR("\n%s", buffer);
             *obj = nullptr;
             break;
         }

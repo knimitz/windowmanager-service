@@ -16,7 +16,7 @@
 #include <iostream>
 #include <algorithm>
 #include "applist.hpp"
-#include "../include/hmi-debug.h"
+#include "util.hpp"
 
 using std::shared_ptr;
 using std::string;
@@ -82,7 +82,7 @@ void AppList::removeClient(const string &appid)
 {
     std::lock_guard<std::mutex> lock(this->mtx);
     this->app2client.erase(appid);
-    HMI_INFO("wm", "Remove client %s", appid.c_str());
+    HMI_INFO("Remove client %s", appid.c_str());
 }
 
 /**
@@ -111,7 +111,7 @@ void AppList::removeSurface(unsigned surface){
     {
         ret = x.second->removeSurfaceIfExist(surface);
         if(ret){
-            HMI_DEBUG("wm", "remove surface %d from Client %s finish",
+            HMI_DEBUG("remove surface %d from Client %s finish",
                         surface, x.second->appID().c_str());
             break;
         }

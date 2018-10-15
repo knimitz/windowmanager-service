@@ -15,7 +15,6 @@
  */
 
 #include "wayland_ivi_wm.hpp"
-#include "hmi-debug.h"
 
 /**
  * namespace wl
@@ -41,10 +40,8 @@ int display::dispatch_pending() { return wl_display_dispatch_pending(this->d.get
 
 int display::read_events()
 {
-    ST();
     while (wl_display_prepare_read(this->d.get()) == -1)
     {
-        STN(pending_events_dispatch);
         if (wl_display_dispatch_pending(this->d.get()) == -1)
         {
             return -1;
@@ -112,7 +109,7 @@ void registry::global_created(uint32_t name, char const *iface, uint32_t v)
     {
         b->second(this->proxy.get(), name, v);
     }
-    HMI_DEBUG("wm", "wl::registry @ %p global n %u i %s v %u", this->proxy.get(), name,
+    HMI_DEBUG("wl::registry @ %p global n %u i %s v %u", this->proxy.get(), name,
               iface, v);
 }
 
@@ -163,8 +160,7 @@ void output::geometry(int32_t x, int32_t y, int32_t pw, int32_t ph,
                       int32_t subpel, char const *make, char const *model,
                       int32_t tx)
 {
-    HMI_DEBUG("wm",
-              "wl::output %s @ %p x %i y %i w %i h %i spel %x make %s model %s tx %i",
+    HMI_DEBUG("wl::output %s @ %p x %i y %i w %i h %i spel %x make %s model %s tx %i",
               __func__, this->proxy.get(), x, y, pw, ph, subpel, make, model, tx);
     this->physical_width = pw;
     this->physical_height = ph;
@@ -173,7 +169,7 @@ void output::geometry(int32_t x, int32_t y, int32_t pw, int32_t ph,
 
 void output::mode(uint32_t flags, int32_t w, int32_t h, int32_t r)
 {
-    HMI_DEBUG("wm", "wl::output %s @ %p f %x w %i h %i r %i", __func__,
+    HMI_DEBUG("wl::output %s @ %p f %x w %i h %i r %i", __func__,
               this->proxy.get(), flags, w, h, r);
     if ((flags & WL_OUTPUT_MODE_CURRENT) != 0u)
     {
@@ -185,7 +181,7 @@ void output::mode(uint32_t flags, int32_t w, int32_t h, int32_t r)
 
 void output::done()
 {
-    HMI_DEBUG("wm", "wl::output %s @ %p done", __func__, this->proxy.get());
+    HMI_DEBUG("wl::output %s @ %p done", __func__, this->proxy.get());
     // Pivot and flipped
     if (this->transform == WL_OUTPUT_TRANSFORM_90 ||
         this->transform == WL_OUTPUT_TRANSFORM_270 ||
@@ -199,7 +195,7 @@ void output::done()
 
 void output::scale(int32_t factor)
 {
-    HMI_DEBUG("wm", "wl::output %s @ %p f %i", __func__, this->proxy.get(), factor);
+    HMI_DEBUG("wl::output %s @ %p f %i", __func__, this->proxy.get(), factor);
 }
 } // namespace wl
 
@@ -363,14 +359,14 @@ void layer_added(void *data,
                  struct ivi_wm_screen *ivi_wm_screen,
                  uint32_t layer_id)
 {
-    HMI_DEBUG("wm", "added layer_id:%d", layer_id);
+    HMI_DEBUG("added layer_id:%d", layer_id);
 }
 
 void connector_name(void *data,
                     struct ivi_wm_screen *ivi_wm_screen,
                     const char *process_name)
 {
-    HMI_DEBUG("wm", "process_name:%s", process_name);
+    HMI_DEBUG("process_name:%s", process_name);
 }
 
 void screen_error(void *data,
@@ -378,7 +374,7 @@ void screen_error(void *data,
                   uint32_t error,
                   const char *message)
 {
-    HMI_DEBUG("wm", "screen error:%d message:%s", error, message);
+    HMI_DEBUG("screen error:%d message:%s", error, message);
 }
 
 constexpr struct ivi_wm_screen_listener screen_listener = {
@@ -400,7 +396,7 @@ surface::surface(uint32_t i, struct controller *c)
 
 void surface::set_visibility(uint32_t visibility)
 {
-    HMI_DEBUG("wm", "compositor::surface id:%d v:%d", this->id, visibility);
+    HMI_DEBUG("compositor::surface id:%d v:%d", this->id, visibility);
     ivi_wm_set_surface_visibility(this->parent->proxy.get(), this->id, visibility);
 }
 
@@ -459,7 +455,7 @@ screen::screen(uint32_t i, struct controller *c, struct wl_output *o)
     : wayland_proxy(ivi_wm_create_screen(c->proxy.get(), o)),
       controller_child(c, i)
 {
-    HMI_DEBUG("wm", "compositor::screen @ %p id %u o %p", this->proxy.get(), i, o);
+    HMI_DEBUG("compositor::screen @ %p id %u o %p", this->proxy.get(), i, o);
 
     // Add listener for screen
     ivi_wm_screen_add_listener(this->proxy.get(), &screen_listener, this);
@@ -469,7 +465,7 @@ void screen::clear() { ivi_wm_screen_clear(this->proxy.get()); }
 
 void screen::screen_created(struct screen *screen, uint32_t id)
 {
-    HMI_DEBUG("wm", "compositor::screen @ %p screen %u (%x) @ %p", this->proxy.get(),
+    HMI_DEBUG("compositor::screen @ %p screen %u (%x) @ %p", this->proxy.get(),
               id, id, screen);
     this->id = id;
     this->parent->screens[id] = screen;
@@ -484,7 +480,7 @@ void screen::set_render_order(std::vector<uint32_t> const &ro)
 
     for (i = 0; i < ro.size(); i++)
     {
-        HMI_DEBUG("wm", "compositor::screen @ %p add layer %u", this->proxy.get(), ro[i]);
+        HMI_DEBUG("compositor::screen @ %p add layer %u", this->proxy.get(), ro[i]);
         // Add the layer to screen render order at nearest z-position
         ivi_wm_screen_add_layer(this->proxy.get(), ro[i]);
     }
@@ -538,10 +534,10 @@ void controller::get_surface_properties(uint32_t surface_id, int param)
 
 void controller::layer_created(uint32_t id)
 {
-    HMI_DEBUG("wm", "compositor::controller @ %p layer %u (%x)", this->proxy.get(), id, id);
+    HMI_DEBUG("compositor::controller @ %p layer %u (%x)", this->proxy.get(), id, id);
     if (this->layers.find(id) != this->layers.end())
     {
-        HMI_DEBUG("wm", "WindowManager has created layer %u (%x) already", id, id);
+        HMI_DEBUG("WindowManager has created layer %u (%x) already", id, id);
     }
     else
     {
@@ -552,13 +548,13 @@ void controller::layer_created(uint32_t id)
 void controller::layer_error_detected(uint32_t object_id,
                                       uint32_t error_code, const char *error_text)
 {
-    HMI_DEBUG("wm", "compositor::controller @ %p error o %d c %d text %s",
+    HMI_DEBUG("compositor::controller @ %p error o %d c %d text %s",
               this->proxy.get(), object_id, error_code, error_text);
 }
 
 void controller::surface_visibility_changed(uint32_t id, int32_t visibility)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d v %i", __func__, id,
+    HMI_DEBUG("compositor::surface %s @ %d v %i", __func__, id,
               visibility);
     this->sprops[id].visibility = visibility;
     this->chooks->surface_visibility(id, visibility);
@@ -566,7 +562,7 @@ void controller::surface_visibility_changed(uint32_t id, int32_t visibility)
 
 void controller::surface_opacity_changed(uint32_t id, float opacity)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d o %f",
+    HMI_DEBUG("compositor::surface %s @ %d o %f",
                 __func__, id, opacity);
     this->sprops[id].opacity = opacity;
 }
@@ -575,7 +571,7 @@ void controller::surface_source_rectangle_changed(uint32_t id, int32_t x,
                                                   int32_t y, int32_t width,
                                                   int32_t height)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d x %i y %i w %i h %i", __func__,
+    HMI_DEBUG("compositor::surface %s @ %d x %i y %i w %i h %i", __func__,
               id, x, y, width, height);
     this->sprops[id].src_rect = rect{width, height, x, y};
 }
@@ -584,7 +580,7 @@ void controller::surface_destination_rectangle_changed(uint32_t id, int32_t x,
                                                        int32_t y, int32_t width,
                                                        int32_t height)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d x %i y %i w %i h %i", __func__,
+    HMI_DEBUG("compositor::surface %s @ %d x %i y %i w %i h %i", __func__,
               id, x, y, width, height);
     this->sprops[id].dst_rect = rect{width, height, x, y};
     this->chooks->surface_destination_rectangle(id, x, y, width, height);
@@ -593,7 +589,7 @@ void controller::surface_destination_rectangle_changed(uint32_t id, int32_t x,
 void controller::surface_size_changed(uint32_t id, int32_t width,
                                       int32_t height)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d w %i h %i", __func__, id,
+    HMI_DEBUG("compositor::surface %s @ %d w %i h %i", __func__, id,
               width, height);
     this->sprops[id].size = size{uint32_t(width), uint32_t(height)};
     this->surfaces[id]->set_source_rectangle(0, 0, width, height);
@@ -601,20 +597,20 @@ void controller::surface_size_changed(uint32_t id, int32_t width,
 
 void controller::surface_added_to_layer(uint32_t layer_id, uint32_t surface_id)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d l %u",
+    HMI_DEBUG("compositor::surface %s @ %d l %u",
               __func__, layer_id, surface_id);
 }
 
 void controller::surface_stats_received(uint32_t surface_id,
                                         uint32_t frame_count, uint32_t pid)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d f %u pid %u",
+    HMI_DEBUG("compositor::surface %s @ %d f %u pid %u",
               __func__, surface_id, frame_count, pid);
 }
 
 void controller::surface_created(uint32_t id)
 {
-    HMI_DEBUG("wm", "compositor::controller @ %p surface %u (%x)", this->proxy.get(), id,
+    HMI_DEBUG("compositor::controller @ %p surface %u (%x)", this->proxy.get(), id,
               id);
     if (this->surfaces.find(id) == this->surfaces.end())
     {
@@ -632,7 +628,7 @@ void controller::surface_created(uint32_t id)
 
 void controller::surface_destroyed(uint32_t surface_id)
 {
-    HMI_DEBUG("wm", "compositor::surface %s @ %d", __func__, surface_id);
+    HMI_DEBUG("compositor::surface %s @ %d", __func__, surface_id);
     this->chooks->surface_removed(surface_id);
     this->sprops.erase(surface_id);
     this->surfaces.erase(surface_id);
@@ -641,19 +637,19 @@ void controller::surface_destroyed(uint32_t surface_id)
 void controller::surface_error_detected(uint32_t object_id,
                                         uint32_t error_code, const char *error_text)
 {
-    HMI_DEBUG("wm", "compositor::controller @ %p error o %d c %d text %s",
+    HMI_DEBUG("compositor::controller @ %p error o %d c %d text %s",
               this->proxy.get(), object_id, error_code, error_text);
 }
 
 void controller::layer_visibility_changed(uint32_t layer_id, int32_t visibility)
 {
-    HMI_DEBUG("wm", "compositor::layer %s @ %d v %i", __func__, layer_id, visibility);
+    HMI_DEBUG("compositor::layer %s @ %d v %i", __func__, layer_id, visibility);
     this->lprops[layer_id].visibility = visibility;
 }
 
 void controller::layer_opacity_changed(uint32_t layer_id, float opacity)
 {
-    HMI_DEBUG("wm", "compositor::layer %s @ %d o %f", __func__, layer_id, opacity);
+    HMI_DEBUG("compositor::layer %s @ %d o %f", __func__, layer_id, opacity);
     this->lprops[layer_id].opacity = opacity;
 }
 
@@ -661,7 +657,7 @@ void controller::layer_source_rectangle_changed(uint32_t layer_id,
                                                 int32_t x, int32_t y,
                                                 int32_t width, int32_t height)
 {
-    HMI_DEBUG("wm", "compositor::layer %s @ %d x %i y %i w %i h %i",
+    HMI_DEBUG("compositor::layer %s @ %d x %i y %i w %i h %i",
               __func__, layer_id, x, y, width, height);
     this->lprops[layer_id].src_rect = rect{width, height, x, y};
 }
@@ -670,14 +666,14 @@ void controller::layer_destination_rectangle_changed(uint32_t layer_id,
                                                      int32_t x, int32_t y,
                                                      int32_t width, int32_t height)
 {
-    HMI_DEBUG("wm", "compositor::layer %s @ %d x %i y %i w %i h %i",
+    HMI_DEBUG("compositor::layer %s @ %d x %i y %i w %i h %i",
               __func__, layer_id, x, y, width, height);
     this->lprops[layer_id].dst_rect = rect{width, height, x, y};
 }
 
 void controller::layer_destroyed(uint32_t layer_id)
 {
-    HMI_DEBUG("wm", "compositor::layer %s @ %d", __func__, layer_id);
+    HMI_DEBUG("compositor::layer %s @ %d", __func__, layer_id);
     this->lprops.erase(layer_id);
     this->layers.erase(layer_id);
 }
@@ -685,40 +681,40 @@ void controller::layer_destroyed(uint32_t layer_id)
 void controller::add_proxy_to_sid_mapping(struct ivi_wm *p,
                                           uint32_t id)
 {
-    HMI_DEBUG("wm", "Add surface proxy mapping for %p (%u)", p, id);
+    HMI_DEBUG("Add surface proxy mapping for %p (%u)", p, id);
     this->surface_proxy_to_id[uintptr_t(p)] = id;
     this->sprops[id].id = id;
 }
 
 void controller::remove_proxy_to_sid_mapping(struct ivi_wm *p)
 {
-    HMI_DEBUG("wm", "Remove surface proxy mapping for %p", p);
+    HMI_DEBUG("Remove surface proxy mapping for %p", p);
     this->surface_proxy_to_id.erase(uintptr_t(p));
 }
 
 void controller::add_proxy_to_lid_mapping(struct ivi_wm *p,
                                           uint32_t id)
 {
-    HMI_DEBUG("wm", "Add layer proxy mapping for %p (%u)", p, id);
+    HMI_DEBUG("Add layer proxy mapping for %p (%u)", p, id);
     this->layer_proxy_to_id[uintptr_t(p)] = id;
     this->lprops[id].id = id;
 }
 
 void controller::remove_proxy_to_lid_mapping(struct ivi_wm *p)
 {
-    HMI_DEBUG("wm", "Remove layer proxy mapping for %p", p);
+    HMI_DEBUG("Remove layer proxy mapping for %p", p);
     this->layer_proxy_to_id.erase(uintptr_t(p));
 }
 
 void controller::add_proxy_to_id_mapping(struct wl_output *p, uint32_t id)
 {
-    HMI_DEBUG("wm", "Add screen proxy mapping for %p (%u)", p, id);
+    HMI_DEBUG("Add screen proxy mapping for %p (%u)", p, id);
     this->screen_proxy_to_id[uintptr_t(p)] = id;
 }
 
 void controller::remove_proxy_to_id_mapping(struct wl_output *p)
 {
-    HMI_DEBUG("wm", "Remove screen proxy mapping for %p", p);
+    HMI_DEBUG("Remove screen proxy mapping for %p", p);
     this->screen_proxy_to_id.erase(uintptr_t(p));
 }
 

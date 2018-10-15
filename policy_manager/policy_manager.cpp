@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <json-c/json.h>
 #include "policy_manager.hpp"
-#include "hmi-debug.h"
+#include "util.hpp"
 
 extern "C"
 {
@@ -68,19 +68,19 @@ int PolicyManager::initialize()
     // Create convert map
     for (int i = StmEvtNoMin; i <= StmEvtNoMax; i++)
     {
-        HMI_DEBUG("wm:pm", "event name:%s no:%d", kStmEventName[i], i);
+        HMI_DEBUG("event name:%s no:%d", kStmEventName[i], i);
         this->eventname2no[kStmEventName[i]] = i;
     }
 
     for (int i = StmCtgNoMin; i <= StmCtgNoMax; i++)
     {
-        HMI_DEBUG("wm:pm", "category name:%s no:%d", kStmCategoryName[i], i);
+        HMI_DEBUG("category name:%s no:%d", kStmCategoryName[i], i);
         this->categoryname2no[kStmCategoryName[i]] = i;
     }
 
     for (int i = StmAreaNoMin; i <= StmAreaNoMax; i++)
     {
-        HMI_DEBUG("wm:pm", "area name:%s no:%d", kStmAreaName[i], i);
+        HMI_DEBUG("area name:%s no:%d", kStmAreaName[i], i);
         this->areaname2no[kStmAreaName[i]] = i;
     }
 
@@ -88,7 +88,7 @@ int PolicyManager::initialize()
     ret = this->loadRoleDb();
     if (0 > ret)
     {
-        HMI_ERROR("wm:pm", "Load roles.db Error!!");
+        HMI_ERROR("Load roles.db Error!!");
         return ret;
     }
 
@@ -96,7 +96,7 @@ int PolicyManager::initialize()
     ret = this->loadStateDb();
     if (0 > ret)
     {
-        HMI_ERROR("wm:pm", "Load states.db Error!!");
+        HMI_ERROR("Load states.db Error!!");
         return ret;
     }
 
@@ -123,7 +123,7 @@ int PolicyManager::setInputEventData(json_object *json_in)
     // Check arguments
     if (nullptr == json_in)
     {
-        HMI_ERROR("wm:pm", "Argument is NULL!!");
+        HMI_ERROR("Argument is NULL!!");
         return -1;
     }
 
@@ -137,17 +137,17 @@ int PolicyManager::setInputEventData(json_object *json_in)
         if (this->eventname2no.end() != itr)
         {
             event_no = this->eventname2no[event];
-            HMI_DEBUG("wm:pm", "event(%s:%d)", event, event_no);
+            HMI_DEBUG("event(%s:%d)", event, event_no);
         }
         else
         {
-            HMI_ERROR("wm:pm", "Invalid event name!!");
+            HMI_ERROR("Invalid event name!!");
             return -1;
         }
     }
     else
     {
-        HMI_ERROR("wm:pm", "Event is not set!!");
+        HMI_ERROR("Event is not set!!");
         return -1;
     }
 
@@ -157,7 +157,7 @@ int PolicyManager::setInputEventData(json_object *json_in)
     int category_no = StmCtgNoNone;
     if (nullptr != role)
     {
-        HMI_DEBUG("wm:pm", "role(%s)", role);
+        HMI_DEBUG("role(%s)", role);
 
         // Convert role to category
         auto itr = this->role2category.find(role);
@@ -170,7 +170,7 @@ int PolicyManager::setInputEventData(json_object *json_in)
             itr = this->role2category.find("fallback");
             if (this->role2category.end() != itr)
             {
-                HMI_DEBUG("wm:pm", "Role:%s is not registered in roles.db, fallback as normal app", role);
+                HMI_DEBUG("Role:%s is not registered in roles.db, fallback as normal app", role);
                 category = this->role2category["fallback"];
             }
         }
@@ -179,7 +179,7 @@ int PolicyManager::setInputEventData(json_object *json_in)
         {
             // Convert name to number
             category_no = categoryname2no[category];
-            HMI_DEBUG("wm:pm", "category(%s:%d)", category.c_str(), category_no);
+            HMI_DEBUG("category(%s:%d)", category.c_str(), category_no);
         }
     }
     if (StmCtgNoNone == category_no)
@@ -205,7 +205,7 @@ int PolicyManager::setInputEventData(json_object *json_in)
             area = this->category2areas[category].front().c_str();
             area_no = this->areaname2no[area];
         }
-        HMI_DEBUG("wm:pm", "area(%s:%d)", area, area_no);
+        HMI_DEBUG("area(%s:%d)", area, area_no);
     }
 
     // Set event info to the queue
@@ -237,17 +237,17 @@ int PolicyManager::executeStateTransition()
 
 void PolicyManager::undoState()
 {
-    HMI_DEBUG("wm:pm", "Undo State !!!");
+    HMI_DEBUG("Undo State !!!");
 
     // Undo state of STM
     stmUndoState();
 
-    HMI_DEBUG("wm:pm", ">>>>>>>>>> BEFORE UNDO");
+    HMI_DEBUG(">>>>>>>>>> BEFORE UNDO");
     this->dumpLayerState(this->crr_layers);
 
     this->crr_layers = this->prv_layers;
 
-    HMI_DEBUG("wm:pm", ">>>>>>>>>> AFTER UNDO");
+    HMI_DEBUG(">>>>>>>>>> AFTER UNDO");
     this->dumpLayerState(this->crr_layers);
 }
 
@@ -282,7 +282,7 @@ void PolicyManager::addStateToJson(const char *name, bool changed,
 {
     if ((nullptr == name) || (nullptr == json_out))
     {
-        HMI_ERROR("wm:pm", "Invalid argument!!!");
+        HMI_ERROR("Invalid argument!!!");
         return;
     }
 
@@ -296,7 +296,7 @@ void PolicyManager::addStateToJson(const char *layer_name, bool changed,
 {
     if ((nullptr == layer_name) || (nullptr == json_out))
     {
-        HMI_ERROR("wm:pm", "Invalid argument!!!");
+        HMI_ERROR("Invalid argument!!!");
         return;
     }
 
@@ -325,7 +325,7 @@ void PolicyManager::updateLayer(int event_id, StmState crr_state)
     for (int layer_no = StmLayerNoMin;
          layer_no <= StmLayerNoMax; layer_no++)
     {
-        HMI_DEBUG("wm:pm", ">>> LAYER:%s CHANGED:%d LAYOUT:%s",
+        HMI_DEBUG(">>> LAYER:%s CHANGED:%d LAYOUT:%s",
                   kStmLayerName[layer_no], crr_state.layer[layer_no].changed,
                   kStmLayoutName[crr_state.layer[layer_no].state]);
     }
@@ -343,7 +343,7 @@ void PolicyManager::updateLayer(int event_id, StmState crr_state)
         int changed = crr_state.layer[layer_no].changed;
         if (changed)
         {
-            HMI_DEBUG("wm:pm", ">>>>>>>>>> Update layout of layer:%s", layer_name);
+            HMI_DEBUG(">>>>>>>>>> Update layout of layer:%s", layer_name);
 
             // Get current layout name of this layer
             int crr_layout_state_no = crr_state.layer[layer_no].state;
@@ -363,10 +363,10 @@ void PolicyManager::updateLayer(int event_id, StmState crr_state)
     // Erase role for the event_id from list
     this->req_role_list.erase(event_id);
 
-    HMI_DEBUG("wm:pm", ">>>>>>>>>> DUMP LAYERS (BEFORE)");
+    HMI_DEBUG(">>>>>>>>>> DUMP LAYERS (BEFORE)");
     this->dumpLayerState(this->prv_layers);
 
-    HMI_DEBUG("wm:pm", ">>>>>>>>>> DUMP LAYERS (AFTER)");
+    HMI_DEBUG(">>>>>>>>>> DUMP LAYERS (AFTER)");
     this->dumpLayerState(this->crr_layers);
 
     this->dumpInvisibleRoleHistory();
@@ -405,17 +405,17 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
         crr_layout_state = prv_layout_state;
         changed = 1;
 
-        HMI_DEBUG("wm:pm", "-- layout name previous:%s current:%s",
+        HMI_DEBUG("-- layout name previous:%s current:%s",
                   prv_layout_name.c_str(), crr_layout_name.c_str());
         if (prv_layout_name == crr_layout_name)
         {
-            HMI_DEBUG("wm:pm", "---- Previous layout is same with current");
+            HMI_DEBUG("---- Previous layout is same with current");
         }
         else
         {
             // If previous layout is NOT same with current,
             // current areas is set with default value
-            HMI_DEBUG("wm:pm", "---- Previous layout is NOT same with current");
+            HMI_DEBUG("---- Previous layout is NOT same with current");
             crr_layout_state.name = this->default_layouts[crr_layout_name].name;
             crr_layout_state.category_num = this->default_layouts[crr_layout_name].category_num;
             crr_layout_state.area_list = this->default_layouts[crr_layout_name].area_list;
@@ -434,7 +434,7 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
             // }
 
             // const char *ctg = kStmCategoryName[ctg_no];
-            HMI_DEBUG("wm:pm", "-- Create candidate list for ctg:%s", ctg.c_str());
+            HMI_DEBUG("-- Create candidate list for ctg:%s", ctg.c_str());
 
             AreaList tmp_cand_list;
             int candidate_num = 0;
@@ -447,7 +447,7 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
             std::string used_role = "";
             if ((ctg == req_ctg) && ("activate" == req_evt))
             {
-                HMI_DEBUG("wm:pm", "---- Requested event is activate");
+                HMI_DEBUG("---- Requested event is activate");
                 for (AreaState &as : crr_layout_state.area_list)
                 {
                     if (as.category == req_ctg)
@@ -459,7 +459,7 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
                             as.role = req_role;
                             used_role = req_role;
                             blank_num--;
-                            HMI_DEBUG("wm:pm", "------ Update current layout: area:%s category:%s role:%s",
+                            HMI_DEBUG("------ Update current layout: area:%s category:%s role:%s",
                                       as.name.c_str(), as.category.c_str(), as.role.c_str());
                             break;
                         }
@@ -476,7 +476,7 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
                     // If there is the category
                     // which is same with new category and not used for updating yet,
                     // push it to list
-                    HMI_DEBUG("wm:pm", "---- Push previous(category:%s role:%s) to candidate list",
+                    HMI_DEBUG("---- Push previous(category:%s role:%s) to candidate list",
                               area_state.category.c_str(), area_state.role.c_str());
                     tmp_cand_list.push_back(area_state);
                     candidate_num++;
@@ -488,7 +488,7 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
             // so push requested role to candidate list
             if (request_for_this_layer && ("" == used_role))
             {
-                HMI_DEBUG("wm:pm", "---- Push request(area:%s category:%s role:%s) to candidate list",
+                HMI_DEBUG("---- Push request(area:%s category:%s role:%s) to candidate list",
                           req_area.c_str(), req_ctg.c_str(), req_role.c_str());
                 AreaState area_state;
                 area_state.name = req_area;
@@ -498,7 +498,7 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
                 candidate_num++;
             }
 
-            HMI_DEBUG("wm:pm", "---- blank_num:%d candidate_num:%d", blank_num, candidate_num);
+            HMI_DEBUG("---- blank_num:%d candidate_num:%d", blank_num, candidate_num);
 
             // Compare number of candidate/blank,
             // And remove role in order of the oldest as necessary
@@ -514,10 +514,10 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
                     area_state.role = this->popInvisibleRoleHistory(ctg);
                     if ("" == area_state.role)
                     {
-                        HMI_ERROR("wm:pm", "There is no role in history stack!!");
+                        HMI_ERROR("There is no role in history stack!!");
                     }
                     tmp_cand_list.push_back(area_state);
-                    HMI_DEBUG("wm:pm", "------ Add role:%s to candidate list",
+                    HMI_DEBUG("------ Add role:%s to candidate list",
                               area_state.role.c_str());
                     candidate_num++;
                 }
@@ -528,7 +528,7 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
                 while (candidate_num != blank_num)
                 {
                     std::string removed_role = tmp_cand_list.begin()->role;
-                    HMI_DEBUG("wm:pm", "------ Remove the oldest role:%s from candidate list",
+                    HMI_DEBUG("------ Remove the oldest role:%s from candidate list",
                               removed_role.c_str());
                     tmp_cand_list.erase(tmp_cand_list.begin());
                     candidate_num--;
@@ -555,14 +555,14 @@ int PolicyManager::updateLayout(int event_id, int layer_no,
         }
 
         // Update areas
-        HMI_DEBUG("wm:pm", "-- Update areas by using candidate list");
+        HMI_DEBUG("-- Update areas by using candidate list");
         for (AreaState &as : crr_layout_state.area_list)
         {
-            HMI_DEBUG("wm:pm", "---- Check area:%s category:%s role:%s",
+            HMI_DEBUG("---- Check area:%s category:%s role:%s",
                       as.name.c_str(), as.category.c_str(), as.role.c_str());
             if ("" == as.role)
             {
-                HMI_DEBUG("wm:pm", "------ Update this area with role:%s",
+                HMI_DEBUG("------ Update this area with role:%s",
                           cand_list[as.category].begin()->role.c_str());
                 as.role = cand_list[as.category].begin()->role;
                 cand_list[as.category].erase(cand_list[as.category].begin());
@@ -610,7 +610,7 @@ void PolicyManager::createOutputInformation(StmState crr_state, json_object **js
 
 int PolicyManager::transitionState(sd_event_source *source, void *data)
 {
-    HMI_DEBUG("wm:pm", ">>>>>>>>>> START STATE TRANSITION");
+    HMI_DEBUG(">>>>>>>>>> START STATE TRANSITION");
 
     int event_id = *((int *)data);
 
@@ -618,7 +618,7 @@ int PolicyManager::transitionState(sd_event_source *source, void *data)
     event_no = STM_GET_EVENT_FROM_ID(event_id);
     category_no = STM_GET_CATEGORY_FROM_ID(event_id);
     area_no = STM_GET_AREA_FROM_ID(event_id);
-    HMI_DEBUG("wm:pm", ">>>>>>>>>> EVENT:%s CATEGORY:%s AREA:%s",
+    HMI_DEBUG(">>>>>>>>>> EVENT:%s CATEGORY:%s AREA:%s",
               kStmEventName[event_no],
               kStmCategoryName[category_no],
               kStmAreaName[area_no]);
@@ -628,7 +628,7 @@ int PolicyManager::transitionState(sd_event_source *source, void *data)
     int ret = stmTransitionState(event_id, &crr_state);
     if (0 > ret)
     {
-        HMI_ERROR("wm:pm", "Failed transition state");
+        HMI_ERROR("Failed transition state");
         if (nullptr != this->callback.onError)
         {
             json_object *json_out = json_object_new_object();
@@ -674,13 +674,13 @@ int PolicyManager::transitionState(sd_event_source *source, void *data)
         this->event_source_list.erase(event_id);
     }
 
-    HMI_DEBUG("wm:pm", ">>>>>>>>>> FINISH STATE TRANSITION");
+    HMI_DEBUG(">>>>>>>>>> FINISH STATE TRANSITION");
     return 0;
 }
 
 int PolicyManager::timerEvent(sd_event_source *source, uint64_t usec, void *data)
 {
-    HMI_DEBUG("wm:pm", "Call");
+    HMI_DEBUG("Call");
 
     int ret = this->transitionState(source, data);
     return ret;
@@ -733,11 +733,11 @@ int PolicyManager::loadRoleDb()
 
     // Get afm application installed dir
     char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
-    HMI_DEBUG("wm:pm", "afm_app_install_dir:%s", afm_app_install_dir);
+    HMI_DEBUG("afm_app_install_dir:%s", afm_app_install_dir);
 
     if (!afm_app_install_dir)
     {
-        HMI_ERROR("wm:pm", "AFM_APP_INSTALL_DIR is not defined");
+        HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
     }
     else
     {
@@ -749,21 +749,21 @@ int PolicyManager::loadRoleDb()
     int ret = this->inputJsonFilie(file_name.c_str(), &json_obj);
     if (0 > ret)
     {
-        HMI_ERROR("wm:pm", "Could not open roles.db, so use default role information");
+        HMI_ERROR("Could not open roles.db, so use default role information");
         json_obj = json_tokener_parse(kDefaultRoleDb);
     }
-    HMI_DEBUG("wm:pm", "json_obj dump:%s", json_object_get_string(json_obj));
+    HMI_DEBUG("json_obj dump:%s", json_object_get_string(json_obj));
 
     json_object *json_roles;
     if (!json_object_object_get_ex(json_obj, "roles", &json_roles))
     {
-        HMI_ERROR("wm:pm", "Parse Error!!");
+        HMI_ERROR("Parse Error!!");
         return -1;
     }
 
     int len = json_object_array_length(json_roles);
-    HMI_DEBUG("wm:pm", "json_cfg len:%d", len);
-    HMI_DEBUG("wm:pm", "json_cfg dump:%s", json_object_get_string(json_roles));
+    HMI_DEBUG("json_cfg len:%d", len);
+    HMI_DEBUG("json_cfg dump:%s", json_object_get_string(json_roles));
 
     json_object *json_tmp;
     const char *category;
@@ -782,7 +782,7 @@ int PolicyManager::loadRoleDb()
         if ((nullptr == category) || (nullptr == roles) ||
             (nullptr == areas) || (nullptr == layer))
         {
-            HMI_ERROR("wm:pm", "Parse Error!!");
+            HMI_ERROR("Parse Error!!");
             return -1;
         }
 
@@ -805,24 +805,24 @@ int PolicyManager::loadRoleDb()
     }
 
     // Check
-    HMI_DEBUG("wm:pm", "Check role2category");
+    HMI_DEBUG("Check role2category");
     for (const auto &x : this->role2category)
     {
-        HMI_DEBUG("wm:pm", "key:%s, val:%s", x.first.c_str(), x.second.c_str());
+        HMI_DEBUG("key:%s, val:%s", x.first.c_str(), x.second.c_str());
     }
 
-    HMI_DEBUG("wm:pm", "Check category2role");
+    HMI_DEBUG("Check category2role");
     for (const auto &x : this->category2role)
     {
-        HMI_DEBUG("wm:pm", "key:%s, val:%s", x.first.c_str(), x.second.c_str());
+        HMI_DEBUG("key:%s, val:%s", x.first.c_str(), x.second.c_str());
     }
 
-    HMI_DEBUG("wm:pm", "Check category2areas");
+    HMI_DEBUG("Check category2areas");
     for (const auto &x : this->category2areas)
     {
         for (const auto &y : x.second)
         {
-            HMI_DEBUG("wm:pm", "key:%s, val:%s", x.first.c_str(), y.c_str());
+            HMI_DEBUG("key:%s, val:%s", x.first.c_str(), y.c_str());
         }
     }
     return 0;
@@ -830,16 +830,16 @@ int PolicyManager::loadRoleDb()
 
 int PolicyManager::loadStateDb()
 {
-    HMI_DEBUG("wm:pm", "Call");
+    HMI_DEBUG("Call");
 
     // Get afm application installed dir
     char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
-    HMI_DEBUG("wm:pm", "afm_app_install_dir:%s", afm_app_install_dir);
+    HMI_DEBUG("afm_app_install_dir:%s", afm_app_install_dir);
 
     std::string file_name;
     if (!afm_app_install_dir)
     {
-        HMI_ERROR("wm:pm", "AFM_APP_INSTALL_DIR is not defined");
+        HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
     }
     else
     {
@@ -851,23 +851,23 @@ int PolicyManager::loadStateDb()
     int ret = this->inputJsonFilie(file_name.c_str(), &json_obj);
     if (0 > ret)
     {
-        HMI_DEBUG("wm:pm", "Could not open states.db, so use default layout information");
+        HMI_DEBUG("Could not open states.db, so use default layout information");
         json_obj = json_tokener_parse(kDefaultStateDb);
     }
-    HMI_DEBUG("wm:pm", "json_obj dump:%s", json_object_get_string(json_obj));
+    HMI_DEBUG("json_obj dump:%s", json_object_get_string(json_obj));
 
     // Perse states
-    HMI_DEBUG("wm:pm", "Perse states");
+    HMI_DEBUG("Perse states");
     json_object *json_cfg;
     if (!json_object_object_get_ex(json_obj, "states", &json_cfg))
     {
-        HMI_ERROR("wm:pm", "Parse Error!!");
+        HMI_ERROR("Parse Error!!");
         return -1;
     }
 
     int len = json_object_array_length(json_cfg);
-    HMI_DEBUG("wm:pm", "json_cfg len:%d", len);
-    HMI_DEBUG("wm:pm", "json_cfg dump:%s", json_object_get_string(json_cfg));
+    HMI_DEBUG("json_cfg len:%d", len);
+    HMI_DEBUG("json_cfg dump:%s", json_object_get_string(json_cfg));
 
     const char *layout;
     const char *role;
@@ -879,21 +879,21 @@ int PolicyManager::loadStateDb()
         layout = this->getStringFromJson(json_tmp, "name");
         if (nullptr == layout)
         {
-            HMI_ERROR("wm:pm", "Parse Error!!");
+            HMI_ERROR("Parse Error!!");
             return -1;
         }
-        HMI_DEBUG("wm:pm", "> layout:%s", layout);
+        HMI_DEBUG("> layout:%s", layout);
 
         json_object *json_area_array;
         if (!json_object_object_get_ex(json_tmp, "areas", &json_area_array))
         {
-            HMI_ERROR("wm:pm", "Parse Error!!");
+            HMI_ERROR("Parse Error!!");
             return -1;
         }
 
         int len_area = json_object_array_length(json_area_array);
-        HMI_DEBUG("wm:pm", "json_area_array len:%d", len_area);
-        HMI_DEBUG("wm:pm", "json_area_array dump:%s", json_object_get_string(json_area_array));
+        HMI_DEBUG("json_area_array len:%d", len_area);
+        HMI_DEBUG("json_area_array dump:%s", json_object_get_string(json_area_array));
 
         LayoutState layout_state;
         AreaState area_state;
@@ -913,22 +913,22 @@ int PolicyManager::loadStateDb()
             const char *area = this->getStringFromJson(json_area, "name");
             if (nullptr == area)
             {
-                HMI_ERROR("wm:pm", "Parse Error!!");
+                HMI_ERROR("Parse Error!!");
                 return -1;
             }
             area_state.name = std::string(area);
-            HMI_DEBUG("wm:pm", ">> area:%s", area);
+            HMI_DEBUG(">> area:%s", area);
 
             // Get app attribute of the area
             category = this->getStringFromJson(json_area, "category");
             if (nullptr == category)
             {
-                HMI_ERROR("wm:pm", "Parse Error!!");
+                HMI_ERROR("Parse Error!!");
                 return -1;
             }
             area_state.category = std::string(category);
             category_num[category]++;
-            HMI_DEBUG("wm:pm", ">>> category:%s", category);
+            HMI_DEBUG(">>> category:%s", category);
 
             role = this->getStringFromJson(json_area, "role");
             if (nullptr != role)
@@ -940,7 +940,7 @@ int PolicyManager::loadStateDb()
             {
                 area_state.role = std::string("");
             }
-            HMI_DEBUG("wm:pm", ">>> role:%s", role);
+            HMI_DEBUG(">>> role:%s", role);
 
             layout_state.area_list.push_back(area_state);
         }
@@ -960,14 +960,14 @@ int PolicyManager::loadStateDb()
     for (auto itr_layout = this->default_layouts.begin();
          itr_layout != this->default_layouts.end(); ++itr_layout)
     {
-        HMI_DEBUG("wm:pm", ">>> layout:%s", itr_layout->first.c_str());
+        HMI_DEBUG(">>> layout:%s", itr_layout->first.c_str());
 
         for (auto itr_area = itr_layout->second.area_list.begin();
              itr_area != itr_layout->second.area_list.end(); ++itr_area)
         {
-            HMI_DEBUG("wm:pm", ">>> >>> area    :%s", itr_area->name.c_str());
-            HMI_DEBUG("wm:pm", ">>> >>> category:%s", itr_area->category.c_str());
-            HMI_DEBUG("wm:pm", ">>> >>> role    :%s", itr_area->role.c_str());
+            HMI_DEBUG(">>> >>> area    :%s", itr_area->name.c_str());
+            HMI_DEBUG(">>> >>> category:%s", itr_area->category.c_str());
+            HMI_DEBUG(">>> >>> role    :%s", itr_area->role.c_str());
         }
     }
 
@@ -1017,7 +1017,7 @@ const char *PolicyManager::getStringFromJson(json_object *obj, const char *key)
     json_object *tmp;
     if (!json_object_object_get_ex(obj, key, &tmp))
     {
-        HMI_DEBUG("wm:pm", "Not found key \"%s\"", key);
+        HMI_DEBUG("Not found key \"%s\"", key);
         return nullptr;
     }
 
@@ -1029,13 +1029,13 @@ int PolicyManager::inputJsonFilie(const char *file, json_object **obj)
     const int input_size = 128;
     int ret = -1;
 
-    HMI_DEBUG("wm:pm", "Input file: %s", file);
+    HMI_DEBUG("Input file: %s", file);
 
     // Open json file
     FILE *fp = fopen(file, "rb");
     if (nullptr == fp)
     {
-        HMI_ERROR("wm:pm", "Could not open file");
+        HMI_ERROR("Could not open file");
         return ret;
     }
 
@@ -1050,7 +1050,7 @@ int PolicyManager::inputJsonFilie(const char *file, json_object **obj)
         *obj = json_tokener_parse_ex(tokener, buffer, len);
         if (nullptr != *obj)
         {
-            HMI_DEBUG("wm:pm", "File input is success");
+            HMI_DEBUG("File input is success");
             ret = 0;
             break;
         }
@@ -1058,9 +1058,9 @@ int PolicyManager::inputJsonFilie(const char *file, json_object **obj)
         json_error = json_tokener_get_error(tokener);
         if ((json_tokener_continue != json_error) || (input_size > len))
         {
-            HMI_ERROR("wm:pm", "Failed to parse file (byte:%d err:%s)",
+            HMI_ERROR("Failed to parse file (byte:%d err:%s)",
                       (input_size * block_cnt), json_tokener_error_desc(json_error));
-            HMI_ERROR("wm:pm", "\n%s", buffer);
+            HMI_ERROR("\n%s", buffer);
             *obj = nullptr;
             break;
         }
@@ -1078,8 +1078,8 @@ int PolicyManager::inputJsonFilie(const char *file, json_object **obj)
 
 void PolicyManager::dumpLayerState(std::unordered_map<std::string, LayerState> &layers)
 {
-    HMI_DEBUG("wm:pm", "-------------------------------------------------------------------------------------------------------");
-    HMI_DEBUG("wm:pm", "|%-15s|%s|%-20s|%-20s|%-20s|%-20s|",
+    HMI_DEBUG("-------------------------------------------------------------------------------------------------------");
+    HMI_DEBUG("|%-15s|%s|%-20s|%-20s|%-20s|%-20s|",
               "LAYER", "C", "LAYOUT", "AREA", "CATEGORY", "ROLE");
     for (const auto &itr : layers)
     {
@@ -1093,21 +1093,21 @@ void PolicyManager::dumpLayerState(std::unordered_map<std::string, LayerState> &
             if (first)
             {
                 first = false;
-                HMI_DEBUG("wm:pm", "|%-15s|%1s|%-20s|%-20s|%-20s|%-20s|",
+                HMI_DEBUG("|%-15s|%1s|%-20s|%-20s|%-20s|%-20s|",
                           layer, changed, layout,
                           as.name.c_str(), as.category.c_str(), as.role.c_str());
             }
             else
-                HMI_DEBUG("wm:pm", "|%-15s|%1s|%-20s|%-20s|%-20s|%-20s|",
+                HMI_DEBUG("|%-15s|%1s|%-20s|%-20s|%-20s|%-20s|",
                           "", "", "", as.name.c_str(), as.category.c_str(), as.role.c_str());
         }
     }
-    HMI_DEBUG("wm:pm", "-------------------------------------------------------------------------------------------------------");
+    HMI_DEBUG("-------------------------------------------------------------------------------------------------------");
 }
 
 void PolicyManager::dumpInvisibleRoleHistory()
 {
-    HMI_DEBUG("wm:pm", ">>>>>>>>>> DUMP INVISIBLE ROLE HISTORY ( category [older > newer] )");
+    HMI_DEBUG(">>>>>>>>>> DUMP INVISIBLE ROLE HISTORY ( category [older > newer] )");
     for (int ctg_no = StmCtgNoMin; ctg_no <= StmCtgNoMax; ctg_no++)
     {
         if (ctg_no == StmCtgNoNone)
@@ -1120,7 +1120,7 @@ void PolicyManager::dumpInvisibleRoleHistory()
             str += (i + " > ");
 
         str += "]";
-        HMI_DEBUG("wm:pm", "%s", str.c_str());
+        HMI_DEBUG("%s", str.c_str());
     }
 }
 

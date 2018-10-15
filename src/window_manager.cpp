@@ -68,7 +68,7 @@ result<json> file_to_json(char const *filename)
     std::ifstream i(filename);
     if (i.fail())
     {
-        HMI_DEBUG("wm", "Could not open config file, so use default layer information");
+        HMI_DEBUG("Could not open config file, so use default layer information");
         j = default_layers_json;
     }
     else
@@ -81,7 +81,7 @@ result<json> file_to_json(char const *filename)
 
 struct result<layer_map> load_layer_map(char const *filename)
 {
-    HMI_DEBUG("wm", "loading IDs from %s", filename);
+    HMI_DEBUG("loading IDs from %s", filename);
 
     auto j = file_to_json(filename);
     if (j.is_err())
@@ -95,7 +95,7 @@ struct result<layer_map> load_layer_map(char const *filename)
 
 static int processTimerHandler(sd_event_source *s, uint64_t usec, void *userdata)
 {
-    HMI_NOTICE("wm", "Time out occurs because the client replys endDraw slow, so revert the request");
+    HMI_NOTICE("Time out occurs because the client replys endDraw slow, so revert the request");
     reinterpret_cast<wm::WindowManager *>(userdata)->timerHandler();
     return 0;
 }
@@ -127,7 +127,7 @@ WindowManager::WindowManager(wl::display *d)
     std::string path;
     if (!path_layers_json)
     {
-        HMI_ERROR("wm", "AFM_APP_INSTALL_DIR is not defined");
+        HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
         path = std::string(path_layers_json);
     }
     else
@@ -145,13 +145,13 @@ WindowManager::WindowManager(wl::display *d)
             }
             else
             {
-                HMI_ERROR("wm", "%s", l.err().value());
+                HMI_ERROR("%s", l.err().value());
             }
         }
     }
     catch (std::exception &e)
     {
-        HMI_ERROR("wm", "Loading of configuration failed: %s", e.what());
+        HMI_ERROR("Loading of configuration failed: %s", e.what());
     }
 }
 
@@ -164,7 +164,7 @@ int WindowManager::init()
 
     if (this->layers.mapping.empty())
     {
-        HMI_ERROR("wm", "No surface -> layer mapping loaded");
+        HMI_ERROR("No surface -> layer mapping loaded");
         return -1;
     }
 
@@ -252,7 +252,7 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
        * register drawing_name as fallback and make it displayed.
        */
         lid = this->layers.get_layer_id(std::string("fallback"));
-        HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", role);
+        HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
         if (!lid)
         {
             return Err<int>("Drawing name does not match any role, fallback is disabled");
@@ -271,7 +271,7 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
             this->layers.main_surface_name == drawing_name)
         {
             this->layers.main_surface = id;
-            HMI_DEBUG("wm", "Set main_surface id to %u", id);
+            HMI_DEBUG("Set main_surface id to %u", id);
         }
 
         // add client into the db
@@ -291,8 +291,6 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
 char const *WindowManager::api_request_surface(char const *appid, char const *drawing_name,
                                      char const *ivi_id)
 {
-    ST();
-
     // TODO: application requests by old role,
     //       so convert role old to new
     const char *role = this->convertRoleOldToNew(drawing_name);
@@ -306,7 +304,7 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
        * register drawing_name as fallback and make it displayed.
        */
         lid = this->layers.get_layer_id(std::string("fallback"));
-        HMI_DEBUG("wm", "%s is not registered in layers.json, then fallback as normal app", role);
+        HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
         if (!lid)
         {
             return "Drawing name does not match any role, fallback is disabled";
@@ -325,7 +323,7 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
     this->layers.add_surface(sid, *lid);
 
     // this surface is already created
-    HMI_DEBUG("wm", "surface_id is %u, layer_id is %u", sid, *lid);
+    HMI_DEBUG("surface_id is %u, layer_id is %u", sid, *lid);
 
     this->controller->layers[*lid]->add_surface(sid);
     this->layout_commit();
@@ -343,8 +341,6 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
 void WindowManager::api_activate_surface(char const *appid, char const *drawing_name,
                                char const *drawing_area, const reply_func &reply)
 {
-    ST();
-
     // TODO: application requests by old role,
     //       so convert role old to new
     const char *c_role = this->convertRoleOldToNew(drawing_name);
@@ -360,7 +356,7 @@ void WindowManager::api_activate_surface(char const *appid, char const *drawing_
 
     if(ret != WMError::SUCCESS)
     {
-        HMI_ERROR("wm", errorDescription(ret));
+        HMI_ERROR(errorDescription(ret));
         reply("Failed to set request");
         return;
     }
@@ -390,8 +386,6 @@ void WindowManager::api_activate_surface(char const *appid, char const *drawing_
 void WindowManager::api_deactivate_surface(char const *appid, char const *drawing_name,
                                  const reply_func &reply)
 {
-    ST();
-
     // TODO: application requests by old role,
     //       so convert role old to new
     const char *c_role = this->convertRoleOldToNew(drawing_name);
@@ -410,7 +404,7 @@ void WindowManager::api_deactivate_surface(char const *appid, char const *drawin
 
     if (ret != WMError::SUCCESS)
     {
-        HMI_ERROR("wm", errorDescription(ret));
+        HMI_ERROR(errorDescription(ret));
         reply("Failed to set request");
         return;
     }
@@ -450,7 +444,7 @@ void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
 
     if (!result)
     {
-        HMI_ERROR("wm", "%s is not in transition state", id.c_str());
+        HMI_ERROR("%s is not in transition state", id.c_str());
         return;
     }
 
@@ -504,7 +498,7 @@ result<json_object *> WindowManager::api_get_display_info()
 
 result<json_object *> WindowManager::api_get_area_info(char const *drawing_name)
 {
-    HMI_DEBUG("wm", "called");
+    HMI_DEBUG("called");
 
     // TODO: application requests by old role,
     //       so convert role old to new
@@ -543,7 +537,7 @@ void WindowManager::api_ping() { this->dispatch_pending_events(); }
 
 void WindowManager::send_event(char const *evname, char const *label)
 {
-    HMI_DEBUG("wm", "%s: %s(%s)", __func__, evname, label);
+    HMI_DEBUG("%s: %s(%s)", __func__, evname, label);
 
     json_object *j = json_object_new_object();
     json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
@@ -551,14 +545,14 @@ void WindowManager::send_event(char const *evname, char const *label)
     int ret = afb_event_push(this->map_afb_event[evname], j);
     if (ret != 0)
     {
-        HMI_DEBUG("wm", "afb_event_push failed: %m");
+        HMI_DEBUG("afb_event_push failed: %m");
     }
 }
 
 void WindowManager::send_event(char const *evname, char const *label, char const *area,
                      int x, int y, int w, int h)
 {
-    HMI_DEBUG("wm", "%s: %s(%s, %s) x:%d y:%d w:%d h:%d",
+    HMI_DEBUG("%s: %s(%s, %s) x:%d y:%d w:%d h:%d",
               __func__, evname, label, area, x, y, w, h);
 
     json_object *j_rect = json_object_new_object();
@@ -575,7 +569,7 @@ void WindowManager::send_event(char const *evname, char const *label, char const
     int ret = afb_event_push(this->map_afb_event[evname], j);
     if (ret != 0)
     {
-        HMI_DEBUG("wm", "afb_event_push failed: %m");
+        HMI_DEBUG("afb_event_push failed: %m");
     }
 }
 
@@ -589,12 +583,12 @@ void WindowManager::surface_created(uint32_t surface_id)
     auto layer_id = this->layers.get_layer_id(surface_id);
     if (!layer_id)
     {
-        HMI_DEBUG("wm", "Newly created surfce %d is not associated with any layer!",
+        HMI_DEBUG("Newly created surfce %d is not associated with any layer!",
                   surface_id);
         return;
     }
 
-    HMI_DEBUG("wm", "surface_id is %u, layer_id is %u", surface_id, *layer_id);
+    HMI_DEBUG("surface_id is %u, layer_id is %u", surface_id, *layer_id);
 
     this->controller->layers[*layer_id]->add_surface(surface_id);
     this->layout_commit();
@@ -602,7 +596,7 @@ void WindowManager::surface_created(uint32_t surface_id)
 
 void WindowManager::surface_removed(uint32_t surface_id)
 {
-    HMI_DEBUG("wm", "Delete surface_id %u", surface_id);
+    HMI_DEBUG("Delete surface_id %u", surface_id);
     this->id_alloc.remove_id(surface_id);
     this->layers.remove_surface(surface_id);
     g_app_list.removeSurface(surface_id);
@@ -610,7 +604,7 @@ void WindowManager::surface_removed(uint32_t surface_id)
 
 void WindowManager::removeClient(const std::string &appid)
 {
-    HMI_DEBUG("wm", "Remove clinet %s from list", appid.c_str());
+    HMI_DEBUG("Remove clinet %s from list", appid.c_str());
     g_app_list.removeClient(appid);
 }
 
@@ -751,13 +745,13 @@ int WindowManager::init_layers()
 {
     if (!this->controller)
     {
-        HMI_ERROR("wm", "ivi_controller global not available");
+        HMI_ERROR("ivi_controller global not available");
         return -1;
     }
 
     if (this->outputs.empty())
     {
-        HMI_ERROR("wm", "no output was set up!");
+        HMI_ERROR("no output was set up!");
         return -1;
     }
 
@@ -773,7 +767,7 @@ int WindowManager::init_layers()
                                         uint32_t(o->physical_height)};
 
 
-    HMI_DEBUG("wm", "SCALING: screen (%dx%d), physical (%dx%d)",
+    HMI_DEBUG("SCALING: screen (%dx%d), physical (%dx%d)",
               o->width, o->height, o->physical_width, o->physical_height);
 
     this->layers.loadAreaDb();
@@ -784,7 +778,7 @@ int WindowManager::init_layers()
     dp_bg.set_aspect(static_cast<double>(css_bg.w) / css_bg.h);
     dp_bg.fit(o->width, o->height);
     dp_bg.center(o->width, o->height);
-    HMI_DEBUG("wm", "SCALING: CSS BG(%dx%d) -> DDP %dx%d,(%dx%d)",
+    HMI_DEBUG("SCALING: CSS BG(%dx%d) -> DDP %dx%d,(%dx%d)",
               css_bg.w, css_bg.h, dp_bg.left(), dp_bg.top(), dp_bg.width(), dp_bg.height());
 
     // Clear scene
@@ -800,7 +794,7 @@ int WindowManager::init_layers()
         auto &l = layers[i.second.layer_id];
         l->set_destination_rectangle(dp_bg.left(), dp_bg.top(), dp_bg.width(), dp_bg.height());
         l->set_visibility(1);
-        HMI_DEBUG("wm", "Setting up layer %s (%d) for surface role match \"%s\"",
+        HMI_DEBUG("Setting up layer %s (%d) for surface role match \"%s\"",
                   i.second.name.c_str(), i.second.layer_id, i.second.role.c_str());
     }
 
@@ -819,7 +813,7 @@ void WindowManager::surface_set_layout(int surface_id, const std::string& area)
 {
     if (!this->controller->surface_exists(surface_id))
     {
-        HMI_ERROR("wm", "Surface %d does not exist", surface_id);
+        HMI_ERROR("Surface %d does not exist", surface_id);
         return;
     }
 
@@ -827,7 +821,7 @@ void WindowManager::surface_set_layout(int surface_id, const std::string& area)
 
     if (!o_layer_id)
     {
-        HMI_ERROR("wm", "Surface %d is not associated with any layer!", surface_id);
+        HMI_ERROR("Surface %d is not associated with any layer!", surface_id);
         return;
     }
 
@@ -844,7 +838,7 @@ void WindowManager::surface_set_layout(int surface_id, const std::string& area)
     int w = rect.w;
     int h = rect.h;
 
-    HMI_DEBUG("wm", "surface_set_layout for surface %u on layer %u", surface_id,
+    HMI_DEBUG("surface_set_layout for surface %u on layer %u", surface_id,
               layer_id);
 
     // set destination to the display rectangle
@@ -856,7 +850,7 @@ void WindowManager::surface_set_layout(int surface_id, const std::string& area)
     this->area_info[surface_id].w = w;
     this->area_info[surface_id].h = h;
 
-    HMI_DEBUG("wm", "Surface %u now on layer %u with rect { %d, %d, %d, %d }",
+    HMI_DEBUG("Surface %u now on layer %u with rect { %d, %d, %d, %d }",
               surface_id, layer_id, x, y, w, h);
 }
 
@@ -928,16 +922,16 @@ void WindowManager::activate(int id)
                     this->surface_bg.erase(i);
 
                     // Remove from BG layer (999)
-                    HMI_DEBUG("wm", "Remove %s(%d) from BG layer", label, id);
+                    HMI_DEBUG("Remove %s(%d) from BG layer", label, id);
                     this->controller->layers[999]->remove_surface(id);
 
                     // Add to FG layer (1001)
-                    HMI_DEBUG("wm", "Add %s(%d) to FG layer", label, id);
+                    HMI_DEBUG("Add %s(%d) to FG layer", label, id);
                     this->controller->layers[1001]->add_surface(id);
 
                     for (int j : this->surface_bg)
                     {
-                        HMI_DEBUG("wm", "Stored id:%d", j);
+                        HMI_DEBUG("Stored id:%d", j);
                     }
                     break;
                 }
@@ -975,16 +969,16 @@ void WindowManager::deactivate(int id)
             this->surface_bg.push_back(id);
 
             // Remove from FG layer (1001)
-            HMI_DEBUG("wm", "Remove %s(%d) from FG layer", label, id);
+            HMI_DEBUG("Remove %s(%d) from FG layer", label, id);
             this->controller->layers[1001]->remove_surface(id);
 
             // Add to BG layer (999)
-            HMI_DEBUG("wm", "Add %s(%d) to BG layer", label, id);
+            HMI_DEBUG("Add %s(%d) to BG layer", label, id);
             this->controller->layers[999]->add_surface(id);
 
             for (int j : surface_bg)
             {
-                HMI_DEBUG("wm", "Stored id:%d", j);
+                HMI_DEBUG("Stored id:%d", j);
             }
         }
         else
@@ -1281,7 +1275,7 @@ void WindowManager::emitScreenUpdated(unsigned req_num)
         this->map_afb_event[kListEventName[Event_ScreenUpdated]], j);
     if (ret != 0)
     {
-        HMI_DEBUG("wm", "afb_event_push failed: %m");
+        HMI_DEBUG("afb_event_push failed: %m");
     }
 }
 
@@ -1289,7 +1283,7 @@ void WindowManager::setTimer()
 {
     struct timespec ts;
     if (clock_gettime(CLOCK_BOOTTIME, &ts) != 0) {
-        HMI_ERROR("wm", "Could't set time (clock_gettime() returns with error");
+        HMI_ERROR("Could't set time (clock_gettime() returns with error");
         return;
     }
 
@@ -1301,7 +1295,7 @@ void WindowManager::setTimer()
             CLOCK_BOOTTIME, (uint64_t)(ts.tv_sec + kTimeOut) * 1000000ULL, 1, processTimerHandler, this);
         if (ret < 0)
         {
-            HMI_ERROR("wm", "Could't set timer");
+            HMI_ERROR("Could't set timer");
         }
     }
     else
@@ -1364,7 +1358,7 @@ const char* WindowManager::convertRoleOldToNew(char const *old_role)
         new_role = old_role;
     }
 
-    HMI_DEBUG("wm", "old:%s -> new:%s", old_role, new_role);
+    HMI_DEBUG("old:%s -> new:%s", old_role, new_role);
 
     return new_role;
 }
@@ -1373,12 +1367,12 @@ int WindowManager::loadOldRoleDb()
 {
     // Get afm application installed dir
     char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
-    HMI_DEBUG("wm", "afm_app_install_dir:%s", afm_app_install_dir);
+    HMI_DEBUG("afm_app_install_dir:%s", afm_app_install_dir);
 
     std::string file_name;
     if (!afm_app_install_dir)
     {
-        HMI_ERROR("wm", "AFM_APP_INSTALL_DIR is not defined");
+        HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
     }
     else
     {
@@ -1390,22 +1384,22 @@ int WindowManager::loadOldRoleDb()
     int ret = jh::inputJsonFilie(file_name.c_str(), &json_obj);
     if (0 > ret)
     {
-        HMI_ERROR("wm", "Could not open old_role.db, so use default old_role information");
+        HMI_ERROR("Could not open old_role.db, so use default old_role information");
         json_obj = json_tokener_parse(kDefaultOldRoleDb);
     }
-    HMI_DEBUG("wm", "json_obj dump:%s", json_object_get_string(json_obj));
+    HMI_DEBUG("json_obj dump:%s", json_object_get_string(json_obj));
 
     // Perse apps
     json_object* json_cfg;
     if (!json_object_object_get_ex(json_obj, "old_roles", &json_cfg))
     {
-        HMI_ERROR("wm", "Parse Error!!");
+        HMI_ERROR("Parse Error!!");
         return -1;
     }
 
     int len = json_object_array_length(json_cfg);
-    HMI_DEBUG("wm", "json_cfg len:%d", len);
-    HMI_DEBUG("wm", "json_cfg dump:%s", json_object_get_string(json_cfg));
+    HMI_DEBUG("json_cfg len:%d", len);
+    HMI_DEBUG("json_cfg dump:%s", json_object_get_string(json_cfg));
 
     for (int i=0; i<len; i++)
     {
@@ -1414,14 +1408,14 @@ int WindowManager::loadOldRoleDb()
         const char* old_role = jh::getStringFromJson(json_tmp, "name");
         if (nullptr == old_role)
         {
-            HMI_ERROR("wm", "Parse Error!!");
+            HMI_ERROR("Parse Error!!");
             return -1;
         }
 
         const char* new_role = jh::getStringFromJson(json_tmp, "new");
         if (nullptr == new_role)
         {
-            HMI_ERROR("wm", "Parse Error!!");
+            HMI_ERROR("Parse Error!!");
             return -1;
         }
 
@@ -1432,7 +1426,7 @@ int WindowManager::loadOldRoleDb()
     for(auto itr = this->roleold2new.begin();
       itr != this->roleold2new.end(); ++itr)
     {
-        HMI_DEBUG("wm", ">>> role old:%s new:%s",
+        HMI_DEBUG(">>> role old:%s new:%s",
                   itr->first.c_str(), itr->second.c_str());
     }
 
@@ -1462,7 +1456,7 @@ const char *WindowManager::check_surface_exist(const char *drawing_name)
         return "Surface is not on any layer!";
     }
 
-    HMI_DEBUG("wm", "surface %d is detected", *surface_id);
+    HMI_DEBUG("surface %d is detected", *surface_id);
     return nullptr;
 }
 

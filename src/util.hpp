@@ -19,75 +19,38 @@
 
 #include <functional>
 #include <thread>
-#include <vector>
-
 #include <sys/poll.h>
+#include <string.h>
 
-#ifndef DO_NOT_USE_AFB
-extern "C"
-{
-#include <afb/afb-binding.h>
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+#define HMI_ERROR(args,...) _HMI_LOG(LOG_LEVEL_ERROR, __FILENAME__, __FUNCTION__, __LINE__,"wm",args, ##__VA_ARGS__)
+#define HMI_WARNING(args,...) _HMI_LOG(LOG_LEVEL_WARNING, __FILENAME__, __FUNCTION__,__LINE__, "wm", args,##__VA_ARGS__)
+#define HMI_NOTICE(args,...) _HMI_LOG(LOG_LEVEL_NOTICE, __FILENAME__, __FUNCTION__,__LINE__, "wm", args,##__VA_ARGS__)
+#define HMI_INFO(args,...)  _HMI_LOG(LOG_LEVEL_INFO, __FILENAME__, __FUNCTION__,__LINE__, "wm", args,##__VA_ARGS__)
+#define HMI_DEBUG(args,...) _HMI_LOG(LOG_LEVEL_DEBUG, __FILENAME__, __FUNCTION__,__LINE__, "wm", args,##__VA_ARGS__)
+
+#define HMI_SEQ_ERROR(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_ERROR, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+#define HMI_SEQ_WARNING(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_WARNING, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+#define HMI_SEQ_NOTICE(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_NOTICE, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+#define HMI_SEQ_INFO(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_INFO, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+#define HMI_SEQ_DEBUG(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_DEBUG, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
+
+#define DUMP(args, ...) _DUMP(LOG_LEVEL_DEBUG, args, ##__VA_ARGS__)
+
+enum LOG_LEVEL{
+    LOG_LEVEL_NONE = 0,
+    LOG_LEVEL_ERROR,
+    LOG_LEVEL_WARNING,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_MAX = LOG_LEVEL_DEBUG
 };
-#endif
 
-#define CONCAT_(X, Y) X##Y
-#define CONCAT(X, Y) CONCAT_(X, Y)
-
-#ifdef __GNUC__
-#define ATTR_FORMAT(stringindex, firsttocheck) \
-    __attribute__((format(printf, stringindex, firsttocheck)))
-#define ATTR_NORETURN __attribute__((noreturn))
-#else
-#define ATTR_FORMAT(stringindex, firsttocheck)
-#define ATTR_NORETURN
-#endif
-
-#ifdef AFB_BINDING_VERSION
-#define lognotice(...) AFB_NOTICE(__VA_ARGS__)
-#define logerror(...) AFB_ERROR(__VA_ARGS__)
-#define fatal(...)              \
-    do                          \
-    {                           \
-        AFB_ERROR(__VA_ARGS__); \
-        abort();                \
-    } while (0)
-#else
-#define lognotice(...)
-#define logerror(...)
-#define fatal(...) \
-    do             \
-    {              \
-        abort();   \
-    } while (0)
-#endif
-
-#ifdef DEBUG_OUTPUT
-#ifdef AFB_BINDING_VERSION
-#define logdebug(...) AFB_DEBUG(__VA_ARGS__)
-#else
-#define logdebug(...)
-#endif
-#else
-#define logdebug(...)
-#endif
-
-#ifndef SCOPE_TRACING
-#define ST()
-#define STN(N)
-#else
-#define ST() \
-    ScopeTrace __attribute__((unused)) CONCAT(trace_scope_, __LINE__)(__func__)
-#define STN(N) \
-    ScopeTrace __attribute__((unused)) CONCAT(named_trace_scope_, __LINE__)(#N)
-
-struct ScopeTrace
-{
-    thread_local static int indent;
-    char const *f{};
-    explicit ScopeTrace(char const *func);
-    ~ScopeTrace();
-};
-#endif
+void _HMI_LOG(enum LOG_LEVEL level, const char* file, const char* func, const int line, const char* prefix, const char* log, ...);
+void _HMI_SEQ_LOG(enum LOG_LEVEL level, const char* file, const char* func, const int line, unsigned seq_num, const char* log, ...);
+void _DUMP(enum LOG_LEVEL level, const char *log, ...);
 
 /**
  * @struct unique_fd

@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef TMCAGLWM_JSON_HELPER_HPP
-#define TMCAGLWM_JSON_HELPER_HPP
+#ifndef JSON_HELPER_HPP
+#define JSON_HELPER_HPP
 
 #include <json-c/json.h>
-#include "../include/json.hpp"
+#include <vector>
 #include "wayland_ivi_wm.hpp"
 
 struct json_object;
@@ -34,4 +34,4 @@ json_bool getBoolFromJson(json_object *obj, const char *key);
 int inputJsonFilie(const char* file, json_object** obj);
 }  // namespace jh
 
-#endif // TMCAGLWM_JSON_HELPER_HPP
+#endif // JSON_HELPER_HPP
