@@ -16,7 +16,7 @@
 
 #include <regex>
 
-#include "layers.hpp"
+#include "wm_layer.hpp"
 #include "json_helper.hpp"
 #include "util.hpp"
 

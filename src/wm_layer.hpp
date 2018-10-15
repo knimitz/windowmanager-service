@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef TMCAGLWM_LAYERS_H
-#define TMCAGLWM_LAYERS_H
+#ifndef WM_LAYERS_H
+#define WM_LAYERS_H
 
 #include <string>
 
@@ -155,4 +155,4 @@ static const nlohmann::json default_layers_json = {
 };
 } // namespace wm
 
-#endif // TMCAGLWM_LAYERS_H
+#endif // WM_LAYERS_H

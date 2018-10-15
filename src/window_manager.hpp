@@ -23,7 +23,7 @@
 #include <experimental/optional>
 #include "util.hpp"
 #include "controller_hooks.hpp"
-#include "layers.hpp"
+#include "wm_layer.hpp"
 #include "layout.hpp"
 #include "wayland_ivi_wm.hpp"
 #include "pm_wrapper.hpp"
