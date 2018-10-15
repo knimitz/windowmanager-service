@@ -666,13 +666,13 @@ void windowmanager_debug_terminate(afb_req req) noexcept
 }
 
 const struct afb_verb_v2 windowmanager_verbs[] = {
-    {"requestsurface", windowmanager_requestsurface, nullptr, nullptr, AFB_SESSION_NONE},
-    {"requestsurfacexdg", windowmanager_requestsurfacexdg, nullptr, nullptr, AFB_SESSION_NONE},
-    {"activatewindow", windowmanager_activatewindow, nullptr, nullptr, AFB_SESSION_NONE},
-    {"deactivatewindow", windowmanager_deactivatewindow, nullptr, nullptr, AFB_SESSION_NONE},
-    {"enddraw", windowmanager_enddraw, nullptr, nullptr, AFB_SESSION_NONE},
-    {"getdisplayinfo", windowmanager_getdisplayinfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
-    {"getareainfo", windowmanager_getareainfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
+    {"requestSurface", windowmanager_requestsurface, nullptr, nullptr, AFB_SESSION_NONE},
+    {"requestSurfaceXDG", windowmanager_requestsurfacexdg, nullptr, nullptr, AFB_SESSION_NONE},
+    {"activateWindow", windowmanager_activatewindow, nullptr, nullptr, AFB_SESSION_NONE},
+    {"deactivateWindow", windowmanager_deactivatewindow, nullptr, nullptr, AFB_SESSION_NONE},
+    {"endDraw", windowmanager_enddraw, nullptr, nullptr, AFB_SESSION_NONE},
+    {"getDisplayInfo", windowmanager_getdisplayinfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
+    {"getAreaInfo", windowmanager_getareainfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
     {"wm_subscribe", windowmanager_wm_subscribe, nullptr, nullptr, AFB_SESSION_NONE},
     {"list_drawing_names", windowmanager_list_drawing_names, nullptr, nullptr, AFB_SESSION_NONE},
     {"ping", windowmanager_ping, nullptr, nullptr, AFB_SESSION_NONE},
