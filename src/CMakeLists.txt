@@ -14,10 +14,9 @@
 # limitations under the License.
 #
 
-wlproto(IVI_CON ivi-wm)
-
 include(FindPkgConfig)
 pkg_check_modules(AFB REQUIRED afb-daemon)
+pkg_check_modules(ILM REQUIRED ilmControl ilmCommon)
 pkg_check_modules(SD REQUIRED libsystemd>=222)
 
 # We do not want a prefix for our module
@@ -27,23 +26,22 @@ set(TARGETS_WM windowmanager-service)
 
 add_library(${TARGETS_WM} MODULE
    main.cpp
-   wayland_ivi_wm.cpp
    util.cpp
-   layout.cpp
-   ${IVI_CON_PROTO}
    json_helper.cpp
-   window_manager.cpp
-   wm_layer.cpp
-   wm_client.cpp
-   wm_error.cpp
    applist.cpp
    request.cpp
-   pm_wrapper.cpp)
+   pm_wrapper.cpp
+   window_manager.cpp
+   wm_client.cpp
+   wm_error.cpp
+   wm_layer.cpp
+   wm_layer_control.cpp)
 
 target_include_directories(${TARGETS_WM}
     PRIVATE
         ${AFB_INCLUDE_DIRS}
         ${SD_INCLUDE_DIRS}
+        ${ILM_INCLUDE_DIRS}
         ../include
         ../src
         ../${PLUGIN_PM})
@@ -52,6 +50,7 @@ target_link_libraries(${TARGETS_WM}
     PRIVATE
         ${AFB_LIBRARIES}
         ${WLC_LIBRARIES}
+        ${ILM_LIBRARIES}
         ${SD_LIBRARIES}
         ${PLUGIN_PM})
 

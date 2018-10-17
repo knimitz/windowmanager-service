@@ -21,30 +21,18 @@
 #include <memory>
 #include <unordered_map>
 #include <experimental/optional>
-#include "util.hpp"
-#include "controller_hooks.hpp"
-#include "wm_layer.hpp"
-#include "layout.hpp"
-#include "wayland_ivi_wm.hpp"
+#include "result.hpp"
 #include "pm_wrapper.hpp"
+#include "util.hpp"
 #include "request.hpp"
 #include "wm_error.hpp"
+#include "wm_layer_control.hpp"
 extern "C"
 {
 #include <afb/afb-binding.h>
 }
 
 struct json_object;
-
-namespace wl
-{
-struct display;
-}
-
-namespace compositor
-{
-struct controller;
-}
 
 namespace wm
 {
@@ -76,7 +64,6 @@ extern const char kKeyIds[];
 struct id_allocator
 {
     unsigned next = 1;
-
     // Surfaces that where requested but not yet created
     std::unordered_map<unsigned, std::string> id2name;
     std::unordered_map<std::string, unsigned> name2id;
@@ -141,10 +128,17 @@ struct id_allocator
     }
 };
 
+struct TmpClient
+{
+    std::string   appid;
+    unsigned layer;
+};
+
+
 class WindowManager
 {
   public:
-    typedef std::unordered_map<uint32_t, struct compositor::rect> rect_map;
+    typedef std::unordered_map<uint32_t, struct rect> rect_map;
     typedef std::function<void(const char *err_msg)> reply_func;
 
     enum EventType
@@ -167,42 +161,7 @@ class WindowManager
         Event_Val_Max = Event_Error,
     };
 
-    const std::vector<const char *> kListEventName{
-        "active",
-        "inactive",
-        "visible",
-        "invisible",
-        "syncDraw",
-        "flushDraw",
-        "screenUpdated",
-        "error"};
-
-    struct controller_hooks chooks;
-
-    // This is the one thing, we do not own.
-    struct wl::display *display;
-
-    std::unique_ptr<struct compositor::controller> controller;
-    std::vector<std::unique_ptr<struct wl::output>> outputs;
-
-    // track current layouts separately
-    layer_map layers;
-
-    // ID allocation and proxy methods for lookup
-    struct id_allocator id_alloc;
-
-    // Set by AFB API when wayland events need to be dispatched
-    std::atomic<bool> pending_events;
-
-    std::map<const char *, struct afb_event> map_afb_event;
-
-    // Surface are info (x, y, w, h)
-    rect_map area_info;
-
-    // FOR CES DEMO
-    std::vector<int> surface_bg;
-
-    explicit WindowManager(wl::display *d);
+    explicit WindowManager();
     ~WindowManager() = default;
 
     WindowManager(WindowManager const &) = delete;
@@ -211,23 +170,22 @@ class WindowManager
     WindowManager &operator=(WindowManager &&) = delete;
 
     int init();
-    int dispatch_pending_events();
-    void set_pending_events();
 
     result<int> api_request_surface(char const *appid, char const *role);
     char const *api_request_surface(char const *appid, char const *role, char const *ivi_id);
     void api_activate_surface(char const *appid, char const *role, char const *drawing_area, const reply_func &reply);
     void api_deactivate_surface(char const *appid, char const *role, const reply_func &reply);
-    void api_enddraw(char const *appid, char const *role);
+    void  api_enddraw(char const *appid, char const *role);
+    int  api_subscribe(afb_req req, int event_id);
     result<json_object *> api_get_display_info();
     result<json_object *> api_get_area_info(char const *role);
     void api_ping();
-    void send_event(char const *evname, char const *label);
-    void send_event(char const *evname, char const *label, char const *area, int x, int y, int w, int h);
+    void send_event(const std::string& evname, const std::string& role);
+    void send_event(const std::string& evname, const std::string& role, const std::string& area, int x, int y, int w, int h);
 
     // Events from the compositor we are interested in
-    void surface_created(uint32_t surface_id);
-    void surface_removed(uint32_t surface_id);
+    void surface_created(unsigned surface_id);
+    void surface_removed(unsigned surface_id);
 
     void removeClient(const std::string &appid);
     void exceptionProcessForTransition();
@@ -239,35 +197,22 @@ class WindowManager
     void processError(WMError error);
 
   private:
-    bool pop_pending_events();
-    optional<int> lookup_id(char const *name);
-    optional<std::string> lookup_name(int id);
-    int init_layers();
-    void surface_set_layout(int surface_id, const std::string& area = "");
-    void layout_commit();
-
     // WM Events to clients
-    void emit_activated(char const *label);
-    void emit_deactivated(char const *label);
-    void emit_syncdraw(char const *label, char const *area, int x, int y, int w, int h);
+    void emit_activated(const std::string& role);
+    void emit_deactivated(const std::string& role);
+    void emit_syncdraw(const std::string& role, char const *area, int x, int y, int w, int h);
     void emit_syncdraw(const std::string &role, const std::string &area);
-    void emit_flushdraw(char const *label);
-    void emit_visible(char const *label, bool is_visible);
-    void emit_invisible(char const *label);
-    void emit_visible(char const *label);
+    void emit_flushdraw(const std::string& role);
+    void emit_visible(const std::string& role, bool is_visible);
+    void emit_invisible(const std::string& role);
+    void emit_visible(const std::string& role);
 
-    void activate(int id);
-    void deactivate(int id);
     WMError setRequest(const std::string &appid, const std::string &role, const std::string &area,
                              Task task, unsigned *req_num);
-    WMError doTransition(unsigned sequence_number);
     WMError checkPolicy(unsigned req_num);
     WMError startTransition(unsigned req_num);
 
     WMError doEndDraw(unsigned req_num);
-    WMError layoutChange(const WMAction &action);
-    WMError visibilityChange(const WMAction &action);
-    WMError setSurfaceSize(unsigned surface, const std::string& area);
     void    emitScreenUpdated(unsigned req_num);
 
     void setTimer();
@@ -279,12 +224,17 @@ class WindowManager
     const char *check_surface_exist(const char *role);
 
   private:
-    std::unordered_map<std::string, struct compositor::rect> area2size;
+    std::map<std::string, struct afb_event> map_afb_event;
+    std::unordered_map<std::string, struct rect> area2size;
     std::unordered_map<std::string, std::string> roleold2new;
     std::unordered_map<std::string, std::string> rolenew2old;
-
+    std::shared_ptr<LayerControl> lc;
     PMWrapper pmw;
+    rect_map area_info;
+    struct id_allocator id_alloc;
 
+    // ID allocation and proxy methods for lookup
+    std::unordered_map<unsigned, struct TmpClient> tmp_surface2app;
     static const char* kDefaultOldRoleDb;
 };
 
