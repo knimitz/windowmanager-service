@@ -34,7 +34,7 @@
         },
         {
             "name": "Navigation",
-            "new": "map"
+            "new": "navigation"
         },
         {
             "name": "HVAC",

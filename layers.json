@@ -20,7 +20,7 @@
          "comment": "FarHomeScreen is the part of HomeScreen. The z order of this layer is lower than NearHomeScreen"
       },
       {
-         "role": "music|video|browser|radio|phone|map|hvac|settings|dashboard|poi|mixer|sdl|launcher|fallback",
+         "role": "music|video|browser|radio|phone|navigation|map|hvac|settings|dashboard|poi|mixer|sdl|launcher|fallback",
          "name": "Apps",
          "layer_id": 1001,
          "comment": "Range of IDs that will always be placed on layer 1001"

@@ -8,7 +8,7 @@
     },
     {
         "category": "debug",
-        "role": "launcher | map | poi | browser | sdl | mixer | radio | hvac | debug | phone | video | music | settings | dashboard | fallback",
+        "role": "launcher | navigation | map | poi | browser | sdl | mixer | radio | hvac | debug | phone | video | music | settings | dashboard | fallback",
         "area": "normal.full | split.main | split.sub | fullscreen",
         "layer": "apps",
     },

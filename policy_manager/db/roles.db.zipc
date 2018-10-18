@@ -8,7 +8,7 @@
     },
     {
         "category": "map",
-        "role": "map",
+        "role": "navigation",
         "area": "normal.full | split.main",
         "layer": "apps",
     },
