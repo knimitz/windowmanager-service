@@ -449,37 +449,6 @@ void windowmanager_wm_subscribe(afb_req req) noexcept
     }
 }
 
-void windowmanager_list_drawing_names(afb_req req) noexcept
-{
-    /* std::lock_guard<std::mutex> guard(binding_m);
-
-    if (g_afb_instance == nullptr)
-    {
-        afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
-        return;
-    }
-
-    try
-    {
-
-        nlohmann::json j = g_afb_instance->wmgr.id_alloc.name2id;
-        auto ret = wm::Ok(json_tokener_parse(j.dump().c_str()));
-        if (ret.is_err())
-        {
-            afb_req_fail(req, "failed", ret.unwrap_err());
-            return;
-        }
-
-        afb_req_success(req, ret.unwrap(), "success");
-    }
-    catch (std::exception &e)
-    {
-        afb_req_fail_f(req, "failed", "Uncaught exception while calling list_drawing_names: %s", e.what());
-        return;
-    } */
-    afb_req_success(req, NULL, "not-implemented");
-}
-
 void windowmanager_ping(afb_req req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
@@ -493,88 +462,6 @@ void windowmanager_ping(afb_req req) noexcept
     {
         afb_req_success(req, NULL, "success");
     }
-}
-
-void windowmanager_debug_status(afb_req req) noexcept
-{
-    std::lock_guard<std::mutex> guard(binding_m);
-
-    /* if (g_afb_instance == nullptr)
-    {
-        afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
-        return;
-    }
-
-    try
-    {
-
-        json_object *jr = json_object_new_object();
-        json_object_object_add(jr, "surfaces",
-                               to_json(g_afb_instance->wmgr.controller->sprops));
-        json_object_object_add(jr, "layers", to_json(g_afb_instance->wmgr.controller->lprops));
-
-        afb_req_success(req, jr, "success");
-    }
-    catch (std::exception &e)
-    {
-        afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_status: %s", e.what());
-        return;
-    } */
-    afb_req_fail(req, NULL, "not-implemented");
-}
-
-void windowmanager_debug_layers(afb_req req) noexcept
-{
-    /* std::lock_guard<std::mutex> guard(binding_m);
-
-    if (g_afb_instance == nullptr)
-    {
-        afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
-        return;
-    }
-
-    try
-    {
-        auto ret = wm::Ok(json_tokener_parse(g_afb_instance->wmgr.layers.to_json().dump().c_str()));
-
-        afb_req_success(req, ret, "success");
-    }
-    catch (std::exception &e)
-    {
-        afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_layers: %s", e.what());
-        return;
-    } */
-    afb_req_fail(req, NULL, "not-implemented");
-}
-
-void windowmanager_debug_surfaces(afb_req req) noexcept
-{
-    /* std::lock_guard<std::mutex> guard(binding_m);
-
-    if (g_afb_instance == nullptr)
-    {
-        afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
-        return;
-    }
-
-    try
-    {
-
-        auto ret = wm::Ok(to_json(g_afb_instance->wmgr.controller->sprops));
-        if (ret.is_err())
-        {
-            afb_req_fail(req, "failed", ret.unwrap_err());
-            return;
-        }
-
-        afb_req_success(req, ret.unwrap(), "success");
-    }
-    catch (std::exception &e)
-    {
-        afb_req_fail_f(req, "failed", "Uncaught exception while calling debug_surfaces: %s", e.what());
-        return;
-    } */
-    afb_req_fail(req, NULL, "not-implemented");
 }
 
 void windowmanager_debug_terminate(afb_req req) noexcept
@@ -613,11 +500,7 @@ const struct afb_verb_v2 windowmanager_verbs[] = {
     {"getDisplayInfo", windowmanager_getdisplayinfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
     {"getAreaInfo", windowmanager_getareainfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
     {"wm_subscribe", windowmanager_wm_subscribe, nullptr, nullptr, AFB_SESSION_NONE},
-    {"list_drawing_names", windowmanager_list_drawing_names, nullptr, nullptr, AFB_SESSION_NONE},
     {"ping", windowmanager_ping, nullptr, nullptr, AFB_SESSION_NONE},
-    {"debug_status", windowmanager_debug_status, nullptr, nullptr, AFB_SESSION_NONE},
-    {"debug_layers", windowmanager_debug_layers, nullptr, nullptr, AFB_SESSION_NONE},
-    {"debug_surfaces", windowmanager_debug_surfaces, nullptr, nullptr, AFB_SESSION_NONE},
     {"debug_terminate", windowmanager_debug_terminate, nullptr, nullptr, AFB_SESSION_NONE},
     {}};
 
