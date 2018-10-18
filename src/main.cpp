@@ -102,7 +102,7 @@ static void cbRemoveClientCtxt(void *data)
 
     // Policy Manager does not know this app was killed,
     // so notify it by deactivate request.
-    g_afb_instance->wmgr.api_deactivate_surface(
+    g_afb_instance->wmgr.api_deactivate_window(
         ctxt->name.c_str(), ctxt->role.c_str(),
         [](const char *) {});
 
@@ -251,7 +251,7 @@ void windowmanager_activatewindow(afb_req req) noexcept
         char* appid = afb_req_get_application_id(req);
         if(appid)
         {
-            g_afb_instance->wmgr.api_activate_surface(
+            g_afb_instance->wmgr.api_activate_window(
                 appid, a_drawing_name, a_drawing_area,
                 [&req](const char *errmsg) {
                     if (errmsg != nullptr)
@@ -294,7 +294,7 @@ void windowmanager_deactivatewindow(afb_req req) noexcept
         char* appid = afb_req_get_application_id(req);
         if(appid)
         {
-            g_afb_instance->wmgr.api_deactivate_surface(
+            g_afb_instance->wmgr.api_deactivate_window(
                 appid, a_drawing_name,
                 [&req](const char *errmsg) {
                     if (errmsg != nullptr)

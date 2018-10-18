@@ -173,9 +173,9 @@ class WindowManager
 
     result<int> api_request_surface(char const *appid, char const *role);
     char const *api_request_surface(char const *appid, char const *role, char const *ivi_id);
-    void api_activate_surface(char const *appid, char const *role, char const *drawing_area, const reply_func &reply);
-    void api_deactivate_surface(char const *appid, char const *role, const reply_func &reply);
-    void  api_enddraw(char const *appid, char const *role);
+    void api_activate_window(char const *appid, char const *role, char const *drawing_area, const reply_func &reply);
+    void api_deactivate_window(char const *appid, char const *role, const reply_func &reply);
+    void api_enddraw(char const *appid, char const *role);
     int  api_subscribe(afb_req req, int event_id);
     result<json_object *> api_get_display_info();
     result<json_object *> api_get_area_info(char const *role);

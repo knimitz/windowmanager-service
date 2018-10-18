@@ -260,7 +260,7 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
     return nullptr;
 }
 
-void WindowManager::api_activate_surface(char const *appid, char const *drawing_name,
+void WindowManager::api_activate_window(char const *appid, char const *drawing_name,
                                char const *drawing_area, const reply_func &reply)
 {
     // TODO: application requests by old role,
@@ -313,7 +313,7 @@ void WindowManager::api_activate_surface(char const *appid, char const *drawing_
     }
 }
 
-void WindowManager::api_deactivate_surface(char const *appid, char const *drawing_name,
+void WindowManager::api_deactivate_window(char const *appid, char const *drawing_name,
                                  const reply_func &reply)
 {
     // TODO: application requests by old role,
