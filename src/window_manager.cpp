@@ -1007,7 +1007,7 @@ int WindowManager::loadOldRoleDb()
     }
     else
     {
-        file_name = string(afm_app_install_dir) + string("/etc/old_roles.db");
+        file_name = string(afm_app_install_dir) + string("/etc/old_roles.json");
     }
 
     // Load old_role.db

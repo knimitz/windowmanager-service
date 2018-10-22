@@ -111,9 +111,9 @@ add_custom_command(TARGET ${TARGETS_WM} POST_BUILD
    COMMAND mkdir -p ${PROJECT_BINARY_DIR}/package/root/lib
    COMMAND cp -rf ${PROJECT_BINARY_DIR}/src/${TARGETS_WM}.so ${PROJECT_BINARY_DIR}/package/root/lib
    COMMAND mkdir -p ${PROJECT_BINARY_DIR}/package/root/etc
-   COMMAND cp -f ${PROJECT_SOURCE_DIR}/layers.json ${PROJECT_BINARY_DIR}/package/root/etc
-   COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/db/old_roles.db ${PROJECT_BINARY_DIR}/package/root/etc
-   COMMAND cp -f ${PROJECT_SOURCE_DIR}/src/db/areas.db ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${CMAKE_SOURCE_DIR}/conf/layers.json ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${CMAKE_SOURCE_DIR}/conf/old_roles.json ${PROJECT_BINARY_DIR}/package/root/etc
+   COMMAND cp -f ${CMAKE_SOURCE_DIR}/conf/areas.json ${PROJECT_BINARY_DIR}/package/root/etc
 )
 
 add_custom_target(package DEPENDS ${PROJECT_BINARY_DIR}/package/root

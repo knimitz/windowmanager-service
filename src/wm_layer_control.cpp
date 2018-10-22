@@ -21,7 +21,7 @@
 #include "request.hpp"
 #include "json_helper.hpp"
 
-#define LC_AREA_PATH "/etc/areas.db"
+#define LC_AREA_PATH "/etc/areas.json"
 #define LC_LAYER_SETTING_PATH "/etc/layers.json"
 #define LC_DEFAULT_AREA "fullscreen"
 #define BACK_GROUND_LAYER "BackGroundLayer"
