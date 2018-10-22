@@ -157,8 +157,6 @@ int WindowManager::init()
     double scale = static_cast<double>(dp_bg.height()) / css_bg.h;
     this->lc->setupArea(dp_bg, scale);
 
-    this->lc->createLayers();
-
     return 0;
 }
 
@@ -167,34 +165,35 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
     // TODO: application requests by old role,
     //       so convert role old to new
     const char *role = this->convertRoleOldToNew(drawing_name);
+    string str_id = appid;
+    string str_role = role;
+    unsigned lid = 0;
 
-    // auto lid = this->layers.get_layer_id(string(role));
-    unsigned lid = this->lc->getLayerID(string(role));
-    if (lid == 0)
+    if(!g_app_list.contains(str_id))
     {
-        /**
-       * register drawing_name as fallback and make it displayed.
-       */
-        // lid = this->layers.get_layer_id(string("fallback"));
-        lid = this->lc->getLayerID(string("fallback"));
-        HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
+        lid = this->lc->getNewLayerID(str_role);
         if (lid == 0)
         {
-            return Err<int>("Drawing name does not match any role, fallback is disabled");
+            // register drawing_name as fallback and make it displayed.
+            lid = this->lc->getNewLayerID(string("fallback"));
+            HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
+            if (lid == 0)
+            {
+                return Err<int>("Designated role does not match any role, fallback is disabled");
+            }
         }
+        this->lc->createNewLayer(lid);
+        // add client into the db
+        g_app_list.addClient(str_id, lid, str_role);
     }
 
-    auto rname = this->id_alloc.lookup(role);
+    // generate surface ID for ivi-shell application
+    auto rname = this->id_alloc.lookup(str_role);
     if (!rname)
     {
         // name does not exist yet, allocate surface id...
-        auto id = int(this->id_alloc.generate_id(role));
-        // this->layers.add_surface(id, *lid);
-        this->tmp_surface2app[id] = {string(appid), lid};
-
-        // add client into the db
-        string appid_str(appid);
-        g_app_list.addClient(appid_str, lid, id, string(role));
+        auto id = int(this->id_alloc.generate_id(str_role));
+        this->tmp_surface2app[id] = {str_id, lid};
 
         // Set role map of (new, old)
         this->rolenew2old[role] = string(drawing_name);
@@ -212,8 +211,16 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
     // TODO: application requests by old role,
     //       so convert role old to new
     const char *role = this->convertRoleOldToNew(drawing_name);
+    string str_id   = appid;
+    string str_role = role;
 
     unsigned sid = std::stol(ivi_id);
+    HMI_DEBUG("This API(requestSurfaceXDG) is for XDG Application using runXDG");
+    /*
+     * IVI-shell doesn't send surface_size event via ivi-wm protocol
+     * if the application is using XDG surface.
+     * So WM has to set surface size with original size here
+     */
     WMError ret = this->lc->setXDGSurfaceOriginSize(sid);
     if(ret != SUCCESS)
     {
@@ -222,22 +229,25 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
         return "fail";
     }
 
-    // auto lid = this->layers.get_layer_id(string(role));
-    auto lid = this->lc->getLayerID(string(role));
-    if (lid == 0)
+    if(!g_app_list.contains(str_id))
     {
-        /**
-       * register drawing_name as fallback and make it displayed.
-       */
-        lid = this->lc->getLayerID(string("fallback"));
-        HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
-        if (lid == 0)
+        unsigned l_id = this->lc->getNewLayerID(str_role);
+        if (l_id == 0)
         {
-            return "Drawing name does not match any role, fallback is disabled";
+            // register drawing_name as fallback and make it displayed.
+            l_id = this->lc->getNewLayerID("fallback");
+            HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
+            if (l_id == 0)
+            {
+                return "Designated role does not match any role, fallback is disabled";
+            }
         }
+        this->lc->createNewLayer(l_id);
+        // add client into the db
+        g_app_list.addClient(str_id, l_id, str_role);
     }
 
-    auto rname = this->id_alloc.lookup(role);
+    auto rname = this->id_alloc.lookup(str_role);
 
     if (rname)
     {
@@ -245,14 +255,10 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
     }
 
     // register pair drawing_name and ivi_id
-    this->id_alloc.register_name_id(role, sid);
-    this->lc->addSurface(sid, lid);
+    this->id_alloc.register_name_id(str_role, sid);
 
-    HMI_DEBUG("surface_id is %u, layer_id is %u", sid, lid);
-
-    // add client into the list
-    string appid_str(appid);
-    g_app_list.addClient(appid_str, lid, sid, string(role));
+    auto client = g_app_list.lookUpClient(str_id);
+    client->addSurface(sid);
 
     // Set role map of (new, old)
     this->rolenew2old[role] = string(drawing_name);
@@ -276,8 +282,8 @@ void WindowManager::api_activate_window(char const *appid, char const *drawing_n
         reply("app doesn't request 'requestSurface' or 'setRole' yet");
         return;
     }
-
     auto client = g_app_list.lookUpClient(id);
+
     Task task = Task::TASK_ALLOCATE;
     unsigned req_num = 0;
     WMError ret = WMError::UNKNOWN;
@@ -390,6 +396,7 @@ void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
 
             // Undo state of PolicyManager
             this->pmw.undoState();
+            this->lc->undoUpdate();
         }
         this->emitScreenUpdated(current_req);
         HMI_SEQ_INFO(current_req, "Finish request status: %s", errorDescription(ret));
@@ -493,10 +500,18 @@ void WindowManager::surface_created(unsigned surface_id)
     // requestSurface
     if(this->tmp_surface2app.count(surface_id) != 0)
     {
-        unsigned layer_id = this->tmp_surface2app[surface_id].layer;
-        this->lc->addSurface(surface_id, layer_id);
+        string appid = this->tmp_surface2app[surface_id].appid;
+        auto client = g_app_list.lookUpClient(appid);
+        if(client != nullptr)
+        {
+            WMError ret = client->addSurface(surface_id);
+            HMI_INFO("Add surface %d to \"%s\"", surface_id, appid.c_str());
+            if(ret != WMError::SUCCESS)
+            {
+                HMI_ERROR("Failed to add surface to client %s", client->appID().c_str());
+            }
+        }
         this->tmp_surface2app.erase(surface_id);
-        HMI_DEBUG("surface_id is %u, layer_id is %u", surface_id, layer_id);
     }
 }
 
@@ -510,6 +525,8 @@ void WindowManager::surface_removed(unsigned surface_id)
 void WindowManager::removeClient(const string &appid)
 {
     HMI_DEBUG("Remove clinet %s from list", appid.c_str());
+    auto client = g_app_list.lookUpClient(appid);
+    this->lc->appTerminated(client);
     g_app_list.removeClient(appid);
 }
 
@@ -560,7 +577,7 @@ void WindowManager::startTransitionWrapper(vector<WMAction> &actions)
             {
                 goto proc_remove_request;
             }
-            string appid = g_app_list.getAppID(*surface_id, act.role, &found);
+            string appid = g_app_list.getAppID(*surface_id, &found);
             if (!found)
             {
                 if (TaskVisible::INVISIBLE == act.visible)
@@ -716,17 +733,6 @@ WMError WindowManager::checkPolicy(unsigned req_num)
     }
     string req_area = trigger.area;
 
-    if (trigger.task == Task::TASK_ALLOCATE)
-    {
-        const char *msg = this->check_surface_exist(trigger.role.c_str());
-
-        if (msg)
-        {
-            HMI_SEQ_ERROR(req_num, msg);
-            return ret;
-        }
-    }
-
     // Input event data to PolicyManager
     if (0 > this->pmw.setInputEventData(trigger.task, trigger.role, trigger.area))
     {
@@ -762,6 +768,7 @@ WMError WindowManager::startTransition(unsigned req_num)
         return ret;
     }
 
+    g_app_list.reqDump();
     for (const auto &action : actions)
     {
         if (action.visible == TaskVisible::VISIBLE)
@@ -798,6 +805,7 @@ WMError WindowManager::startTransition(unsigned req_num)
                 this->deactivate(client->surfaceID(x.role));
             } */
         }
+        this->lc->renderLayers();
         ret = WMError::NO_LAYOUT_CHANGE;
     }
     return ret;
@@ -836,10 +844,12 @@ WMError WindowManager::doEndDraw(unsigned req_num)
             string old_role = this->rolenew2old[act.role];
             if(act.visible == VISIBLE)
             {
+                emit_visible(old_role.c_str());
                 emit_activated(old_role.c_str());
             }
             else
             {
+                emit_invisible(old_role.c_str());
                 emit_deactivated(old_role.c_str());
             }
 
@@ -852,6 +862,7 @@ WMError WindowManager::doEndDraw(unsigned req_num)
             HMI_SEQ_DEBUG(req_num, "visible %s", act.role.c_str());
         }
     }
+    this->lc->renderLayers();
 
     HMI_SEQ_INFO(req_num, "emit flushDraw");
 
@@ -1054,16 +1065,6 @@ int WindowManager::loadOldRoleDb()
     json_object_put(json_obj);
 
     return 0;
-}
-
-const char *WindowManager::check_surface_exist(const char *drawing_name)
-{
-    auto const &surface_id = this->id_alloc.lookup(drawing_name);
-    if (!surface_id)
-    {
-        return "Surface does not exist";
-    }
-    return nullptr;
 }
 
 const char* WindowManager::kDefaultOldRoleDb = "{ \

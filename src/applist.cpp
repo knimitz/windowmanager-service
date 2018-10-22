@@ -73,6 +73,14 @@ void AppList::addClient(const string &appid, unsigned layer, unsigned surface, c
     this->clientDump();
 }
 
+void AppList::addClient(const string &appid, unsigned layer, const string &role)
+{
+    std::lock_guard<std::mutex> lock(this->mtx);
+    shared_ptr<WMClient> client = std::make_shared<WMClient>(appid, layer, role);
+    this->app2client[appid] = client;
+    this->clientDump();
+}
+
 /**
  * Remove WMClient from the list
  *
@@ -132,7 +140,14 @@ void AppList::removeSurface(unsigned surface){
  */
 shared_ptr<WMClient> AppList::lookUpClient(const string &appid)
 {
-    return this->app2client.at(appid);
+    if(this->app2client.count(appid) != 0)
+    {
+        return this->app2client.at(appid);
+    }
+    else
+    {
+        return nullptr;
+    }
 }
 
 /**
@@ -154,17 +169,16 @@ int AppList::countClient() const
  * Returns AppID if found.
  *
  * @param     unsigned[in] surfaceID
- * @param     string[in]   role
  * @param     bool[in,out] AppID is found or not
  * @return    AppID
  * @attention If AppID is not found, param found will be false.
  */
-string AppList::getAppID(unsigned surface, const string& role, bool* found) const
+string AppList::getAppID(unsigned surface, bool* found) const
 {
     *found = false;
     for (const auto &x : this->app2client)
     {
-        if(x.second->surfaceID(role) == surface){
+        if(x.second->surfaceID() == surface){
             *found = true;
             return x.second->appID();
         }

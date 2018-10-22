@@ -17,6 +17,7 @@
 #include <json-c/json.h>
 #include "wm_client.hpp"
 #include "util.hpp"
+#include <ilm/ilm_control.h>
 
 #define INVALID_SURFACE_ID 0
 
@@ -49,7 +50,7 @@ WMClient::WMClient(const string &appid, unsigned layer, unsigned surface, const 
 #else
         afb_event ev = afb_daemon_make_event(x.c_str());
 #endif
-        event2list[x] = ev;
+        evname2list[x] = ev;
     }
 }
 
@@ -57,7 +58,7 @@ WMClient::WMClient(const string &appid, const string &role)
     : id(appid),
       layer(0),
       role2surface(0),
-      event2list(0)
+      evname2list(0)
 {
     role2surface[role] = INVALID_SURFACE_ID;
     for (auto x : kWMEvents)
@@ -67,12 +68,27 @@ WMClient::WMClient(const string &appid, const string &role)
 #else
         afb_event ev = afb_daemon_make_event(x.c_str());
 #endif
-        event2list[x] = ev;
+        evname2list[x] = ev;
     }
 }
 
-WMClient::~WMClient()
+WMClient::WMClient(const string &appid, unsigned layer, const string &role)
+    : id(appid),
+      layer(layer),
+      main_role(role),
+      role2surface(0),
+      evname2list(0)
 {
+    role2surface[role] = INVALID_SURFACE_ID;
+    for (auto x : kWMEvents)
+    {
+#if GTEST_ENABLED
+        string ev = x;
+#else
+        afb_event ev = afb_daemon_make_event(x.c_str());
+#endif
+        evname2list[x] = ev;
+    }
 }
 
 string WMClient::appID() const
@@ -80,25 +96,9 @@ string WMClient::appID() const
     return this->id;
 }
 
-unsigned WMClient::surfaceID(const string &role) const
+string WMClient::role() const
 {
-    if (0 == this->role2surface.count(role))
-    {
-        return INVALID_SURFACE_ID;
-    }
-    return this->role2surface.at(role);
-}
-
-std::string WMClient::role(unsigned surface) const
-{
-    for(const auto& x : this->role2surface)
-    {
-        if(x.second == surface)
-        {
-            return x.first;
-        }
-    }
-    return std::string("");
+    return this->main_role;
 }
 
 unsigned WMClient::layerID() const
@@ -106,73 +106,42 @@ unsigned WMClient::layerID() const
     return this->layer;
 }
 
-/**
- * Set layerID the client belongs to
- *
- * This function set layerID the client belongs to.
- * But this function may not used because the layer should be fixed at constructor.
- * So this function will be used to change layer by some reasons.
- *
- * @param     unsigned[in] layerID
- * @return    None
- * @attention WMClient can't have multiple layer
- */
-void WMClient::registerLayer(unsigned layer)
+unsigned WMClient::surfaceID() const
 {
-    this->layer = layer;
+    return this->surface;
 }
 
 /**
- * Add the pair of role and surface to the client
+ * Add surface to the client
  *
- * This function set the pair of role and surface to the client.
- * This function is used for the client which has multi surfaces.
- * If the model and relationship for role and surface(layer)
- * is changed, this function will be changed
- * Current Window Manager doesn't use this function.
+ * This function add main surface to the client(ivi_layer).
  *
  * @param     string[in] role
- * @param     unsigned[in] surface
- * @return    true
+ * @return    WMError
  */
-bool WMClient::addSurface(const string &role, unsigned surface)
+WMError WMClient::addSurface(unsigned surface)
 {
-    HMI_DEBUG("Add role %s with surface %d", role.c_str(), surface);
-    if (0 != this->role2surface.count(role))
+    this->surface = surface;
+    ilmErrorTypes err = ilm_layerAddSurface(this->layer, surface);
+
+    if(err == ILM_SUCCESS)
     {
-        HMI_NOTICE("override surfaceID %d with %d", this->role2surface[role], surface);
+        err = ilm_commitChanges();
     }
-    this->role2surface[role] = surface;
-    return true;
+    return (err == ILM_SUCCESS) ? WMError::SUCCESS : WMError::FAIL;
 }
 
 bool WMClient::removeSurfaceIfExist(unsigned surface)
 {
     bool ret = false;
-    for (auto &x : this->role2surface)
+    if(surface == this->surface)
     {
-        if (surface == x.second)
-        {
-            HMI_INFO("Remove surface from client %s: role %s, surface: %d",
-                                this->id.c_str(), x.first.c_str(), x.second);
-            this->role2surface.erase(x.first);
-            ret = true;
-            break;
-        }
-    }
-    return ret;
-}
-
-bool WMClient::removeRole(const string &role)
-{
-    bool ret = false;
-    if (this->role2surface.count(role) != 0)
-    {
-        this->role2surface.erase(role);
+        this->surface = INVALID_SURFACE_ID;
         ret = true;
     }
     return ret;
 }
+
 
 #if GTEST_ENABLED
 bool WMClient::subscribe(afb_req req, const string &evname)
@@ -181,7 +150,7 @@ bool WMClient::subscribe(afb_req req, const string &evname)
         HMI_DEBUG("error is only enabeled for now");
         return false;
     }
-    int ret = afb_req_subscribe(req, this->event2list[evname]);
+    int ret = afb_req_subscribe(req, this->evname2list[evname]);
     if (ret)
     {
         HMI_DEBUG("Failed to subscribe %s", evname.c_str());
@@ -192,7 +161,7 @@ bool WMClient::subscribe(afb_req req, const string &evname)
 
 void WMClient::emitError(WM_CLIENT_ERROR_EVENT ev)
 {
-    if (!afb_event_is_valid(this->event2list[kKeyError])){
+    if (!afb_event_is_valid(this->evname2list[kKeyError])){
         HMI_ERROR("event err is not valid");
         return;
     }
@@ -201,7 +170,7 @@ void WMClient::emitError(WM_CLIENT_ERROR_EVENT ev)
     json_object_object_add(j, kKeyErrorDesc, json_object_new_string(kErrorDescription[ev].c_str()));
     HMI_DEBUG("error: %d, description:%s", ev, kErrorDescription[ev].c_str());
 
-    int ret = afb_event_push(this->event2list[kKeyError], j);
+    int ret = afb_event_push(this->evname2list[kKeyError], j);
     if (ret != 0)
     {
         HMI_DEBUG("afb_event_push failed: %m");

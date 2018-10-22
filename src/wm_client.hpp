@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include "wm_error.hpp"
 
 extern "C"
 {
@@ -42,16 +43,17 @@ class WMClient
     WMClient(const std::string &appid, unsigned layer,
             unsigned surface, const std::string &role);
     WMClient(const std::string &appid, const std::string &role);
-    virtual ~WMClient();
+    WMClient(const std::string &appid, unsigned layer, const std::string &role);
+    WMClient(const std::string &appid, unsigned layer,
+        const std::string& layer_name, unsigned surface, const std::string &role);
+    ~WMClient() = default;
 
     std::string appID() const;
-    unsigned surfaceID(const std::string &role) const;
+    std::string role() const;
     unsigned layerID() const;
-    std::string role(unsigned surface) const;
-    void registerLayer(unsigned layer);
-    bool addSurface(const std::string& role, unsigned surface);
+    unsigned surfaceID() const;
+    WMError addSurface(unsigned surface);
     bool removeSurfaceIfExist(unsigned surface);
-    bool removeRole(const std::string& role);
 
 #if GTEST_ENABLED
     bool subscribe(afb_req req, const std::string &event_name);
@@ -63,12 +65,16 @@ class WMClient
   private:
     std::string id;
     unsigned layer;
+    std::string main_role;
+    std::string area;
+    unsigned surface; // currently, main application has only one surface.
+    //std::vector<std::string> role_list;
     std::unordered_map<std::string, unsigned> role2surface;
 #if GTEST_ENABLED
     // This is for unit test. afb_make_event occurs sig11 if call not in afb-binding
     std::unordered_map<std::string, std::string> event2list;
 #else
-    std::unordered_map<std::string, struct afb_event> event2list;
+    std::unordered_map<std::string, struct afb_event> evname2list;
 #endif
 };
 } // namespace wm

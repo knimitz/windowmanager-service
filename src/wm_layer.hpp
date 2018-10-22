@@ -28,24 +28,66 @@ struct json_object;
 namespace wm
 {
 
+class WMClient;
+class LayerState
+{
+  public:
+    LayerState();
+    ~LayerState() = default;
+    const std::vector<unsigned> getIviIdList();
+    void addLayer(unsigned layer);
+    void removeLayer(unsigned layer);
+    void attachAppToArea(const std::string& app, const std::string& area);
+
+    // Debug
+    void dump();
+
+  private:
+    std::vector<unsigned> render_order;
+    std::unordered_map<std::string, std::string> area2appid;
+};
+
 class WMLayer
 {
   public:
-    explicit WMLayer(json_object* j);
+    explicit WMLayer(json_object* j, unsigned wm_layer_id);
     ~WMLayer() = default;
-    // A more or less descriptive name?
-    const std::string& layerName(){ return this->role_list;}
-    unsigned layerID(){ return this->layer_id;}
-    const std::string& roleList();
-    bool hasRole(const std::string& role);
-  private:
-    std::string name = "";
-    // The actual layer ID
-    int layer_id = 0;
 
-    // Specify a role prefix for surfaces that should be
-    // put on this layer.
+    // Status & Setting API
+    unsigned getNewLayerID(const std::string& role);
+    unsigned idBegin() { return this->id_begin; }
+    unsigned idEnd()   { return this->id_end; }
+    unsigned getWMLayerID() { return this->wm_layer_id; }
+    const std::string& layerName();
+    void appendArea(const std::string& area);
+    LayerState& getLayerState() { return tmp_state; }
+    WMError setLayerState(const LayerState& l);
+    bool hasLayerID(unsigned id);
+    bool hasRole(const std::string& role);
+
+    // Manipulation
+    void addLayerToState(unsigned layer);
+    void removeLayerFromState(unsigned layer);
+    void attachAppToArea(const std::string& app, const std::string& area);
+    void update();
+    void undo();
+
+    // Event
+    void appTerminated(unsigned layer);
+
+    // Debug
+    void dump();
+
+  private:
+    LayerState tmp_state;
+    LayerState state;
+    unsigned wm_layer_id;
+    std::string name = ""; // Layer name
     std::string role_list;
+    std::vector<std::string> area_list;
+    std::vector<unsigned>    id_list;
+    unsigned id_begin;
+    unsigned id_end;
 };
 
 } // namespace wm

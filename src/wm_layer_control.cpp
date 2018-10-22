@@ -118,48 +118,41 @@ lc_init_error:
     return WMError::FAIL;
 }
 
-unsigned LayerControl::getLayerID(const string& role)
+void LayerControl::createNewLayer(unsigned id)
+{
+    HMI_INFO("create new ID :%d", id);
+    struct rect rct = this->area2size[LC_DEFAULT_AREA];
+    ilm_layerCreateWithDimension(&id, rct.w, rct.h);
+    //ilm_layerSetSourceRectangle(id, rct.x, rct.y, rct.w, rct.h);
+    ilm_layerSetDestinationRectangle(id, this->offset_x, this->offset_y, rct.w, rct.h);
+    ilm_layerSetOpacity(id, 1.0);
+    ilm_layerSetVisibility(id, ILM_FALSE);
+    ilm_commitChanges();
+    auto wm_layer = getWMLayer(id);
+    wm_layer->addLayerToState(id);
+    this->renderLayers();
+}
+
+unsigned LayerControl::getNewLayerID(const string& role)
 {
     unsigned ret = 0;
     for(const auto& l: this->wm_layers)
     {
-        if(l->hasRole(role))
+        ret = l->getNewLayerID(role);
+        if(ret != 0)
         {
-            ret = l->layerID();
+            unsigned wmlid = l->getWMLayerID();
+            this->lid2wmlid[ret] = wmlid;
+            break;
         }
     }
     return ret;
 }
 
-void LayerControl::addSurface(unsigned surface, unsigned layer)
-{
-    ilm_layerAddSurface(layer, surface);
-    ilm_commitChanges();
-}
-
-void LayerControl::createLayers()
-{
-    for(const auto &layer : this->wm_layers)
-    {
-        unsigned id = layer->layerID();
-        HMI_INFO("create new ID :%d", id);
-        struct rect rct = this->area2size[LC_DEFAULT_AREA];
-        ilm_layerCreateWithDimension(&id, rct.w, rct.h);
-        //ilm_layerSetSourceRectangle(id, rct.x, rct.y, rct.w, rct.h);
-        ilm_layerSetDestinationRectangle(id, this->offset_x, this->offset_y, rct.w, rct.h);
-        ilm_layerSetOpacity(id, 1.0);
-        ilm_layerSetVisibility(id, ILM_TRUE);
-        ilm_commitChanges();
-        /* auto wm_layer = getWMLayer(id);
-        wm_layer->addLayerToState(id); */
-    }
-    this->renderLayers();
-}
-
 shared_ptr<WMLayer> LayerControl::getWMLayer(unsigned layer)
 {
-    unsigned uuid = this->lid2wmlid[layer];
-    return this->wm_layers[uuid];
+    unsigned wm_lid = this->lid2wmlid[layer];
+    return this->wm_layers[wm_lid];
 }
 
 std::shared_ptr<WMLayer> LayerControl::getWMLayer(std::string layer_name)
@@ -212,25 +205,47 @@ WMError LayerControl::renderLayers()
     HMI_INFO("Commit change");
     WMError rc = WMError::SUCCESS;
 
+    // Check the number of layers
+    vector<unsigned> ivi_l_ids;
+    for(auto& l : this->wm_layers)
+    {
+        auto state = l->getLayerState();
+        HMI_DEBUG("layer %s", l->layerName().c_str());
+        for(const auto& id : state.getIviIdList())
+        {
+            HMI_DEBUG("Add %d", id);
+            ivi_l_ids.push_back(id);
+        }
+    }
+
     // Create render order
-    t_ilm_layer* id_array = new t_ilm_layer[this->wm_layers.size()];
+    t_ilm_layer* id_array = new t_ilm_layer[ivi_l_ids.size()];
     if(id_array == nullptr)
     {
         HMI_WARNING("short memory");
+        this->undoUpdate();
         return WMError::FAIL;
     }
     int count = 0;
-    for(const auto& i : this->wm_layers)
+    for(const auto& i : ivi_l_ids)
     {
-        id_array[count] = i->layerID();
+        id_array[count] = i;
         ++count;
     }
 
     // Display
-    ilmErrorTypes ret = ilm_displaySetRenderOrder(this->screenID, id_array, this->wm_layers.size());
+    ilmErrorTypes ret = ilm_displaySetRenderOrder(this->screenID, id_array, ivi_l_ids.size());
     if(ret != ILM_SUCCESS)
     {
+        this->undoUpdate();
         rc = WMError::FAIL;
+    }
+    else
+    {
+        for(auto& l : this->wm_layers)
+        {
+            l->update();
+        }
     }
     ilm_commitChanges();
     delete id_array;
@@ -249,6 +264,15 @@ WMError LayerControl::setXDGSurfaceOriginSize(unsigned surface)
         ret = WMError::SUCCESS;
     }
     return ret;
+}
+
+
+void LayerControl::undoUpdate()
+{
+    for(auto& l : this->wm_layers)
+    {
+        l->undo();
+    }
 }
 
 WMError LayerControl::loadLayerSetting(const string &path)
@@ -278,7 +302,7 @@ WMError LayerControl::loadLayerSetting(const string &path)
         json_object *json_tmp = json_object_array_get_idx(json_cfg, i);
         HMI_DEBUG("> json_tmp dump:%s", json_object_get_string(json_tmp));
 
-        this->wm_layers.emplace_back(std::make_shared<WMLayer>(json_tmp));
+        this->wm_layers.emplace_back(std::make_shared<WMLayer>(json_tmp, i));
     }
     json_object_put(json_obj);
 
@@ -365,13 +389,26 @@ WMError LayerControl::layoutChange(const WMAction& action)
         HMI_SEQ_ERROR(action.req_num, "client may vanish");
         return WMError::NOT_REGISTERED;
     }
-    unsigned surface = action.client->surfaceID(action.role);
+    unsigned layer = action.client->layerID();
+    unsigned surface = action.client->surfaceID();
 
     auto rect = this->getAreaSize(action.area);
     HMI_DEBUG("Set layout %d, %d, %d, %d",rect.x, rect.y, rect.w, rect.h);
     ilm_commitChanges();
     ilm_surfaceSetDestinationRectangle(surface, rect.x, rect.y, rect.w, rect.h);
     ilm_commitChanges();
+    for(auto &wm_layer: this->wm_layers)
+    {
+        // Store the state who is assigned to the area
+        if(wm_layer->hasLayerID(layer))
+        {
+            wm_layer->attachAppToArea(action.client->appID(), action.area);
+            /* TODO: manipulate state directly
+            LayerState ls = wm_layer->getLayerState();
+            ls.seattachAppToAreatArea(action.client->appID(), action.area);
+            wm_layer->dump(); */
+        }
+    }
 
     return WMError::SUCCESS;
 }
@@ -387,14 +424,25 @@ WMError LayerControl::visibilityChange(const WMAction& action)
 
     if (action.visible == TaskVisible::VISIBLE)
     {
-        ret = this->makeVisible(action.client, action.role);
+        ret = this->makeVisible(action.client);
     }
     else if (action.visible == TaskVisible::INVISIBLE)
     {
-        ret = this->makeInvisible(action.client, action.role);
+        ret = this->makeInvisible(action.client);
     }
     ilm_commitChanges();
     return ret;
+}
+
+void LayerControl::appTerminated(const shared_ptr<WMClient> client)
+{
+    for(auto& l : this->wm_layers)
+    {
+        if(l->hasLayerID(client->layerID()))
+        {
+            l->appTerminated(client->layerID());
+        }
+    }
 }
 
 void LayerControl::dispatchCreateEvent(ilmObjectType object, unsigned id, bool created)
@@ -413,6 +461,7 @@ void LayerControl::dispatchCreateEvent(ilmObjectType object, unsigned id, bool c
             }
             this->cb.surfaceCreated(sp.creatorPid, id);
             ilm_surfaceAddNotification(id, surfaceCallback_static);
+            ilm_surfaceSetVisibility(id, ILM_TRUE);
             ilm_surfaceSetType(id, ILM_SURFACETYPE_DESKTOP);
         }
         else
@@ -489,105 +538,90 @@ void LayerControl::dispatchLayerPropChangeEvent(unsigned id,
     }
 }
 
-WMError LayerControl::makeVisible(const shared_ptr<WMClient> client, const string& role)
+WMError LayerControl::makeVisible(const shared_ptr<WMClient> client)
 {
     WMError ret = WMError::SUCCESS;
-    // Don't check here the client is not nullptr
-    unsigned surface = client->surfaceID(role);
+    // Don't check here wheher client is nullptr or not
+    unsigned layer = client->layerID();
 
-    this->moveForeGround(client, role);
+    this->moveForeGround(client);
 
-    ilm_surfaceSetVisibility(surface, ILM_TRUE);
+    ilm_layerSetVisibility(layer, ILM_TRUE);
 
     return ret;
 }
 
-WMError LayerControl::makeInvisible(const shared_ptr<WMClient> client, const string& role)
+WMError LayerControl::makeInvisible(const shared_ptr<WMClient> client)
 {
     WMError ret = WMError::SUCCESS;
-    unsigned surface = client->surfaceID(role); // Don't check here the client is not nullptr
+    // Don't check here the client is not nullptr
+    unsigned layer = client->layerID();
 
-    bool mv_ok = this->moveBackGround(client, role);
+    bool mv_ok = this->moveBackGround(client);
 
     if(!mv_ok)
     {
         HMI_INFO("make invisible client %s", client->appID().c_str());
-        ilm_surfaceSetVisibility(surface, ILM_FALSE);
+        ilm_layerSetVisibility(layer, ILM_FALSE);
     }
 
     return ret;
 }
 
-bool LayerControl::moveBackGround(const shared_ptr<WMClient> client, const string& role)
+bool LayerControl::moveBackGround(const shared_ptr<WMClient> client)
 {
     bool ret = false;
-    const char* label = role.c_str();
 
-    if ((0 == strcmp(label, "radio")) ||
-        (0 == strcmp(label, "music")) ||
-        (0 == strcmp(label, "video")) ||
-        (0 == strcmp(label, "map")))
+    // Move background from foreground layer
+    auto bg = this->getWMLayer(BACK_GROUND_LAYER);
+    if(bg != nullptr)
     {
-        unsigned surface = client->surfaceID(role);
-        this->surface_bg.push_back(surface);
-        auto bg = this->getWMLayer(BACK_GROUND_LAYER);
-        auto layer = 0;
-        for(const auto& l : this->wm_layers)
+        HMI_DEBUG("client %s role %s", client->appID().c_str(), client->role().c_str());
+        unsigned layer = client->layerID();
+        if(bg->hasRole(client->role()))
         {
-            if(l->hasRole(role))
-            {
-                layer = l->layerID();
-                ilm_layerRemoveSurface(layer, surface);
-                ilm_layerAddSurface(bg->layerID(), surface);
-                ret = true;
-                break;
-            }
+            HMI_INFO("%s go to background", client->appID().c_str());
+            bg->addLayerToState(layer);
+            auto wm_layer = this->getWMLayer(layer);
+            wm_layer->removeLayerFromState(layer);
+            /* TODO: manipulate state directly
+            LayerState bg_ls = bg->getLayerState();
+            bg_ls.addLayer(layer);
+            LayerState ls = wm_layer->getLayerState();
+            ls.removeLayer(layer); */
+            bg->dump();
+            wm_layer->dump();
+            ret = true;
         }
     }
-    ilm_commitChanges();
     return ret;
 }
 
-bool LayerControl::moveForeGround(const shared_ptr<WMClient> client, const string& role)
+bool LayerControl::moveForeGround(const shared_ptr<WMClient> client)
 {
     bool ret = false;
-    const char* label = role.c_str();
 
     // Move foreground from foreground layer
-    if ((0 == strcmp(label, "radio")) ||
-        (0 == strcmp(label, "music")) ||
-        (0 == strcmp(label, "video")) ||
-        (0 == strcmp(label, "map")))
+    auto bg = this->getWMLayer(BACK_GROUND_LAYER);
+    if(bg != nullptr)
     {
-        for (auto i = surface_bg.begin(); i != surface_bg.end(); ++i)
+        if(bg->hasRole(client->role()))
         {
-            if (client->surfaceID(role) == *i)
-            {
-                // Remove id
-                unsigned surface = *i;
-
-                this->surface_bg.erase(i);
-
-                // Remove from BG layer (999)
-                HMI_DEBUG("wm", "Remove %s(%d) from BG layer", label, surface);
-                auto bg = this->getWMLayer(BACK_GROUND_LAYER);
-                unsigned layer = 0;
-                for(const auto& l : this->wm_layers)
-                {
-                    if(l->hasRole(role))
-                    {
-                        layer = l->layerID();
-                        break;
-                    }
-                }
-                ilm_layerRemoveSurface(bg->layerID(), surface);
-                ilm_layerAddSurface(layer, surface);
-                ret = true;
-                break;
-            }
+            unsigned layer = client->layerID();
+            HMI_INFO("%s go to foreground", client->appID().c_str());
+            bg->removeLayerFromState(layer);
+            auto wm_layer = this->getWMLayer(layer);
+            wm_layer->addLayerToState(layer);
+            /* TODO: manipulate state directly
+            LayerState bg_ls = bg->getLayerState();
+            bg_ls.removeLayer(layer);
+            LayerState ls = wm_layer->getLayerState();
+            ls.addLayer(layer); */
+            bg->dump();
+            wm_layer->dump();
+            ret = true;
         }
     }
-    ilm_commitChanges();
     return ret;
 }
 

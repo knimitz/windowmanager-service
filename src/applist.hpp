@@ -43,13 +43,14 @@ class AppList
        If the WMClient should be more flexible, I think this param should be WMClient class
     */
     void addClient(const std::string &appid, unsigned layer,
-                    unsigned surface,const std::string &role);
+                    unsigned surface, const std::string &role);
+    void addClient(const std::string &appid, unsigned layer, const std::string &role);
     void removeClient(const std::string &appid);
     bool contains(const std::string &appid) const;
     int  countClient() const;
     std::shared_ptr<WMClient> lookUpClient(const std::string &appid);
     void removeSurface(unsigned surface);
-    std::string getAppID(unsigned surface, const std::string &role, bool *found) const;
+    std::string getAppID(unsigned surface, bool* found) const; // TODO: remove
 
     // Request Interface
     unsigned currentRequestNumber() const;

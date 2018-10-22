@@ -63,8 +63,8 @@ class LayerControl
     explicit LayerControl(const std::string& root);
     ~LayerControl() = default;
     WMError init(const LayerControlCallbacks& cb);
-    void createLayers();
-    unsigned getLayerID(const std::string& role);
+    void createNewLayer(unsigned id);
+    unsigned getNewLayerID(const std::string& role);
     std::shared_ptr<WMLayer> getWMLayer(unsigned layer);
     std::shared_ptr<WMLayer> getWMLayer(std::string layer_name);
     struct rect getAreaSize(const std::string& area);
@@ -73,9 +73,10 @@ class LayerControl
     double scale();
     WMError renderLayers();
     WMError setXDGSurfaceOriginSize(unsigned surface);
+    void undoUpdate();
     WMError layoutChange(const WMAction& action);
     WMError visibilityChange(const WMAction &action);
-    void addSurface(unsigned surface, unsigned layer);
+    void appTerminated(const std::shared_ptr<WMClient> client);
 
     // Don't use this function.
     void dispatchCreateEvent(ilmObjectType object, unsigned id, bool created);
@@ -83,14 +84,13 @@ class LayerControl
     void dispatchLayerPropChangeEvent(unsigned id, struct ilmLayerProperties*, t_ilm_notification_mask);
 
   private:
-    WMError makeVisible(const std::shared_ptr<WMClient> client, const std::string& role);
-    WMError makeInvisible(const std::shared_ptr<WMClient> client, const std::string& role);
-    bool moveForeGround(const std::shared_ptr<WMClient> client, const std::string& role);
-    bool moveBackGround(const std::shared_ptr<WMClient> client, const std::string& role);
+    WMError makeVisible(const std::shared_ptr<WMClient> client);
+    WMError makeInvisible(const std::shared_ptr<WMClient> client);
+    bool moveForeGround(const std::shared_ptr<WMClient> client);
+    bool moveBackGround(const std::shared_ptr<WMClient> client);
     WMError loadLayerSetting(const std::string& path);
     WMError loadAreaDb(const std::string& path);
 
-    std::vector<unsigned> surface_bg; // For CES demo
     std::vector<std::shared_ptr<WMLayer>> wm_layers;
     std::unordered_map<unsigned, unsigned> lid2wmlid;
     std::unordered_map<std::string, struct rect> area2size;

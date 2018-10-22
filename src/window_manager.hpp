@@ -179,7 +179,6 @@ class WindowManager
     int  api_subscribe(afb_req req, int event_id);
     result<json_object *> api_get_display_info();
     result<json_object *> api_get_area_info(char const *role);
-    void api_ping();
     void send_event(const std::string& evname, const std::string& role);
     void send_event(const std::string& evname, const std::string& role, const std::string& area, int x, int y, int w, int h);
 
@@ -220,8 +219,6 @@ class WindowManager
     void processNextRequest();
 
     int loadOldRoleDb();
-
-    const char *check_surface_exist(const char *role);
 
   private:
     std::map<std::string, struct afb_event> map_afb_event;
