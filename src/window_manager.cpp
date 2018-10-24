@@ -56,45 +56,22 @@ const char kKeyHeightMm[]    = "height_mm";
 const char kKeyScale[]       = "scale";
 const char kKeyIds[]         = "ids";
 
+static const vector<string> kListEventName{
+        "active",
+        "inactive",
+        "visible",
+        "invisible",
+        "syncDraw",
+        "flushDraw",
+        "screenUpdated",
+        "error"};
+
 static sd_event_source *g_timer_ev_src = nullptr;
 static AppList g_app_list;
 static WindowManager *g_context;
 
 namespace
 {
-
-using nlohmann::json;
-
-result<json> file_to_json(char const *filename)
-{
-    json j;
-    std::ifstream i(filename);
-    if (i.fail())
-    {
-        HMI_DEBUG("Could not open config file, so use default layer information");
-        j = default_layers_json;
-    }
-    else
-    {
-        i >> j;
-    }
-
-    return Ok(j);
-}
-
-struct result<layer_map> load_layer_map(char const *filename)
-{
-    HMI_DEBUG("loading IDs from %s", filename);
-
-    auto j = file_to_json(filename);
-    if (j.is_err())
-    {
-        return Err<layer_map>(j.unwrap_err());
-    }
-    json jids = j.unwrap();
-
-    return to_layer_map(jids);
-}
 
 static int processTimerHandler(sd_event_source *s, uint64_t usec, void *userdata)
 {
@@ -117,57 +94,33 @@ static void onError()
 /**
  * WindowManager Impl
  */
-WindowManager::WindowManager(wl::display *d)
-    : chooks{this},
-      display{d},
-      controller{},
-      outputs(),
-      layers(),
-      id_alloc{},
-      pending_events(false)
+WindowManager::WindowManager()
+    : id_alloc{}
 {
-    char const *path_layers_json = getenv("AFM_APP_INSTALL_DIR");
-    string path;
-    if (!path_layers_json)
+    const char *path = getenv("AFM_APP_INSTALL_DIR");
+    if (!path)
     {
         HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
-        path = string(path_layers_json);
     }
-    else
-    {
-        path = string(path_layers_json) + string("/etc/layers.json");
-    }
+    string root = path;
 
-    try
-    {
-        {
-            auto l = load_layer_map(path.c_str());
-            if (l.is_ok())
-            {
-                this->layers = l.unwrap();
-            }
-            else
-            {
-                HMI_ERROR("%s", l.err().value());
-            }
-        }
-    }
-    catch (std::exception &e)
-    {
-        HMI_ERROR("Loading of configuration failed: %s", e.what());
-    }
+    this->lc = std::make_shared<LayerControl>(root);
+
+    HMI_DEBUG("Layer Controller initialized");
 }
 
 int WindowManager::init()
 {
-    if (!this->display->ok())
-    {
-        return -1;
-    }
+    LayerControlCallbacks lmcb;
+    lmcb.surfaceCreated = [&](unsigned pid, unsigned surface){
+        this->surface_created(surface);
+        };
+    lmcb.surfaceDestroyed = [&](unsigned surface){
+        this->surface_removed(surface);
+    };
 
-    if (this->layers.mapping.empty())
+    if(this->lc->init(lmcb) != WMError::SUCCESS)
     {
-        HMI_ERROR("No surface -> layer mapping loaded");
         return -1;
     }
 
@@ -188,58 +141,25 @@ int WindowManager::init()
     // Make afb event
     for (int i = Event_Val_Min; i <= Event_Val_Max; i++)
     {
-        map_afb_event[kListEventName[i]] = afb_daemon_make_event(kListEventName[i]);
+        map_afb_event[kListEventName[i]] = afb_daemon_make_event(kListEventName[i].c_str());
     }
 
-    this->display->add_global_handler(
-        "wl_output", [this](wl_registry *r, uint32_t name, uint32_t v) {
-            this->outputs.emplace_back(std::make_unique<wl::output>(r, name, v));
-        });
+    const struct rect css_bg = this->lc->getAreaSize("fullscreen");
+    Screen screen = this->lc->getScreenInfo();
+    rectangle dp_bg(screen.width(), screen.height());
 
-    this->display->add_global_handler(
-        "ivi_wm", [this](wl_registry *r, uint32_t name, uint32_t v) {
-            this->controller =
-                std::make_unique<struct compositor::controller>(r, name, v);
+    dp_bg.set_aspect(static_cast<double>(css_bg.w) / css_bg.h);
+    dp_bg.fit(screen.width(), screen.height());
+    dp_bg.center(screen.width(), screen.height());
+    HMI_DEBUG("SCALING: CSS BG(%dx%d) -> DDP %dx%d,(%dx%d)",
+              css_bg.w, css_bg.h, dp_bg.left(), dp_bg.top(), dp_bg.width(), dp_bg.height());
 
-            // Init controller hooks
-            this->controller->chooks = &this->chooks;
+    double scale = static_cast<double>(dp_bg.height()) / css_bg.h;
+    this->lc->setupArea(dp_bg, scale);
 
-            // This protocol needs the output, so lets just add our mapping here...
-            this->controller->add_proxy_to_id_mapping(
-                this->outputs.front()->proxy.get(),
-                wl_proxy_get_id(reinterpret_cast<struct wl_proxy *>(
-                    this->outputs.front()->proxy.get())));
+    this->lc->createLayers();
 
-            // Create screen
-            this->controller->create_screen(this->outputs.front()->proxy.get());
-
-            // Set display to controller
-            this->controller->display = this->display;
-        });
-
-    // First level objects
-    this->display->roundtrip();
-    // Second level objects
-    this->display->roundtrip();
-    // Third level objects
-    this->display->roundtrip();
-
-    return init_layers();
-}
-
-int WindowManager::dispatch_pending_events()
-{
-    if (this->pop_pending_events())
-    {
-        this->display->dispatch_pending();
-        return 0;
-    }
-    return -1;
-}
-
-void WindowManager::set_pending_events()
-{
-    this->pending_events.store(true, std::memory_order_release);
+    return 0;
 }
 
 result<int> WindowManager::api_request_surface(char const *appid, char const *drawing_name)
@@ -248,38 +168,33 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
     //       so convert role old to new
     const char *role = this->convertRoleOldToNew(drawing_name);
 
-    auto lid = this->layers.get_layer_id(string(role));
-    if (!lid)
+    // auto lid = this->layers.get_layer_id(string(role));
+    unsigned lid = this->lc->getLayerID(string(role));
+    if (lid == 0)
     {
         /**
        * register drawing_name as fallback and make it displayed.
        */
-        lid = this->layers.get_layer_id(string("fallback"));
+        // lid = this->layers.get_layer_id(string("fallback"));
+        lid = this->lc->getLayerID(string("fallback"));
         HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
-        if (!lid)
+        if (lid == 0)
         {
             return Err<int>("Drawing name does not match any role, fallback is disabled");
         }
     }
 
-    auto rname = this->lookup_id(role);
+    auto rname = this->id_alloc.lookup(role);
     if (!rname)
     {
         // name does not exist yet, allocate surface id...
         auto id = int(this->id_alloc.generate_id(role));
-        this->layers.add_surface(id, *lid);
-
-        // set the main_surface[_name] here and now
-        if (!this->layers.main_surface_name.empty() &&
-            this->layers.main_surface_name == drawing_name)
-        {
-            this->layers.main_surface = id;
-            HMI_DEBUG("Set main_surface id to %u", id);
-        }
+        // this->layers.add_surface(id, *lid);
+        this->tmp_surface2app[id] = {string(appid), lid};
 
         // add client into the db
         string appid_str(appid);
-        g_app_list.addClient(appid_str, *lid, id, string(role));
+        g_app_list.addClient(appid_str, lid, id, string(role));
 
         // Set role map of (new, old)
         this->rolenew2old[role] = string(drawing_name);
@@ -298,23 +213,31 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
     //       so convert role old to new
     const char *role = this->convertRoleOldToNew(drawing_name);
 
-    auto lid = this->layers.get_layer_id(string(role));
     unsigned sid = std::stol(ivi_id);
+    WMError ret = this->lc->setXDGSurfaceOriginSize(sid);
+    if(ret != SUCCESS)
+    {
+        HMI_ERROR("%s", errorDescription(ret));
+        HMI_WARNING("The main user of this API is runXDG");
+        return "fail";
+    }
 
-    if (!lid)
+    // auto lid = this->layers.get_layer_id(string(role));
+    auto lid = this->lc->getLayerID(string(role));
+    if (lid == 0)
     {
         /**
        * register drawing_name as fallback and make it displayed.
        */
-        lid = this->layers.get_layer_id(string("fallback"));
+        lid = this->lc->getLayerID(string("fallback"));
         HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
-        if (!lid)
+        if (lid == 0)
         {
             return "Drawing name does not match any role, fallback is disabled";
         }
     }
 
-    auto rname = this->lookup_id(role);
+    auto rname = this->id_alloc.lookup(role);
 
     if (rname)
     {
@@ -323,17 +246,13 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
 
     // register pair drawing_name and ivi_id
     this->id_alloc.register_name_id(role, sid);
-    this->layers.add_surface(sid, *lid);
+    this->lc->addSurface(sid, lid);
 
-    // this surface is already created
-    HMI_DEBUG("surface_id is %u, layer_id is %u", sid, *lid);
+    HMI_DEBUG("surface_id is %u, layer_id is %u", sid, lid);
 
-    this->controller->layers[*lid]->add_surface(sid);
-    this->layout_commit();
-
-    // add client into the db
+    // add client into the list
     string appid_str(appid);
-    g_app_list.addClient(appid_str, *lid, sid, string(role));
+    g_app_list.addClient(appid_str, lid, sid, string(role));
 
     // Set role map of (new, old)
     this->rolenew2old[role] = string(drawing_name);
@@ -351,6 +270,14 @@ void WindowManager::api_activate_surface(char const *appid, char const *drawing_
     string id = appid;
     string role = c_role;
     string area = drawing_area;
+
+    if(!g_app_list.contains(id))
+    {
+        reply("app doesn't request 'requestSurface' or 'setRole' yet");
+        return;
+    }
+
+    auto client = g_app_list.lookUpClient(id);
     Task task = Task::TASK_ALLOCATE;
     unsigned req_num = 0;
     WMError ret = WMError::UNKNOWN;
@@ -375,7 +302,7 @@ void WindowManager::api_activate_surface(char const *appid, char const *drawing_
     /*
      * Do allocate tasks
      */
-    ret = this->doTransition(req_num);
+    ret = this->checkPolicy(req_num);
 
     if (ret != WMError::SUCCESS)
     {
@@ -423,7 +350,7 @@ void WindowManager::api_deactivate_surface(char const *appid, char const *drawin
     /*
     * Do allocate tasks
     */
-    ret = this->doTransition(req_num);
+    ret = this->checkPolicy(req_num);
 
     if (ret != WMError::SUCCESS)
     {
@@ -478,23 +405,23 @@ void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
     }
 }
 
+int WindowManager::api_subscribe(afb_req req, int event_id)
+{
+    struct afb_event event = this->map_afb_event[kListEventName[event_id]];
+    return afb_req_subscribe(req, event);
+}
+
 result<json_object *> WindowManager::api_get_display_info()
 {
-    if (!this->display->ok())
-    {
-        return Err<json_object *>("Wayland compositor is not available");
-    }
-
-    // Set display info
-    compositor::size o_size = this->controller->output_size;
-    compositor::size p_size = this->controller->physical_size;
+    Screen screen = this->lc->getScreenInfo();
 
     json_object *object = json_object_new_object();
-    json_object_object_add(object, kKeyWidthPixel, json_object_new_int(o_size.w));
-    json_object_object_add(object, kKeyHeightPixel, json_object_new_int(o_size.h));
-    json_object_object_add(object, kKeyWidthMm, json_object_new_int(p_size.w));
-    json_object_object_add(object, kKeyHeightMm, json_object_new_int(p_size.h));
-    json_object_object_add(object, kKeyScale, json_object_new_double(this->controller->scale));
+    json_object_object_add(object, kKeyWidthPixel, json_object_new_int(screen.width()));
+    json_object_object_add(object, kKeyHeightPixel, json_object_new_int(screen.height()));
+    // TODO: set size
+    json_object_object_add(object, kKeyWidthMm, json_object_new_int(0));
+    json_object_object_add(object, kKeyHeightMm, json_object_new_int(0));
+    json_object_object_add(object, kKeyScale, json_object_new_double(this->lc->scale()));
 
     return Ok<json_object *>(object);
 }
@@ -508,25 +435,14 @@ result<json_object *> WindowManager::api_get_area_info(char const *drawing_name)
     const char *role = this->convertRoleOldToNew(drawing_name);
 
     // Check drawing name, surface/layer id
-    auto const &surface_id = this->lookup_id(role);
+    auto const &surface_id = this->id_alloc.lookup(role);
     if (!surface_id)
     {
         return Err<json_object *>("Surface does not exist");
     }
 
-    if (!this->controller->surface_exists(*surface_id))
-    {
-        return Err<json_object *>("Surface does not exist in controller!");
-    }
-
-    auto layer_id = this->layers.get_layer_id(*surface_id);
-    if (!layer_id)
-    {
-        return Err<json_object *>("Surface is not on any layer!");
-    }
-
     // Set area rectangle
-    compositor::rect area_info = this->area_info[*surface_id];
+    struct rect area_info = this->area_info[*surface_id];
     json_object *object = json_object_new_object();
     json_object_object_add(object, kKeyX, json_object_new_int(area_info.x));
     json_object_object_add(object, kKeyY, json_object_new_int(area_info.y));
@@ -536,14 +452,10 @@ result<json_object *> WindowManager::api_get_area_info(char const *drawing_name)
     return Ok<json_object *>(object);
 }
 
-void WindowManager::api_ping() { this->dispatch_pending_events(); }
-
-void WindowManager::send_event(char const *evname, char const *label)
+void WindowManager::send_event(const string& evname, const string& role)
 {
-    HMI_DEBUG("%s: %s(%s)", __func__, evname, label);
-
     json_object *j = json_object_new_object();
-    json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
+    json_object_object_add(j, kKeyDrawingName, json_object_new_string(role.c_str()));
 
     int ret = afb_event_push(this->map_afb_event[evname], j);
     if (ret != 0)
@@ -552,12 +464,9 @@ void WindowManager::send_event(char const *evname, char const *label)
     }
 }
 
-void WindowManager::send_event(char const *evname, char const *label, char const *area,
+void WindowManager::send_event(const string& evname, const string& role, const string& area,
                      int x, int y, int w, int h)
 {
-    HMI_DEBUG("%s: %s(%s, %s) x:%d y:%d w:%d h:%d",
-              __func__, evname, label, area, x, y, w, h);
-
     json_object *j_rect = json_object_new_object();
     json_object_object_add(j_rect, kKeyX, json_object_new_int(x));
     json_object_object_add(j_rect, kKeyY, json_object_new_int(y));
@@ -565,8 +474,8 @@ void WindowManager::send_event(char const *evname, char const *label, char const
     json_object_object_add(j_rect, kKeyHeight, json_object_new_int(h));
 
     json_object *j = json_object_new_object();
-    json_object_object_add(j, kKeyDrawingName, json_object_new_string(label));
-    json_object_object_add(j, kKeyDrawingArea, json_object_new_string(area));
+    json_object_object_add(j, kKeyDrawingName, json_object_new_string(role.c_str()));
+    json_object_object_add(j, kKeyDrawingArea, json_object_new_string(area.c_str()));
     json_object_object_add(j, kKeyDrawingRect, j_rect);
 
     int ret = afb_event_push(this->map_afb_event[evname], j);
@@ -579,29 +488,22 @@ void WindowManager::send_event(char const *evname, char const *label, char const
 /**
  * proxied events
  */
-void WindowManager::surface_created(uint32_t surface_id)
+void WindowManager::surface_created(unsigned surface_id)
 {
-    this->controller->get_surface_properties(surface_id, IVI_WM_PARAM_SIZE);
-
-    auto layer_id = this->layers.get_layer_id(surface_id);
-    if (!layer_id)
+    // requestSurface
+    if(this->tmp_surface2app.count(surface_id) != 0)
     {
-        HMI_DEBUG("Newly created surfce %d is not associated with any layer!",
-                  surface_id);
-        return;
+        unsigned layer_id = this->tmp_surface2app[surface_id].layer;
+        this->lc->addSurface(surface_id, layer_id);
+        this->tmp_surface2app.erase(surface_id);
+        HMI_DEBUG("surface_id is %u, layer_id is %u", surface_id, layer_id);
     }
-
-    HMI_DEBUG("surface_id is %u, layer_id is %u", surface_id, *layer_id);
-
-    this->controller->layers[*layer_id]->add_surface(surface_id);
-    this->layout_commit();
 }
 
-void WindowManager::surface_removed(uint32_t surface_id)
+void WindowManager::surface_removed(unsigned surface_id)
 {
     HMI_DEBUG("Delete surface_id %u", surface_id);
     this->id_alloc.remove_id(surface_id);
-    this->layers.remove_surface(surface_id);
     g_app_list.removeSurface(surface_id);
 }
 
@@ -653,7 +555,7 @@ void WindowManager::startTransitionWrapper(vector<WMAction> &actions)
         if ("" != act.role)
         {
             bool found;
-            auto const &surface_id = this->lookup_id(act.role.c_str());
+            auto const &surface_id = this->id_alloc.lookup(act.role.c_str());
             if(surface_id == nullopt)
             {
                 goto proc_remove_request;
@@ -727,281 +629,44 @@ void WindowManager::processError(WMError error)
  ******* Private Functions *******
  */
 
-bool WindowManager::pop_pending_events()
+void WindowManager::emit_activated(const string& role)
 {
-    bool x{true};
-    return this->pending_events.compare_exchange_strong(
-        x, false, std::memory_order_consume);
+    this->send_event(kListEventName[Event_Active], role);
 }
 
-optional<int> WindowManager::lookup_id(char const *name)
+void WindowManager::emit_deactivated(const string& role)
 {
-    return this->id_alloc.lookup(string(name));
-}
-optional<string> WindowManager::lookup_name(int id)
-{
-    return this->id_alloc.lookup(id);
+    this->send_event(kListEventName[Event_Inactive], role);
 }
 
-/**
- * init_layers()
- */
-int WindowManager::init_layers()
+void WindowManager::emit_syncdraw(const string& role, char const *area, int x, int y, int w, int h)
 {
-    if (!this->controller)
-    {
-        HMI_ERROR("ivi_controller global not available");
-        return -1;
-    }
-
-    if (this->outputs.empty())
-    {
-        HMI_ERROR("no output was set up!");
-        return -1;
-    }
-
-    auto &c = this->controller;
-
-    auto &o = this->outputs.front();
-    auto &s = c->screens.begin()->second;
-    auto &layers = c->layers;
-
-    // Write output dimensions to ivi controller...
-    c->output_size = compositor::size{uint32_t(o->width), uint32_t(o->height)};
-    c->physical_size = compositor::size{uint32_t(o->physical_width),
-                                        uint32_t(o->physical_height)};
-
-
-    HMI_DEBUG("SCALING: screen (%dx%d), physical (%dx%d)",
-              o->width, o->height, o->physical_width, o->physical_height);
-
-    this->layers.loadAreaDb();
-
-    const compositor::rect css_bg = this->layers.getAreaSize("fullscreen");
-    rectangle dp_bg(o->width, o->height);
-
-    dp_bg.set_aspect(static_cast<double>(css_bg.w) / css_bg.h);
-    dp_bg.fit(o->width, o->height);
-    dp_bg.center(o->width, o->height);
-    HMI_DEBUG("SCALING: CSS BG(%dx%d) -> DDP %dx%d,(%dx%d)",
-              css_bg.w, css_bg.h, dp_bg.left(), dp_bg.top(), dp_bg.width(), dp_bg.height());
-
-    // Clear scene
-    layers.clear();
-
-    // Clear screen
-    s->clear();
-
-    // Quick and dirty setup of layers
-    for (auto const &i : this->layers.mapping)
-    {
-        c->layer_create(i.second.layer_id, dp_bg.width(), dp_bg.height());
-        auto &l = layers[i.second.layer_id];
-        l->set_destination_rectangle(dp_bg.left(), dp_bg.top(), dp_bg.width(), dp_bg.height());
-        l->set_visibility(1);
-        HMI_DEBUG("Setting up layer %s (%d) for surface role match \"%s\"",
-                  i.second.name.c_str(), i.second.layer_id, i.second.role.c_str());
-    }
-
-    // Add layers to screen
-    s->set_render_order(this->layers.layers);
-
-    this->layout_commit();
-
-    c->scale = static_cast<double>(dp_bg.height()) / css_bg.h;
-    this->layers.setupArea(c->scale);
-
-    return 0;
-}
-
-void WindowManager::surface_set_layout(int surface_id, const string& area)
-{
-    if (!this->controller->surface_exists(surface_id))
-    {
-        HMI_ERROR("Surface %d does not exist", surface_id);
-        return;
-    }
-
-    auto o_layer_id = this->layers.get_layer_id(surface_id);
-
-    if (!o_layer_id)
-    {
-        HMI_ERROR("Surface %d is not associated with any layer!", surface_id);
-        return;
-    }
-
-    uint32_t layer_id = *o_layer_id;
-
-    auto const &layer = this->layers.get_layer(layer_id);
-    auto rect = this->layers.getAreaSize(area);
-    HMI_SEQ_DEBUG(g_app_list.currentRequestNumber(), "%s : x:%d y:%d w:%d h:%d", area.c_str(),
-                    rect.x, rect.y, rect.w, rect.h);
-    auto &s = this->controller->surfaces[surface_id];
-
-    int x = rect.x;
-    int y = rect.y;
-    int w = rect.w;
-    int h = rect.h;
-
-    HMI_DEBUG("surface_set_layout for surface %u on layer %u", surface_id,
-              layer_id);
-
-    // set destination to the display rectangle
-    s->set_destination_rectangle(x, y, w, h);
-
-    // update area information
-    this->area_info[surface_id].x = x;
-    this->area_info[surface_id].y = y;
-    this->area_info[surface_id].w = w;
-    this->area_info[surface_id].h = h;
-
-    HMI_DEBUG("Surface %u now on layer %u with rect { %d, %d, %d, %d }",
-              surface_id, layer_id, x, y, w, h);
-}
-
-void WindowManager::layout_commit()
-{
-    this->controller->commit_changes();
-    this->display->flush();
-}
-
-void WindowManager::emit_activated(char const *label)
-{
-    this->send_event(kListEventName[Event_Active], label);
-}
-
-void WindowManager::emit_deactivated(char const *label)
-{
-    this->send_event(kListEventName[Event_Inactive], label);
-}
-
-void WindowManager::emit_syncdraw(char const *label, char const *area, int x, int y, int w, int h)
-{
-    this->send_event(kListEventName[Event_SyncDraw], label, area, x, y, w, h);
+    this->send_event(kListEventName[Event_SyncDraw], role, area, x, y, w, h);
 }
 
 void WindowManager::emit_syncdraw(const string &role, const string &area)
 {
-    compositor::rect rect = this->layers.getAreaSize(area);
+    struct rect rect = this->lc->getAreaSize(area);
     this->send_event(kListEventName[Event_SyncDraw],
         role.c_str(), area.c_str(), rect.x, rect.y, rect.w, rect.h);
 }
 
-void WindowManager::emit_flushdraw(char const *label)
+void WindowManager::emit_flushdraw(const string& role)
 {
-    this->send_event(kListEventName[Event_FlushDraw], label);
+    this->send_event(kListEventName[Event_FlushDraw], role);
 }
 
-void WindowManager::emit_visible(char const *label, bool is_visible)
+void WindowManager::emit_visible(const string& role, bool is_visible)
 {
-    this->send_event(is_visible ? kListEventName[Event_Visible] : kListEventName[Event_Invisible], label);
+    this->send_event(is_visible ? kListEventName[Event_Visible] : kListEventName[Event_Invisible], role);
 }
 
-void WindowManager::emit_invisible(char const *label)
+void WindowManager::emit_invisible(const string& role)
 {
-    return emit_visible(label, false);
+    return emit_visible(role, false);
 }
 
-void WindowManager::emit_visible(char const *label) { return emit_visible(label, true); }
-
-void WindowManager::activate(int id)
-{
-    auto ip = this->controller->sprops.find(id);
-    if (ip != this->controller->sprops.end())
-    {
-        this->controller->surfaces[id]->set_visibility(1);
-        char const *label =
-            this->lookup_name(id).value_or("unknown-name").c_str();
-
-         // FOR CES DEMO >>>
-        if ((0 == strcmp(label, "radio")) ||
-            (0 == strcmp(label, "music")) ||
-            (0 == strcmp(label, "video")) ||
-            (0 == strcmp(label, "map")))
-        {
-            for (auto i = surface_bg.begin(); i != surface_bg.end(); ++i)
-            {
-                if (id == *i)
-                {
-                    // Remove id
-                    this->surface_bg.erase(i);
-
-                    // Remove from BG layer (999)
-                    HMI_DEBUG("Remove %s(%d) from BG layer", label, id);
-                    this->controller->layers[999]->remove_surface(id);
-
-                    // Add to FG layer (1001)
-                    HMI_DEBUG("Add %s(%d) to FG layer", label, id);
-                    this->controller->layers[1001]->add_surface(id);
-
-                    for (int j : this->surface_bg)
-                    {
-                        HMI_DEBUG("Stored id:%d", j);
-                    }
-                    break;
-                }
-            }
-        }
-        // <<< FOR CES DEMO
-
-        this->layout_commit();
-
-        // TODO: application requests by old role,
-        //       so convert role new to old for emitting event
-        const char* old_role = this->rolenew2old[label].c_str();
-
-        this->emit_visible(old_role);
-        this->emit_activated(old_role);
-    }
-}
-
-void WindowManager::deactivate(int id)
-{
-    auto ip = this->controller->sprops.find(id);
-    if (ip != this->controller->sprops.end())
-    {
-        char const *label =
-            this->lookup_name(id).value_or("unknown-name").c_str();
-
-        // FOR CES DEMO >>>
-        if ((0 == strcmp(label, "radio")) ||
-            (0 == strcmp(label, "music")) ||
-            (0 == strcmp(label, "video")) ||
-            (0 == strcmp(label, "map")))
-        {
-
-            // Store id
-            this->surface_bg.push_back(id);
-
-            // Remove from FG layer (1001)
-            HMI_DEBUG("Remove %s(%d) from FG layer", label, id);
-            this->controller->layers[1001]->remove_surface(id);
-
-            // Add to BG layer (999)
-            HMI_DEBUG("Add %s(%d) to BG layer", label, id);
-            this->controller->layers[999]->add_surface(id);
-
-            for (int j : surface_bg)
-            {
-                HMI_DEBUG("Stored id:%d", j);
-            }
-        }
-        else
-        {
-            this->controller->surfaces[id]->set_visibility(0);
-        }
-        // <<< FOR CES DEMO
-
-        this->layout_commit();
-
-        // TODO: application requests by old role,
-        //       so convert role new to old for emitting event
-        const char* old_role = this->rolenew2old[label].c_str();
-
-        this->emit_deactivated(old_role);
-        this->emit_invisible(old_role);
-    }
-}
+void WindowManager::emit_visible(const string& role) { return emit_visible(role, true); }
 
 WMError WindowManager::setRequest(const string& appid, const string &role, const string &area,
                             Task task, unsigned* req_num)
@@ -1033,13 +698,6 @@ WMError WindowManager::setRequest(const string& appid, const string &role, const
     HMI_SEQ_DEBUG(current, "%s start sequence with %s, %s", appid.c_str(), role.c_str(), area.c_str());
 
     return WMError::SUCCESS;
-}
-
-WMError WindowManager::doTransition(unsigned req_num)
-{
-    HMI_SEQ_DEBUG(req_num, "check policy");
-    WMError ret = this->checkPolicy(req_num);
-    return ret;
 }
 
 WMError WindowManager::checkPolicy(unsigned req_num)
@@ -1131,11 +789,14 @@ WMError WindowManager::startTransition(unsigned req_num)
         // Make it deactivate here
         for (const auto &x : actions)
         {
-            if (g_app_list.contains(x.client->appID()))
+            this->lc->visibilityChange(x);
+            string old_role = this->rolenew2old[x.role];
+            emit_deactivated(old_role.c_str());
+            /* if (g_app_list.contains(x.client->appID()))
             {
                 auto client = g_app_list.lookUpClient(x.client->appID());
                 this->deactivate(client->surfaceID(x.role));
-            }
+            } */
         }
         ret = WMError::NO_LAYOUT_CHANGE;
     }
@@ -1162,17 +823,26 @@ WMError WindowManager::doEndDraw(unsigned req_num)
         if(act.visible != TaskVisible::NO_CHANGE)
         {
             // layout change
-            if(!g_app_list.contains(act.client->appID())){
-                ret = WMError::NOT_REGISTERED;
-            }
-            ret = this->layoutChange(act);
+            ret = this->lc->layoutChange(act);
             if(ret != WMError::SUCCESS)
             {
                 HMI_SEQ_WARNING(req_num,
                     "Failed to manipulate surfaces while state change : %s", errorDescription(ret));
                 return ret;
             }
-            ret = this->visibilityChange(act);
+            ret = this->lc->visibilityChange(act);
+
+            // Emit active/deactive event
+            string old_role = this->rolenew2old[act.role];
+            if(act.visible == VISIBLE)
+            {
+                emit_activated(old_role.c_str());
+            }
+            else
+            {
+                emit_deactivated(old_role.c_str());
+            }
+
             if (ret != WMError::SUCCESS)
             {
                 HMI_SEQ_WARNING(req_num,
@@ -1180,10 +850,8 @@ WMError WindowManager::doEndDraw(unsigned req_num)
                 return ret;
             }
             HMI_SEQ_DEBUG(req_num, "visible %s", act.role.c_str());
-            //this->lm_enddraw(act.role.c_str());
         }
     }
-    this->layout_commit();
 
     HMI_SEQ_INFO(req_num, "emit flushDraw");
 
@@ -1200,60 +868,6 @@ WMError WindowManager::doEndDraw(unsigned req_num)
     }
 
     return ret;
-}
-
-WMError WindowManager::layoutChange(const WMAction &action)
-{
-    if (action.visible == TaskVisible::INVISIBLE)
-    {
-        // Visibility is not change -> no redraw is required
-        return WMError::SUCCESS;
-    }
-    auto client = g_app_list.lookUpClient(action.client->appID());
-    unsigned surface = client->surfaceID(action.role);
-    if (surface == 0)
-    {
-        HMI_SEQ_ERROR(g_app_list.currentRequestNumber(),
-                      "client doesn't have surface with role(%s)", action.role.c_str());
-        return WMError::NOT_REGISTERED;
-    }
-    // Layout Manager
-    WMError ret = this->setSurfaceSize(surface, action.area);
-    return ret;
-}
-
-WMError WindowManager::visibilityChange(const WMAction &action)
-{
-    HMI_SEQ_DEBUG(g_app_list.currentRequestNumber(), "Change visibility");
-    if(!g_app_list.contains(action.client->appID()))
-    {
-        return WMError::NOT_REGISTERED;
-    }
-    auto client = g_app_list.lookUpClient(action.client->appID());
-    unsigned surface = client->surfaceID(action.role);
-    if(surface == 0)
-    {
-        HMI_SEQ_ERROR(g_app_list.currentRequestNumber(),
-                      "client doesn't have surface with role(%s)", action.role.c_str());
-        return WMError::NOT_REGISTERED;
-    }
-
-    if (action.visible != TaskVisible::INVISIBLE)
-    {
-        this->activate(surface); // Layout Manager task
-    }
-    else
-    {
-        this->deactivate(surface); // Layout Manager task
-    }
-    return WMError::SUCCESS;
-}
-
-WMError WindowManager::setSurfaceSize(unsigned surface, const string &area)
-{
-    this->surface_set_layout(surface, area);
-
-    return WMError::SUCCESS;
 }
 
 void WindowManager::emitScreenUpdated(unsigned req_num)
@@ -1331,7 +945,7 @@ void WindowManager::processNextRequest()
     if (g_app_list.haveRequest())
     {
         HMI_SEQ_DEBUG(req_num, "Process next request");
-        WMError rc = doTransition(req_num);
+        WMError rc = checkPolicy(req_num);
         if (rc != WMError::SUCCESS)
         {
             HMI_SEQ_ERROR(req_num, errorDescription(rc));
@@ -1444,25 +1058,11 @@ int WindowManager::loadOldRoleDb()
 
 const char *WindowManager::check_surface_exist(const char *drawing_name)
 {
-    auto const &surface_id = this->lookup_id(drawing_name);
+    auto const &surface_id = this->id_alloc.lookup(drawing_name);
     if (!surface_id)
     {
         return "Surface does not exist";
     }
-
-    if (!this->controller->surface_exists(*surface_id))
-    {
-        return "Surface does not exist in controller!";
-    }
-
-    auto layer_id = this->layers.get_layer_id(*surface_id);
-
-    if (!layer_id)
-    {
-        return "Surface is not on any layer!";
-    }
-
-    HMI_DEBUG("surface %d is detected", *surface_id);
     return nullptr;
 }
 
@@ -1534,27 +1134,5 @@ const char* WindowManager::kDefaultOldRoleDb = "{ \
         } \
     ] \
 }";
-
-/**
- * controller_hooks
- */
-void controller_hooks::surface_created(uint32_t surface_id)
-{
-    this->wmgr->surface_created(surface_id);
-}
-
-void controller_hooks::surface_removed(uint32_t surface_id)
-{
-    this->wmgr->surface_removed(surface_id);
-}
-
-void controller_hooks::surface_visibility(uint32_t /*surface_id*/,
-                                          uint32_t /*v*/) {}
-
-void controller_hooks::surface_destination_rectangle(uint32_t /*surface_id*/,
-                                                     uint32_t /*x*/,
-                                                     uint32_t /*y*/,
-                                                     uint32_t /*w*/,
-                                                     uint32_t /*h*/) {}
 
 } // namespace wm

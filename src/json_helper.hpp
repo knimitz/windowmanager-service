@@ -19,12 +19,9 @@
 
 #include <json-c/json.h>
 #include <vector>
-#include "wayland_ivi_wm.hpp"
 
 struct json_object;
 
-json_object *to_json(compositor::screen const *s);
-json_object *to_json(compositor::controller::props_map const &s);
 json_object *to_json(std::vector<uint32_t> const &v);
 
 namespace jh {

@@ -52,24 +52,15 @@ void _HMI_LOG(enum LOG_LEVEL level, const char* file, const char* func, const in
 void _HMI_SEQ_LOG(enum LOG_LEVEL level, const char* file, const char* func, const int line, unsigned seq_num, const char* log, ...);
 void _DUMP(enum LOG_LEVEL level, const char *log, ...);
 
-/**
- * @struct unique_fd
- */
-struct unique_fd
+struct rect
 {
-    int fd{-1};
-    unique_fd() = default;
-    explicit unique_fd(int f) : fd{f} {}
-    operator int() const { return fd; }
-    ~unique_fd();
-    unique_fd(unique_fd const &) = delete;
-    unique_fd &operator=(unique_fd const &) = delete;
-    unique_fd(unique_fd &&o) : fd(o.fd) { o.fd = -1; }
-    unique_fd &operator=(unique_fd &&o)
-    {
-        std::swap(this->fd, o.fd);
-        return *this;
-    }
+    int32_t w, h;
+    int32_t x, y;
+};
+
+struct size
+{
+    uint32_t w, h;
 };
 
 class rectangle
