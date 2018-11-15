@@ -116,8 +116,7 @@ static void createSecurityContext(afb_req req, const char* appid, const char* ro
     if (!ctxt)
     {
         // Create Security Context at first time
-        const char *new_role = g_afb_instance->wmgr.convertRoleOldToNew(role);
-        WMClientCtxt *ctxt = new WMClientCtxt(appid, new_role);
+        WMClientCtxt *ctxt = new WMClientCtxt(appid, role);
         HMI_DEBUG("create session for %s", ctxt->name.c_str());
         afb_req_session_set_LOA(req, 1);
         afb_req_context_set(req, ctxt, cbRemoveClientCtxt);

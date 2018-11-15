@@ -112,7 +112,6 @@ add_custom_command(TARGET ${TARGETS_WM} POST_BUILD
    COMMAND cp -rf ${PROJECT_BINARY_DIR}/src/${TARGETS_WM}.so ${PROJECT_BINARY_DIR}/package/root/lib
    COMMAND mkdir -p ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${CMAKE_SOURCE_DIR}/conf/layers.json ${PROJECT_BINARY_DIR}/package/root/etc
-   COMMAND cp -f ${CMAKE_SOURCE_DIR}/conf/old_roles.json ${PROJECT_BINARY_DIR}/package/root/etc
    COMMAND cp -f ${CMAKE_SOURCE_DIR}/conf/areas.json ${PROJECT_BINARY_DIR}/package/root/etc
 )
 

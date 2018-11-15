@@ -188,7 +188,6 @@ class WindowManager
 
     void removeClient(const std::string &appid);
     void exceptionProcessForTransition();
-    const char* convertRoleOldToNew(char const *role);
 
     // Do not use this function
     void timerHandler();
@@ -223,8 +222,6 @@ class WindowManager
   private:
     std::map<std::string, struct afb_event> map_afb_event;
     std::unordered_map<std::string, struct rect> area2size;
-    std::unordered_map<std::string, std::string> roleold2new;
-    std::unordered_map<std::string, std::string> rolenew2old;
     std::shared_ptr<LayerControl> lc;
     PMWrapper pmw;
     rect_map area_info;
@@ -232,7 +229,6 @@ class WindowManager
 
     // ID allocation and proxy methods for lookup
     std::unordered_map<unsigned, struct TmpClient> tmp_surface2app;
-    static const char* kDefaultOldRoleDb;
 };
 
 } // namespace wm

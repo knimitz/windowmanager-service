@@ -124,11 +124,6 @@ int WindowManager::init()
         return -1;
     }
 
-    // TODO: application requests by old role,
-    //       so create role map (old, new)
-    // Load old_role.db
-    this->loadOldRoleDb();
-
     // Store my context for calling callback from PolicyManager
     g_context = this;
 
@@ -162,16 +157,13 @@ int WindowManager::init()
 
 result<int> WindowManager::api_request_surface(char const *appid, char const *drawing_name)
 {
-    // TODO: application requests by old role,
-    //       so convert role old to new
-    const char *role = this->convertRoleOldToNew(drawing_name);
     string str_id = appid;
-    string str_role = role;
+    string role = drawing_name;
     unsigned lid = 0;
 
     if(!g_app_list.contains(str_id))
     {
-        lid = this->lc->getNewLayerID(str_role);
+        lid = this->lc->getNewLayerID(role);
         if (lid == 0)
         {
             // register drawing_name as fallback and make it displayed.
@@ -184,19 +176,16 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
         }
         this->lc->createNewLayer(lid);
         // add client into the db
-        g_app_list.addClient(str_id, lid, str_role);
+        g_app_list.addClient(str_id, lid, role);
     }
 
     // generate surface ID for ivi-shell application
-    auto rname = this->id_alloc.lookup(str_role);
+    auto rname = this->id_alloc.lookup(role);
     if (!rname)
     {
         // name does not exist yet, allocate surface id...
-        auto id = int(this->id_alloc.generate_id(str_role));
+        auto id = int(this->id_alloc.generate_id(role));
         this->tmp_surface2app[id] = {str_id, lid};
-
-        // Set role map of (new, old)
-        this->rolenew2old[role] = string(drawing_name);
 
         return Ok<int>(id);
     }
@@ -208,11 +197,8 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
 char const *WindowManager::api_request_surface(char const *appid, char const *drawing_name,
                                      char const *ivi_id)
 {
-    // TODO: application requests by old role,
-    //       so convert role old to new
-    const char *role = this->convertRoleOldToNew(drawing_name);
     string str_id   = appid;
-    string str_role = role;
+    string role = drawing_name;
 
     unsigned sid = std::stol(ivi_id);
     HMI_DEBUG("This API(requestSurfaceXDG) is for XDG Application using runXDG");
@@ -231,7 +217,7 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
 
     if(!g_app_list.contains(str_id))
     {
-        unsigned l_id = this->lc->getNewLayerID(str_role);
+        unsigned l_id = this->lc->getNewLayerID(role);
         if (l_id == 0)
         {
             // register drawing_name as fallback and make it displayed.
@@ -244,10 +230,10 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
         }
         this->lc->createNewLayer(l_id);
         // add client into the db
-        g_app_list.addClient(str_id, l_id, str_role);
+        g_app_list.addClient(str_id, l_id, role);
     }
 
-    auto rname = this->id_alloc.lookup(str_role);
+    auto rname = this->id_alloc.lookup(role);
 
     if (rname)
     {
@@ -255,13 +241,10 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
     }
 
     // register pair drawing_name and ivi_id
-    this->id_alloc.register_name_id(str_role, sid);
+    this->id_alloc.register_name_id(role, sid);
 
     auto client = g_app_list.lookUpClient(str_id);
     client->addSurface(sid);
-
-    // Set role map of (new, old)
-    this->rolenew2old[role] = string(drawing_name);
 
     return nullptr;
 }
@@ -269,12 +252,8 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
 void WindowManager::api_activate_window(char const *appid, char const *drawing_name,
                                char const *drawing_area, const reply_func &reply)
 {
-    // TODO: application requests by old role,
-    //       so convert role old to new
-    const char *c_role = this->convertRoleOldToNew(drawing_name);
-
     string id = appid;
-    string role = c_role;
+    string role = drawing_name;
     string area = drawing_area;
 
     if(!g_app_list.contains(id))
@@ -305,9 +284,8 @@ void WindowManager::api_activate_window(char const *appid, char const *drawing_n
         return;
     }
 
-    /*
-     * Do allocate tasks
-     */
+     // Do allocate tasks
+    
     ret = this->checkPolicy(req_num);
 
     if (ret != WMError::SUCCESS)
@@ -322,15 +300,9 @@ void WindowManager::api_activate_window(char const *appid, char const *drawing_n
 void WindowManager::api_deactivate_window(char const *appid, char const *drawing_name,
                                  const reply_func &reply)
 {
-    // TODO: application requests by old role,
-    //       so convert role old to new
-    const char *c_role = this->convertRoleOldToNew(drawing_name);
-
-    /*
-    * Check Phase
-    */
+    // Check Phase
     string id = appid;
-    string role = c_role;
+    string role = drawing_name;
     string area = ""; //drawing_area;
     Task task = Task::TASK_RELEASE;
     unsigned req_num = 0;
@@ -353,9 +325,7 @@ void WindowManager::api_deactivate_window(char const *appid, char const *drawing
         return;
     }
 
-    /*
-    * Do allocate tasks
-    */
+    // Do allocate tasks
     ret = this->checkPolicy(req_num);
 
     if (ret != WMError::SUCCESS)
@@ -369,12 +339,8 @@ void WindowManager::api_deactivate_window(char const *appid, char const *drawing
 
 void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
 {
-    // TODO: application requests by old role,
-    //       so convert role old to new
-    const char *c_role = this->convertRoleOldToNew(drawing_name);
-
     string id = appid;
-    string role = c_role;
+    string role = drawing_name;
     unsigned current_req = g_app_list.currentRequestNumber();
     bool result = g_app_list.setEndDrawFinished(current_req, id, role);
 
@@ -437,9 +403,7 @@ result<json_object *> WindowManager::api_get_area_info(char const *drawing_name)
 {
     HMI_DEBUG("called");
 
-    // TODO: application requests by old role,
-    //       so convert role old to new
-    const char *role = this->convertRoleOldToNew(drawing_name);
+    string role = drawing_name;
 
     // Check drawing name, surface/layer id
     auto const &surface_id = this->id_alloc.lookup(role);
@@ -572,7 +536,7 @@ void WindowManager::startTransitionWrapper(vector<WMAction> &actions)
         if ("" != act.role)
         {
             bool found;
-            auto const &surface_id = this->id_alloc.lookup(act.role.c_str());
+            auto const &surface_id = this->id_alloc.lookup(act.role);
             if(surface_id == nullopt)
             {
                 goto proc_remove_request;
@@ -665,7 +629,7 @@ void WindowManager::emit_syncdraw(const string &role, const string &area)
 {
     struct rect rect = this->lc->getAreaSize(area);
     this->send_event(kListEventName[Event_SyncDraw],
-        role.c_str(), area.c_str(), rect.x, rect.y, rect.w, rect.h);
+        role, area, rect.x, rect.y, rect.w, rect.h);
 }
 
 void WindowManager::emit_flushdraw(const string& role)
@@ -774,12 +738,7 @@ WMError WindowManager::startTransition(unsigned req_num)
         if (action.visible == TaskVisible::VISIBLE)
         {
             sync_draw_happen = true;
-
-            // TODO: application requests by old role,
-            //       so convert role new to old for emitting event
-            string old_role = this->rolenew2old[action.role];
-
-            this->emit_syncdraw(old_role, action.area);
+            this->emit_syncdraw(action.role, action.area);
             /* TODO: emit event for app not subscriber
             if(g_app_list.contains(y.appid))
                 g_app_list.lookUpClient(y.appid)->emit_syncdraw(y.role, y.area); */
@@ -797,8 +756,7 @@ WMError WindowManager::startTransition(unsigned req_num)
         for (const auto &x : actions)
         {
             this->lc->visibilityChange(x);
-            string old_role = this->rolenew2old[x.role];
-            emit_deactivated(old_role.c_str());
+            emit_deactivated(x.role);
             /* if (g_app_list.contains(x.client->appID()))
             {
                 auto client = g_app_list.lookUpClient(x.client->appID());
@@ -840,17 +798,15 @@ WMError WindowManager::doEndDraw(unsigned req_num)
             }
             ret = this->lc->visibilityChange(act);
 
-            // Emit active/deactive event
-            string old_role = this->rolenew2old[act.role];
             if(act.visible == VISIBLE)
             {
-                emit_visible(old_role.c_str());
-                emit_activated(old_role.c_str());
+                emit_visible(act.role);
+                emit_activated(act.role);
             }
             else
             {
-                emit_invisible(old_role.c_str());
-                emit_deactivated(old_role.c_str());
+                emit_invisible(act.role);
+                emit_deactivated(act.role);
             }
 
             if (ret != WMError::SUCCESS)
@@ -870,11 +826,7 @@ WMError WindowManager::doEndDraw(unsigned req_num)
     {
         if(act_flush.visible == TaskVisible::VISIBLE)
         {
-            // TODO: application requests by old role,
-            //       so convert role new to old for emitting event
-            string old_role = this->rolenew2old[act_flush.role];
-
-            this->emit_flushdraw(old_role.c_str());
+            this->emit_flushdraw(act_flush.role);
         }
     }
 
@@ -967,173 +919,5 @@ void WindowManager::processNextRequest()
         HMI_SEQ_DEBUG(req_num, "Nothing Request. Waiting Request");
     }
 }
-
-const char* WindowManager::convertRoleOldToNew(char const *old_role)
-{
-    const char *new_role = nullptr;
-
-    for (auto const &on : this->roleold2new)
-    {
-        std::regex regex = std::regex(on.first);
-        if (std::regex_match(old_role, regex))
-        {
-            // role is old. So convert to new.
-            new_role = on.second.c_str();
-            break;
-        }
-    }
-
-    if (nullptr == new_role)
-    {
-        // role is new or fallback.
-        new_role = old_role;
-    }
-
-    HMI_DEBUG("old:%s -> new:%s", old_role, new_role);
-
-    return new_role;
-}
-
-int WindowManager::loadOldRoleDb()
-{
-    // Get afm application installed dir
-    char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
-    HMI_DEBUG("afm_app_install_dir:%s", afm_app_install_dir);
-
-    string file_name;
-    if (!afm_app_install_dir)
-    {
-        HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
-    }
-    else
-    {
-        file_name = string(afm_app_install_dir) + string("/etc/old_roles.json");
-    }
-
-    // Load old_role.db
-    json_object* json_obj;
-    int ret = jh::inputJsonFilie(file_name.c_str(), &json_obj);
-    if (0 > ret)
-    {
-        HMI_ERROR("Could not open old_role.db, so use default old_role information");
-        json_obj = json_tokener_parse(kDefaultOldRoleDb);
-    }
-    HMI_DEBUG("json_obj dump:%s", json_object_get_string(json_obj));
-
-    // Perse apps
-    json_object* json_cfg;
-    if (!json_object_object_get_ex(json_obj, "old_roles", &json_cfg))
-    {
-        HMI_ERROR("Parse Error!!");
-        return -1;
-    }
-
-    int len = json_object_array_length(json_cfg);
-    HMI_DEBUG("json_cfg len:%d", len);
-    HMI_DEBUG("json_cfg dump:%s", json_object_get_string(json_cfg));
-
-    for (int i=0; i<len; i++)
-    {
-        json_object* json_tmp = json_object_array_get_idx(json_cfg, i);
-
-        const char* old_role = jh::getStringFromJson(json_tmp, "name");
-        if (nullptr == old_role)
-        {
-            HMI_ERROR("Parse Error!!");
-            return -1;
-        }
-
-        const char* new_role = jh::getStringFromJson(json_tmp, "new");
-        if (nullptr == new_role)
-        {
-            HMI_ERROR("Parse Error!!");
-            return -1;
-        }
-
-        this->roleold2new[old_role] = string(new_role);
-    }
-
-    // Check
-    for(auto itr = this->roleold2new.begin();
-      itr != this->roleold2new.end(); ++itr)
-    {
-        HMI_DEBUG(">>> role old:%s new:%s",
-                  itr->first.c_str(), itr->second.c_str());
-    }
-
-    // Release json_object
-    json_object_put(json_obj);
-
-    return 0;
-}
-
-const char* WindowManager::kDefaultOldRoleDb = "{ \
-    \"old_roles\": [ \
-        { \
-            \"name\": \"HomeScreen\", \
-            \"new\": \"homescreen\" \
-        }, \
-        { \
-            \"name\": \"Music\", \
-            \"new\": \"music\" \
-        }, \
-        { \
-            \"name\": \"MediaPlayer\", \
-            \"new\": \"music\" \
-        }, \
-        { \
-            \"name\": \"Video\", \
-            \"new\": \"video\" \
-        }, \
-        { \
-            \"name\": \"VideoPlayer\", \
-            \"new\": \"video\" \
-        }, \
-        { \
-            \"name\": \"WebBrowser\", \
-            \"new\": \"browser\" \
-        }, \
-        { \
-            \"name\": \"Radio\", \
-            \"new\": \"radio\" \
-        }, \
-        { \
-            \"name\": \"Phone\", \
-            \"new\": \"phone\" \
-        }, \
-        { \
-            \"name\": \"Navigation\", \
-            \"new\": \"map\" \
-        }, \
-        { \
-            \"name\": \"HVAC\", \
-            \"new\": \"hvac\" \
-        }, \
-        { \
-            \"name\": \"Settings\", \
-            \"new\": \"settings\" \
-        }, \
-        { \
-            \"name\": \"Dashboard\", \
-            \"new\": \"dashboard\" \
-        }, \
-        { \
-            \"name\": \"POI\", \
-            \"new\": \"poi\" \
-        }, \
-        { \
-            \"name\": \"Mixer\", \
-            \"new\": \"mixer\" \
-        }, \
-        { \
-            \"name\": \"Restriction\", \
-            \"new\": \"restriction\" \
-        }, \
-        { \
-            \"name\": \"^OnScreen.*\", \
-            \"new\": \"on_screen\" \
-        } \
-    ] \
-}";
 
 } // namespace wm
