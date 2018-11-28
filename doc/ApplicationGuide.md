@@ -218,7 +218,7 @@ An application can use libwindowmanager.so to call Window Manager API simply.
 
 Window Manager is based on the GENIVI layer management system.
 
-![software-stack.png](parts/software-stack.png)
+![wm_software-stack.png](parts/wm_software-stack.png)
 
 ## Layers
 
