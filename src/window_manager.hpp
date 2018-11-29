@@ -217,8 +217,6 @@ class WindowManager
     void stopTimer();
     void processNextRequest();
 
-    int loadOldRoleDb();
-
   private:
     std::map<std::string, struct afb_event> map_afb_event;
     std::unordered_map<std::string, struct rect> area2size;
