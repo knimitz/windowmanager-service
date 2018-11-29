@@ -29,7 +29,7 @@ void rectangle::fit(unsigned long to_width, unsigned long to_height)
 {
     // fit rect within (to_width x to_height)
 
-    if (to_width <= width()) {
+    if (to_width <= (unsigned long)width()) {
         // scale to fit with
         set_bottom(top() + (static_cast<long>(to_width) * height() / width()) - 1);
         set_right(left() + to_width - 1);

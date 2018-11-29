@@ -136,7 +136,7 @@ int WindowManager::init()
     // Make afb event
     for (int i = Event_Val_Min; i <= Event_Val_Max; i++)
     {
-        map_afb_event[kListEventName[i]] = afb_daemon_make_event(kListEventName[i].c_str());
+        map_afb_event[kListEventName[i]] = afb_api_make_event(afbBindingV3root, kListEventName[i].c_str());
     }
 
     const struct rect css_bg = this->lc->getAreaSize("fullscreen");
@@ -378,9 +378,9 @@ void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
     }
 }
 
-int WindowManager::api_subscribe(afb_req req, int event_id)
+int WindowManager::api_subscribe(afb_req_t req, int event_id)
 {
-    struct afb_event event = this->map_afb_event[kListEventName[event_id]];
+    afb_event_t event = this->map_afb_event[kListEventName[event_id]];
     return afb_req_subscribe(req, event);
 }
 
@@ -839,6 +839,13 @@ void WindowManager::emitScreenUpdated(unsigned req_num)
     HMI_SEQ_DEBUG(req_num, "emit screen updated");
     bool found = false;
     auto actions = g_app_list.getActions(req_num, &found);
+    if (!found)
+    {
+        HMI_SEQ_ERROR(req_num,
+                      "Window Manager bug :%s : Action is not set",
+                      errorDescription(WMError::NO_ENTRY));
+        return;
+    }
 
     // create json object
     json_object *j = json_object_new_object();
@@ -874,7 +881,7 @@ void WindowManager::setTimer()
     if (g_timer_ev_src == nullptr)
     {
         // firsttime set into sd_event
-        int ret = sd_event_add_time(afb_daemon_get_event_loop(), &g_timer_ev_src,
+        int ret = sd_event_add_time(afb_api_get_event_loop(afbBindingV3root), &g_timer_ev_src,
             CLOCK_BOOTTIME, (uint64_t)(ts.tv_sec + kTimeOut) * 1000000ULL, 1, processTimerHandler, this);
         if (ret < 0)
         {

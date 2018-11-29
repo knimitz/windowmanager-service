@@ -56,7 +56,7 @@ target_link_libraries(${TARGETS_WM}
 
 target_compile_definitions(${TARGETS_WM}
     PRIVATE
-        AFB_BINDING_VERSION=2
+        AFB_BINDING_VERSION=3
         # We do not want source location of messages
         AFB_BINDING_PRAGMA_NO_VERBOSE_DETAILS
         WINMAN_VERSION_STRING="${PACKAGE_VERSION}"
@@ -70,7 +70,7 @@ endif()
 
 target_compile_options(${TARGETS_WM}
     PRIVATE
-        -Wall -Wextra -Wno-unused-parameter -Wno-comment)
+        -Wall -Wextra -Wno-unused-parameter -Wno-comment -Wno-missing-field-initializers)
 
 set_target_properties(${TARGETS_WM}
     PROPERTIES

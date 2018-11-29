@@ -310,6 +310,10 @@ const vector<struct WMAction> &AppList::getActions(unsigned req_num, bool* found
         }
     }
     HMI_SEQ_ERROR(req_num, "Couldn't get action with the request : %d", req_num);
+    {
+      static vector<struct WMAction> empty;
+      return empty;
+    }
 }
 
 /**

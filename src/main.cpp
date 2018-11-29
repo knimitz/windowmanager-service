@@ -56,7 +56,7 @@ int afb_instance::init()
     return this->wmgr.init();
 }
 
-int _binding_init()
+static int _binding_init()
 {
     HMI_NOTICE("WinMan ver. %s", WINMAN_VERSION_STRING);
 
@@ -78,7 +78,7 @@ error:
     return -1;
 }
 
-int binding_init() noexcept
+static int binding_init (afb_api_t api) noexcept
 {
     try
     {
@@ -110,7 +110,7 @@ static void cbRemoveClientCtxt(void *data)
     delete ctxt;
 }
 
-static void createSecurityContext(afb_req req, const char* appid, const char* role)
+static void createSecurityContext(afb_req_t req, const char* appid, const char* role)
 {
     WMClientCtxt *ctxt = (WMClientCtxt *)afb_req_context_get(req);
     if (!ctxt)
@@ -123,7 +123,7 @@ static void createSecurityContext(afb_req req, const char* appid, const char* ro
     }
 }
 
-void windowmanager_requestsurface(afb_req req) noexcept
+void windowmanager_requestsurface(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
     if (g_afb_instance == nullptr)
@@ -169,7 +169,7 @@ void windowmanager_requestsurface(afb_req req) noexcept
     }
 }
 
-void windowmanager_requestsurfacexdg(afb_req req) noexcept
+void windowmanager_requestsurfacexdg(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
     if (g_afb_instance == nullptr)
@@ -222,7 +222,7 @@ void windowmanager_requestsurfacexdg(afb_req req) noexcept
     }
 }
 
-void windowmanager_activatewindow(afb_req req) noexcept
+void windowmanager_activatewindow(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
     if (g_afb_instance == nullptr)
@@ -272,7 +272,7 @@ void windowmanager_activatewindow(afb_req req) noexcept
     }
 }
 
-void windowmanager_deactivatewindow(afb_req req) noexcept
+void windowmanager_deactivatewindow(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
     if (g_afb_instance == nullptr)
@@ -315,7 +315,7 @@ void windowmanager_deactivatewindow(afb_req req) noexcept
     }
 }
 
-void windowmanager_enddraw(afb_req req) noexcept
+void windowmanager_enddraw(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
     if (g_afb_instance == nullptr)
@@ -349,7 +349,7 @@ void windowmanager_enddraw(afb_req req) noexcept
     }
 }
 
-void windowmanager_getdisplayinfo_thunk(afb_req req) noexcept
+void windowmanager_getdisplayinfo_thunk(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
     if (g_afb_instance == nullptr)
@@ -376,7 +376,7 @@ void windowmanager_getdisplayinfo_thunk(afb_req req) noexcept
     }
 }
 
-void windowmanager_getareainfo_thunk(afb_req req) noexcept
+void windowmanager_getareainfo_thunk(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
     if (g_afb_instance == nullptr)
@@ -413,7 +413,7 @@ void windowmanager_getareainfo_thunk(afb_req req) noexcept
     }
 }
 
-void windowmanager_wm_subscribe(afb_req req) noexcept
+void windowmanager_wm_subscribe(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
     if (g_afb_instance == nullptr)
@@ -448,7 +448,7 @@ void windowmanager_wm_subscribe(afb_req req) noexcept
     }
 }
 
-void windowmanager_ping(afb_req req) noexcept
+void windowmanager_ping(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
 
@@ -463,7 +463,7 @@ void windowmanager_ping(afb_req req) noexcept
     }
 }
 
-void windowmanager_debug_terminate(afb_req req) noexcept
+void windowmanager_debug_terminate(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
     if (g_afb_instance == nullptr)
@@ -490,18 +490,30 @@ void windowmanager_debug_terminate(afb_req req) noexcept
     }
 }
 
-const struct afb_verb_v2 windowmanager_verbs[] = {
-    {"requestSurface", windowmanager_requestsurface, nullptr, nullptr, AFB_SESSION_NONE},
-    {"requestSurfaceXDG", windowmanager_requestsurfacexdg, nullptr, nullptr, AFB_SESSION_NONE},
-    {"activateWindow", windowmanager_activatewindow, nullptr, nullptr, AFB_SESSION_NONE},
-    {"deactivateWindow", windowmanager_deactivatewindow, nullptr, nullptr, AFB_SESSION_NONE},
-    {"endDraw", windowmanager_enddraw, nullptr, nullptr, AFB_SESSION_NONE},
-    {"getDisplayInfo", windowmanager_getdisplayinfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
-    {"getAreaInfo", windowmanager_getareainfo_thunk, nullptr, nullptr, AFB_SESSION_NONE},
-    {"wm_subscribe", windowmanager_wm_subscribe, nullptr, nullptr, AFB_SESSION_NONE},
-    {"ping", windowmanager_ping, nullptr, nullptr, AFB_SESSION_NONE},
-    {"debug_terminate", windowmanager_debug_terminate, nullptr, nullptr, AFB_SESSION_NONE},
-    {}};
+const afb_verb_t windowmanager_verbs[] = {
+    { .verb = "requestSurface", .callback = windowmanager_requestsurface },
+    { .verb = "requestSurfaceXDG", .callback = windowmanager_requestsurfacexdg },
+    { .verb = "activateWindow", .callback = windowmanager_activatewindow },
+    { .verb = "deactivateWindow", .callback = windowmanager_deactivatewindow },
+    { .verb = "endDraw", .callback = windowmanager_enddraw },
+    { .verb = "getDisplayInfo", .callback = windowmanager_getdisplayinfo_thunk },
+    { .verb = "getAreaInfo", .callback = windowmanager_getareainfo_thunk },
+    { .verb = "wm_subscribe", .callback = windowmanager_wm_subscribe },
+    { .verb = "ping", .callback = windowmanager_ping },
+    { .verb = "debug_terminate", .callback = windowmanager_debug_terminate },
+    {} };
 
-extern "C" const struct afb_binding_v2 afbBindingV2 = {
-    "windowmanager", nullptr, nullptr, windowmanager_verbs, nullptr, binding_init, nullptr, 0};
+extern "C" const afb_binding_t afbBindingExport = {
+  .api = "windowmanager",
+  .specification = "windowmanager",
+  .info = "windowmanager",
+  .verbs = windowmanager_verbs,
+  .preinit = nullptr,
+  .init = binding_init,
+  .onevent = nullptr,
+  .userdata = nullptr,
+  .provide_class = nullptr,
+  .require_class = nullptr,
+  .require_api = nullptr,
+  .noconcurrency = 0
+};

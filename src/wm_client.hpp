@@ -24,7 +24,6 @@
 
 extern "C"
 {
-#define AFB_BINDING_VERSION 2
 #include <afb/afb-binding.h>
 }
 
@@ -56,7 +55,7 @@ class WMClient
     bool removeSurfaceIfExist(unsigned surface);
 
 #if GTEST_ENABLED
-    bool subscribe(afb_req req, const std::string &event_name);
+    bool subscribe(afb_req_t req, const std::string &event_name);
     void emitError(WM_CLIENT_ERROR_EVENT ev);
 #endif
 
@@ -74,7 +73,7 @@ class WMClient
     // This is for unit test. afb_make_event occurs sig11 if call not in afb-binding
     std::unordered_map<std::string, std::string> event2list;
 #else
-    std::unordered_map<std::string, struct afb_event> evname2list;
+    std::unordered_map<std::string, afb_event_t> evname2list;
 #endif
 };
 } // namespace wm

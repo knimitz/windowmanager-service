@@ -26,7 +26,7 @@
 
 extern "C"
 {
-#define AFB_BINDING_VERSION 2
+#define AFB_BINDING_VERSION 3
 #include <afb/afb-binding.h>
 #include <systemd/sd-event.h>
 #include "stm.h"
@@ -693,7 +693,7 @@ int PolicyManager::setStateTransitionProcessToSystemd(int event_id, uint64_t del
 
     if (0 == delay_ms)
     {
-        int ret = sd_event_add_defer(afb_daemon_get_event_loop(), &event_source,
+        int ret = sd_event_add_defer(afb_api_get_event_loop(afbBindingV3root), &event_source,
                                      &pm::transitionStateWrapper, new int(event_id));
         if (0 > ret)
         {
@@ -711,7 +711,7 @@ int PolicyManager::setStateTransitionProcessToSystemd(int event_id, uint64_t del
         uint64_t usec = (time_spec.tv_sec * 1000000) + (time_spec.tv_nsec / 1000) + (delay_ms * 1000);
 
         // Set timer
-        int ret = sd_event_add_time(afb_daemon_get_event_loop(), &event_source,
+        int ret = sd_event_add_time(afb_api_get_event_loop(afbBindingV3root), &event_source,
                                     CLOCK_BOOTTIME, usec, 1,
                                     &pm::timerEventWrapper, new int(event_id));
         if (0 > ret)
