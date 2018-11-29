@@ -187,6 +187,9 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
         auto id = int(this->id_alloc.generate_id(role));
         this->tmp_surface2app[id] = {str_id, lid};
 
+        auto client = g_app_list.lookUpClient(str_id);
+        client->registerSurface(id);
+
         return Ok<int>(id);
     }
 

@@ -111,6 +111,11 @@ unsigned WMClient::surfaceID() const
     return this->surface;
 }
 
+void WMClient::registerSurface(unsigned surface)
+{
+    this->surface = surface;
+}
+
 /**
  * Add surface to the client
  *

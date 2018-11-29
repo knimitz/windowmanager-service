@@ -51,6 +51,7 @@ class WMClient
     std::string role() const;
     unsigned layerID() const;
     unsigned surfaceID() const;
+    void registerSurface(unsigned surface);
     WMError addSurface(unsigned surface);
     bool removeSurfaceIfExist(unsigned surface);
 
