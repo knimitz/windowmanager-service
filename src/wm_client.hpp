@@ -53,6 +53,8 @@ class WMClient
     unsigned surfaceID() const;
     void registerSurface(unsigned surface);
     WMError addSurface(unsigned surface);
+    bool isSourceSizeSet();
+    void setSurfaceSizeCorrectly();
     bool removeSurfaceIfExist(unsigned surface);
 
 #if GTEST_ENABLED
@@ -65,6 +67,7 @@ class WMClient
   private:
     std::string id;
     unsigned layer;
+    bool is_source_set;
     std::string main_role;
     std::string area;
     unsigned surface; // currently, main application has only one surface.

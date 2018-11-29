@@ -288,7 +288,6 @@ void WindowManager::api_activate_window(char const *appid, char const *drawing_n
     }
 
      // Do allocate tasks
-    
     ret = this->checkPolicy(req_num);
 
     if (ret != WMError::SUCCESS)

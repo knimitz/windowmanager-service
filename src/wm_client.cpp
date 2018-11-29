@@ -39,7 +39,7 @@ static const char kKeyError[] = "error";
 static const char kKeyErrorDesc[] = "kErrorDescription";
 
 WMClient::WMClient(const string &appid, unsigned layer, unsigned surface, const string &role)
-    : id(appid), layer(layer),
+    : id(appid), layer(layer), is_source_set(false),
       role2surface(0)
 {
     role2surface[role] = surface;
@@ -57,6 +57,7 @@ WMClient::WMClient(const string &appid, unsigned layer, unsigned surface, const 
 WMClient::WMClient(const string &appid, const string &role)
     : id(appid),
       layer(0),
+      is_source_set(false),
       role2surface(0),
       evname2list(0)
 {
@@ -134,6 +135,16 @@ WMError WMClient::addSurface(unsigned surface)
         err = ilm_commitChanges();
     }
     return (err == ILM_SUCCESS) ? WMError::SUCCESS : WMError::FAIL;
+}
+
+void WMClient::setSurfaceSizeCorrectly()
+{
+    this->is_source_set = true;
+}
+
+bool WMClient::isSourceSizeSet()
+{
+    return this->is_source_set;
 }
 
 bool WMClient::removeSurfaceIfExist(unsigned surface)

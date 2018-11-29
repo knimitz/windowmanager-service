@@ -394,7 +394,22 @@ WMError LayerControl::layoutChange(const WMAction& action)
 
     auto rect = this->getAreaSize(action.area);
     HMI_DEBUG("Set layout %d, %d, %d, %d",rect.x, rect.y, rect.w, rect.h);
-    ilm_commitChanges();
+
+    // Sometimes, ivi_wm_surface_size signal doesn't reach window manager,
+    // then, Window Manager set set source size = 0.
+    if(!action.client->isSourceSizeSet())
+    {
+        ilmSurfaceProperties sp;
+        ilm_getPropertiesOfSurface(surface, &sp);
+        if((sp.origSourceHeight != sp.sourceHeight) || (sp.origSourceWidth != sp.sourceWidth))
+        {
+            HMI_SEQ_NOTICE(action.req_num, "set source size w:%d h%d", sp.origSourceWidth, sp.origSourceHeight);
+            ilm_surfaceSetSourceRectangle(surface, 0, 0, sp.origSourceWidth, sp.origSourceHeight);
+            ilm_commitChanges();
+            action.client->setSurfaceSizeCorrectly();
+        }
+    }
+
     ilm_surfaceSetDestinationRectangle(surface, rect.x, rect.y, rect.w, rect.h);
     ilm_commitChanges();
     for(auto &wm_layer: this->wm_layers)
