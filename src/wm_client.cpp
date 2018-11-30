@@ -48,7 +48,7 @@ WMClient::WMClient(const string &appid, unsigned layer, unsigned surface, const 
 #if GTEST_ENABLED
         string ev = x;
 #else
-        afb_event ev = afb_daemon_make_event(x.c_str());
+        afb_event_t ev = afb_api_make_event(afbBindingV3root, x.c_str());
 #endif
         evname2list[x] = ev;
     }
@@ -66,7 +66,7 @@ WMClient::WMClient(const string &appid, const string &role)
 #if GTEST_ENABLED
         string ev = x;
 #else
-        afb_event ev = afb_daemon_make_event(x.c_str());
+        afb_event_t ev = afb_api_make_event(afbBindingV3root, x.c_str());
 #endif
         evname2list[x] = ev;
     }
@@ -85,7 +85,7 @@ WMClient::WMClient(const string &appid, unsigned layer, const string &role)
 #if GTEST_ENABLED
         string ev = x;
 #else
-        afb_event ev = afb_daemon_make_event(x.c_str());
+        afb_event_t ev = afb_api_make_event(afbBindingV3root, x.c_str());
 #endif
         evname2list[x] = ev;
     }
@@ -144,7 +144,7 @@ bool WMClient::removeSurfaceIfExist(unsigned surface)
 
 
 #if GTEST_ENABLED
-bool WMClient::subscribe(afb_req req, const string &evname)
+bool WMClient::subscribe(afb_req_t req, const string &evname)
 {
     if(evname != kKeyError){
         HMI_DEBUG("error is only enabeled for now");

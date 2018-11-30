@@ -176,7 +176,7 @@ class WindowManager
     void api_activate_window(char const *appid, char const *role, char const *drawing_area, const reply_func &reply);
     void api_deactivate_window(char const *appid, char const *role, const reply_func &reply);
     void api_enddraw(char const *appid, char const *role);
-    int  api_subscribe(afb_req req, int event_id);
+    int  api_subscribe(afb_req_t req, int event_id);
     result<json_object *> api_get_display_info();
     result<json_object *> api_get_area_info(char const *role);
     void send_event(const std::string& evname, const std::string& role);
@@ -218,7 +218,7 @@ class WindowManager
     void processNextRequest();
 
   private:
-    std::map<std::string, struct afb_event> map_afb_event;
+    std::map<std::string, afb_event_t> map_afb_event;
     std::unordered_map<std::string, struct rect> area2size;
     std::shared_ptr<LayerControl> lc;
     PMWrapper pmw;
