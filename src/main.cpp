@@ -431,10 +431,10 @@ void windowmanager_wm_subscribe(afb_req_t req) noexcept
             afb_req_fail(req, "failed", "Need char const* argument event");
             return;
         }
-        int event_id = json_object_get_int(j);
-        int ret = g_afb_instance->wmgr.api_subscribe(req, event_id);
+        wm::WindowManager::EventType event_id = (wm::WindowManager::EventType)json_object_get_int(j);
+        bool ret = g_afb_instance->wmgr.api_subscribe(req, event_id);
 
-        if (ret)
+        if (!ret)
         {
             afb_req_fail(req, "failed", "Error: afb_req_subscribe()");
             return;

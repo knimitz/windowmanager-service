@@ -176,11 +176,9 @@ class WindowManager
     void api_activate_window(char const *appid, char const *role, char const *drawing_area, const reply_func &reply);
     void api_deactivate_window(char const *appid, char const *role, const reply_func &reply);
     void api_enddraw(char const *appid, char const *role);
-    int  api_subscribe(afb_req_t req, int event_id);
+    bool api_subscribe(afb_req_t req, EventType event_id);
     result<json_object *> api_get_display_info();
     result<json_object *> api_get_area_info(char const *role);
-    void send_event(const std::string& evname, const std::string& role);
-    void send_event(const std::string& evname, const std::string& role, const std::string& area, int x, int y, int w, int h);
 
     // Events from the compositor we are interested in
     void surface_created(unsigned surface_id);
@@ -195,16 +193,6 @@ class WindowManager
     void processError(WMError error);
 
   private:
-    // WM Events to clients
-    void emit_activated(const std::string& role);
-    void emit_deactivated(const std::string& role);
-    void emit_syncdraw(const std::string& role, char const *area, int x, int y, int w, int h);
-    void emit_syncdraw(const std::string &role, const std::string &area);
-    void emit_flushdraw(const std::string& role);
-    void emit_visible(const std::string& role, bool is_visible);
-    void emit_invisible(const std::string& role);
-    void emit_visible(const std::string& role);
-
     WMError setRequest(const std::string &appid, const std::string &role, const std::string &area,
                              Task task, unsigned *req_num);
     WMError checkPolicy(unsigned req_num);

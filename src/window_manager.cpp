@@ -133,8 +133,8 @@ int WindowManager::init()
     // Register callback to PolicyManager
     this->pmw.registerCallback(onStateTransitioned, onError);
 
-    // Make afb event
-    for (int i = Event_Val_Min; i <= Event_Val_Max; i++)
+    // Make afb event for subscriber
+    for (int i = Event_ScreenUpdated; i < Event_Error; i++)
     {
         map_afb_event[kListEventName[i]] = afb_api_make_event(afbBindingV3root, kListEventName[i].c_str());
     }
@@ -380,10 +380,37 @@ void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
     }
 }
 
-int WindowManager::api_subscribe(afb_req_t req, int event_id)
+bool WindowManager::api_subscribe(afb_req_t req, EventType event_id)
 {
-    afb_event_t event = this->map_afb_event[kListEventName[event_id]];
-    return afb_req_subscribe(req, event);
+    bool ret = false;
+    char* appid = afb_req_get_application_id(req);
+    if(event_id < Event_Val_Min || event_id > Event_Val_Max)
+    {
+        HMI_ERROR("not defined in Window Manager", event_id);
+        return ret;
+    }
+    HMI_INFO("%s subscribe %s : %d", appid, kListEventName[event_id], event_id);
+    if(event_id == Event_ScreenUpdated)
+    {
+        // Event_ScreenUpdated should be emitted to subscriber
+        afb_event_t event = this->map_afb_event[kListEventName[event_id]];
+        int rc = afb_req_subscribe(req, event);
+        if(rc == 0)
+        {
+            ret = true;
+        }
+    }
+    else if(appid)
+    {
+        string id = appid;
+        free(appid);
+        auto client = g_app_list.lookUpClient(id);
+        if(client != nullptr)
+        {
+            ret = client->subscribe(req, kListEventName[event_id]);
+        }
+    }
+    return ret;
 }
 
 result<json_object *> WindowManager::api_get_display_info()
@@ -423,39 +450,6 @@ result<json_object *> WindowManager::api_get_area_info(char const *drawing_name)
     json_object_object_add(object, kKeyHeight, json_object_new_int(area_info.h));
 
     return Ok<json_object *>(object);
-}
-
-void WindowManager::send_event(const string& evname, const string& role)
-{
-    json_object *j = json_object_new_object();
-    json_object_object_add(j, kKeyDrawingName, json_object_new_string(role.c_str()));
-
-    int ret = afb_event_push(this->map_afb_event[evname], j);
-    if (ret != 0)
-    {
-        HMI_DEBUG("afb_event_push failed: %m");
-    }
-}
-
-void WindowManager::send_event(const string& evname, const string& role, const string& area,
-                     int x, int y, int w, int h)
-{
-    json_object *j_rect = json_object_new_object();
-    json_object_object_add(j_rect, kKeyX, json_object_new_int(x));
-    json_object_object_add(j_rect, kKeyY, json_object_new_int(y));
-    json_object_object_add(j_rect, kKeyWidth, json_object_new_int(w));
-    json_object_object_add(j_rect, kKeyHeight, json_object_new_int(h));
-
-    json_object *j = json_object_new_object();
-    json_object_object_add(j, kKeyDrawingName, json_object_new_string(role.c_str()));
-    json_object_object_add(j, kKeyDrawingArea, json_object_new_string(area.c_str()));
-    json_object_object_add(j, kKeyDrawingRect, j_rect);
-
-    int ret = afb_event_push(this->map_afb_event[evname], j);
-    if (ret != 0)
-    {
-        HMI_DEBUG("afb_event_push failed: %m");
-    }
 }
 
 /**
@@ -608,49 +602,6 @@ void WindowManager::processError(WMError error)
     this->processNextRequest();
 }
 
-/*
- ******* Private Functions *******
- */
-
-void WindowManager::emit_activated(const string& role)
-{
-    this->send_event(kListEventName[Event_Active], role);
-}
-
-void WindowManager::emit_deactivated(const string& role)
-{
-    this->send_event(kListEventName[Event_Inactive], role);
-}
-
-void WindowManager::emit_syncdraw(const string& role, char const *area, int x, int y, int w, int h)
-{
-    this->send_event(kListEventName[Event_SyncDraw], role, area, x, y, w, h);
-}
-
-void WindowManager::emit_syncdraw(const string &role, const string &area)
-{
-    struct rect rect = this->lc->getAreaSize(area);
-    this->send_event(kListEventName[Event_SyncDraw],
-        role, area, rect.x, rect.y, rect.w, rect.h);
-}
-
-void WindowManager::emit_flushdraw(const string& role)
-{
-    this->send_event(kListEventName[Event_FlushDraw], role);
-}
-
-void WindowManager::emit_visible(const string& role, bool is_visible)
-{
-    this->send_event(is_visible ? kListEventName[Event_Visible] : kListEventName[Event_Invisible], role);
-}
-
-void WindowManager::emit_invisible(const string& role)
-{
-    return emit_visible(role, false);
-}
-
-void WindowManager::emit_visible(const string& role) { return emit_visible(role, true); }
-
 WMError WindowManager::setRequest(const string& appid, const string &role, const string &area,
                             Task task, unsigned* req_num)
 {
@@ -740,10 +691,8 @@ WMError WindowManager::startTransition(unsigned req_num)
         if (action.visible == TaskVisible::VISIBLE)
         {
             sync_draw_happen = true;
-            this->emit_syncdraw(action.role, action.area);
-            /* TODO: emit event for app not subscriber
-            if(g_app_list.contains(y.appid))
-                g_app_list.lookUpClient(y.appid)->emit_syncdraw(y.role, y.area); */
+            struct rect r = this->lc->getAreaSize(action.area);
+            action.client->emitSyncDraw(action.area, r);
         }
     }
 
@@ -758,12 +707,8 @@ WMError WindowManager::startTransition(unsigned req_num)
         for (const auto &x : actions)
         {
             this->lc->visibilityChange(x);
-            emit_deactivated(x.role);
-            /* if (g_app_list.contains(x.client->appID()))
-            {
-                auto client = g_app_list.lookUpClient(x.client->appID());
-                this->deactivate(client->surfaceID(x.role));
-            } */
+            x.client->emitActive(false);
+            x.client->emitVisible(false);
         }
         this->lc->renderLayers();
         ret = WMError::NO_LAYOUT_CHANGE;
@@ -800,16 +745,8 @@ WMError WindowManager::doEndDraw(unsigned req_num)
             }
             ret = this->lc->visibilityChange(act);
 
-            if(act.visible == VISIBLE)
-            {
-                emit_visible(act.role);
-                emit_activated(act.role);
-            }
-            else
-            {
-                emit_invisible(act.role);
-                emit_deactivated(act.role);
-            }
+            act.client->emitActive((act.visible == VISIBLE));
+            act.client->emitVisible((act.visible == VISIBLE));
 
             if (ret != WMError::SUCCESS)
             {
@@ -828,7 +765,7 @@ WMError WindowManager::doEndDraw(unsigned req_num)
     {
         if(act_flush.visible == TaskVisible::VISIBLE)
         {
-            this->emit_flushdraw(act_flush.role);
+            act_flush.client->emitFlushDraw();
         }
     }
 

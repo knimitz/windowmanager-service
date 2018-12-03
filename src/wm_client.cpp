@@ -16,7 +16,6 @@
 
 #include <json-c/json.h>
 #include "wm_client.hpp"
-#include "util.hpp"
 #include <ilm/ilm_control.h>
 
 #define INVALID_SURFACE_ID 0
@@ -27,16 +26,31 @@ using std::vector;
 namespace wm
 {
 
-static const vector<string> kWMEvents = {
-    // Private event for applications
-    "syncDraw", "flushDraw", "visible", "invisible", "active", "inactive", "error"};
-static const vector<string> kErrorDescription = {
-    "unknown-error"};
-
+static const char kActive[] = "active";
+static const char kInactive[] = "inactive";
+static const char kVisible[] = "visible";
+static const char kInvisible[] = "invisible";
+static const char kSyncDraw[] = "syncDraw";
+static const char kFlushDraw[] = "flushDraw";
 static const char kKeyDrawingName[] = "drawing_name";
+static const char kKeyDrawingArea[] = "drawing_area";
+static const char kKeyRole[] = "role";
+static const char kKeyArea[] = "area";
 static const char kKeyrole[] = "role";
 static const char kKeyError[] = "error";
-static const char kKeyErrorDesc[] = "kErrorDescription";
+static const char kKeyErrorDesc[] = "errorDescription";
+static const char kKeyX[] = "x";
+static const char kKeyY[] = "y";
+static const char kKeyWidth[] = "width";
+static const char kKeyHeight[] = "height";
+static const char kKeyDrawingRect[] = "drawing-rect";
+
+static const vector<string> kWMEvents = {
+    // Private event for applications
+    kActive, kInactive,
+    kVisible, kInvisible,
+    kSyncDraw, kFlushDraw,
+    kKeyError};
 
 WMClient::WMClient(const string &appid, unsigned layer, unsigned surface, const string &role)
     : id(appid), layer(layer), is_source_set(false),
@@ -50,7 +64,7 @@ WMClient::WMClient(const string &appid, unsigned layer, unsigned surface, const 
 #else
         afb_event_t ev = afb_api_make_event(afbBindingV3root, x.c_str());
 #endif
-        evname2list[x] = ev;
+        evname2afb_event[x] = ev;
     }
 }
 
@@ -59,7 +73,7 @@ WMClient::WMClient(const string &appid, const string &role)
       layer(0),
       is_source_set(false),
       role2surface(0),
-      evname2list(0)
+      evname2afb_event(0)
 {
     role2surface[role] = INVALID_SURFACE_ID;
     for (auto x : kWMEvents)
@@ -69,7 +83,7 @@ WMClient::WMClient(const string &appid, const string &role)
 #else
         afb_event_t ev = afb_api_make_event(afbBindingV3root, x.c_str());
 #endif
-        evname2list[x] = ev;
+        evname2afb_event[x] = ev;
     }
 }
 
@@ -78,7 +92,7 @@ WMClient::WMClient(const string &appid, unsigned layer, const string &role)
       layer(layer),
       main_role(role),
       role2surface(0),
-      evname2list(0)
+      evname2afb_event(0)
 {
     role2surface[role] = INVALID_SURFACE_ID;
     for (auto x : kWMEvents)
@@ -88,7 +102,7 @@ WMClient::WMClient(const string &appid, unsigned layer, const string &role)
 #else
         afb_event_t ev = afb_api_make_event(afbBindingV3root, x.c_str());
 #endif
-        evname2list[x] = ev;
+        evname2afb_event[x] = ev;
     }
 }
 
@@ -158,15 +172,9 @@ bool WMClient::removeSurfaceIfExist(unsigned surface)
     return ret;
 }
 
-
-#if GTEST_ENABLED
 bool WMClient::subscribe(afb_req_t req, const string &evname)
 {
-    if(evname != kKeyError){
-        HMI_DEBUG("error is only enabeled for now");
-        return false;
-    }
-    int ret = afb_req_subscribe(req, this->evname2list[evname]);
+    int ret = afb_req_subscribe(req, this->evname2afb_event[evname]);
     if (ret)
     {
         HMI_DEBUG("Failed to subscribe %s", evname.c_str());
@@ -175,24 +183,132 @@ bool WMClient::subscribe(afb_req_t req, const string &evname)
     return true;
 }
 
-void WMClient::emitError(WM_CLIENT_ERROR_EVENT ev)
+void WMClient::emitVisible(bool visible)
 {
-    if (!afb_event_is_valid(this->evname2list[kKeyError])){
+    // error check
+    bool allow_send = false;
+    if(visible)
+    {
+        allow_send = afb_event_is_valid(this->evname2afb_event[kVisible]);
+    }
+    else
+    {
+        allow_send = afb_event_is_valid(this->evname2afb_event[kInvisible]);
+    }
+    if(allow_send)
+    {
+        this->area = area;
+        json_object* j = json_object_new_object();
+        json_object_object_add(j, kKeyRole, json_object_new_string(this->role().c_str()));
+        json_object_object_add(j, kKeyDrawingName, json_object_new_string(this->role().c_str()));
+
+        if(visible)
+        {
+            afb_event_push(this->evname2afb_event[kVisible], j);
+        }
+        else
+        {
+            afb_event_push(this->evname2afb_event[kInvisible], j);
+        }
+    }
+    else
+    {
+        HMI_ERROR("Failed to send %s", __func__);
+    }
+}
+
+void WMClient::emitActive(bool active)
+{
+    // error check
+    bool allow_send = false;
+    if(active)
+    {
+        allow_send = afb_event_is_valid(this->evname2afb_event[kActive]);
+    }
+    else
+    {
+        allow_send = afb_event_is_valid(this->evname2afb_event[kInactive]);
+    }
+    if(allow_send)
+    {
+        this->area = area;
+        json_object* j = json_object_new_object();
+        json_object_object_add(j, kKeyRole, json_object_new_string(this->role().c_str()));
+        json_object_object_add(j, kKeyDrawingName, json_object_new_string(this->role().c_str()));
+
+        if(active)
+        {
+            afb_event_push(this->evname2afb_event[kActive], j);
+        }
+        else
+        {
+            afb_event_push(this->evname2afb_event[kInactive], j);
+        }
+    }
+    else
+    {
+        HMI_ERROR("Failed to send %s", __func__);
+    }
+}
+
+void WMClient::emitSyncDraw(const string& area, struct rect& r)
+{
+    HMI_NOTICE("trace");
+    if(afb_event_is_valid(this->evname2afb_event[kSyncDraw]))
+    {
+        this->area = area;
+        json_object *j_rect = json_object_new_object();
+        json_object_object_add(j_rect, kKeyX, json_object_new_int(r.x));
+        json_object_object_add(j_rect, kKeyY, json_object_new_int(r.y));
+        json_object_object_add(j_rect, kKeyWidth, json_object_new_int(r.w));
+        json_object_object_add(j_rect, kKeyHeight, json_object_new_int(r.h));
+
+        json_object* j = json_object_new_object();
+        json_object_object_add(j, kKeyRole, json_object_new_string(this->role().c_str()));
+        json_object_object_add(j, kKeyDrawingName, json_object_new_string(this->role().c_str()));
+        json_object_object_add(j, kKeyDrawingArea, json_object_new_string(area.c_str()));
+        json_object_object_add(j, kKeyArea, json_object_new_string(this->role().c_str()));
+
+        json_object_object_add(j, kKeyDrawingRect, j_rect);
+        afb_event_push(this->evname2afb_event[kSyncDraw], j);
+    }
+    else
+    {
+        HMI_ERROR("Failed to send %s", __func__);
+    }
+}
+
+void WMClient::emitFlushDraw()
+{
+    if(afb_event_is_valid(this->evname2afb_event[kFlushDraw]))
+    {
+        json_object* j = json_object_new_object();
+        json_object_object_add(j, kKeyRole, json_object_new_string(this->role().c_str()));
+        json_object_object_add(j, kKeyDrawingName, json_object_new_string(this->role().c_str()));
+        afb_event_push(this->evname2afb_event[kFlushDraw], nullptr);
+    }
+    else
+    {
+        HMI_ERROR("Failed to send %s", __func__);
+    }
+}
+
+void WMClient::emitError(WMError error)
+{
+    if (!afb_event_is_valid(this->evname2afb_event[kKeyError])){
         HMI_ERROR("event err is not valid");
         return;
     }
     json_object *j = json_object_new_object();
-    json_object_object_add(j, kKeyError, json_object_new_int(ev));
-    json_object_object_add(j, kKeyErrorDesc, json_object_new_string(kErrorDescription[ev].c_str()));
-    HMI_DEBUG("error: %d, description:%s", ev, kErrorDescription[ev].c_str());
-
-    int ret = afb_event_push(this->evname2list[kKeyError], j);
+    json_object_object_add(j, kKeyError, json_object_new_int(error));
+    json_object_object_add(j, kKeyErrorDesc, json_object_new_string(errorDescription(error)));
+    HMI_DEBUG("error: %d, description:%s", error, errorDescription(error));
+    int ret = afb_event_push(this->evname2afb_event[kKeyError], j);
     if (ret != 0)
     {
         HMI_DEBUG("afb_event_push failed: %m");
     }
 }
-#endif
 
 void WMClient::dumpInfo()
 {

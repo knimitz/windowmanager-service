@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include "util.hpp"
 #include "wm_error.hpp"
 
 extern "C"
@@ -29,11 +30,6 @@ extern "C"
 
 namespace wm
 {
-
-enum WM_CLIENT_ERROR_EVENT
-{
-    UNKNOWN_ERROR
-};
 
 class WMClient
 {
@@ -57,10 +53,12 @@ class WMClient
     void setSurfaceSizeCorrectly();
     bool removeSurfaceIfExist(unsigned surface);
 
-#if GTEST_ENABLED
     bool subscribe(afb_req_t req, const std::string &event_name);
-    void emitError(WM_CLIENT_ERROR_EVENT ev);
-#endif
+    void emitActive(bool active);
+    void emitVisible(bool visible);
+    void emitSyncDraw(const std::string& area, struct rect& r);
+    void emitFlushDraw();
+    void emitError(WMError error);
 
     void dumpInfo();
 
@@ -75,9 +73,9 @@ class WMClient
     std::unordered_map<std::string, unsigned> role2surface;
 #if GTEST_ENABLED
     // This is for unit test. afb_make_event occurs sig11 if call not in afb-binding
-    std::unordered_map<std::string, std::string> event2list;
+    std::unordered_map<std::string, std::string> evname2afb_event;
 #else
-    std::unordered_map<std::string, afb_event_t> evname2list;
+    std::unordered_map<std::string, afb_event_t> evname2afb_event;
 #endif
 };
 } // namespace wm
