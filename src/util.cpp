@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 TOYOTA MOTOR CORPORATION
+ * Copyright (c) 2018 Konsulko Group
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +22,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
 
 #include <unistd.h>
+
+#include "hmi-debug.h"
 
 #ifdef SCOPE_TRACING
 thread_local int ScopeTrace::indent = 0;
@@ -93,3 +97,36 @@ void rectangle::set_aspect(double ratio)
     }
 }
 
+std::string get_file_path(const char *file_name, const char *log_category)
+{
+    char const *default_base_path = getenv("AFM_APP_INSTALL_DIR");
+    std::string path("");
+
+    if(!file_name) {
+        return path;
+    }
+
+    if (!default_base_path)
+    {
+        HMI_ERROR(log_category, "AFM_APP_INSTALL_DIR is not defined");
+    }
+    else
+    {
+        path = default_base_path;
+        path.append("/etc/");
+        path.append(file_name);
+    }
+
+    // Check for over-ride in /etc/xdg/windowmanager
+    std::string override_path("/etc/xdg/windowmanager/");
+    override_path.append(file_name);
+    std::ifstream i(override_path);
+    if (i.good())
+    {
+        path = override_path;
+    }
+    i.close();
+
+    HMI_INFO(log_category, "Using %s", path.c_str());
+    return path;
+}

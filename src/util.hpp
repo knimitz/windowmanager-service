@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 TOYOTA MOTOR CORPORATION
+ * Copyright (c) 2018 Konsulko Group
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,15 +21,9 @@
 #include <functional>
 #include <thread>
 #include <vector>
+#include <string>
 
 #include <sys/poll.h>
-
-#ifndef DO_NOT_USE_AFB
-extern "C"
-{
-#include <afb/afb-binding.h>
-};
-#endif
 
 #define CONCAT_(X, Y) X##Y
 #define CONCAT(X, Y) CONCAT_(X, Y)
@@ -162,5 +157,8 @@ class rectangle
     long _right;
     long _bottom;
 };
+
+// Configuration file path helper
+std::string get_file_path(const char *file_name, const char *log_category = "wm");
 
 #endif // !WM_UTIL_HPP

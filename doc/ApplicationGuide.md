@@ -144,7 +144,9 @@ Configuration
 
 The window manager is configured with the *layers.json* configuration
 file, by default it is searched in `${AFM_APP_INSTALL_DIR}/etc/layers.json`.
-Note, that the window manager will use default configuration unless this configuration is found.
+However, if /etc/xdg/windowmanager/layers.json exists, it will be used instead.
+The window manager will use a default configuration unless a configuration file
+is found in one of these locations.
 
 A sample configuration is provided with the window manager
 implementation, this sample is installed to ${AFM_APP_INSTALL_DIR}/etc/layers.json.

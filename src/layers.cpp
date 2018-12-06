@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 TOYOTA MOTOR CORPORATION
+ * Copyright (c) 2018 Konsulko Group
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +19,7 @@
 
 #include "layers.hpp"
 #include "json_helper.hpp"
+#include "util.hpp"
 #include "hmi-debug.h"
 
 namespace wm
@@ -210,19 +212,7 @@ int layer_map::loadAreaDb()
 {
     HMI_DEBUG("wm:lm", "Call");
 
-    // Get afm application installed dir
-    char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
-    HMI_DEBUG("wm:lm", "afm_app_install_dir:%s", afm_app_install_dir);
-
-    std::string file_name;
-    if (!afm_app_install_dir)
-    {
-        HMI_ERROR("wm:lm", "AFM_APP_INSTALL_DIR is not defined");
-    }
-    else
-    {
-        file_name = std::string(afm_app_install_dir) + std::string("/etc/areas.db");
-    }
+    std::string file_name(get_file_path("areas.db"));
 
     // Load area.db
     json_object *json_obj;

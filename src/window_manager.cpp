@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 TOYOTA MOTOR CORPORATION
+ * Copyright (c) 2018 Konsulko Group
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +20,7 @@
 
 #include "window_manager.hpp"
 #include "json_helper.hpp"
+#include "util.hpp"
 #include "applist.hpp"
 
 extern "C"
@@ -123,17 +125,7 @@ WindowManager::WindowManager(wl::display *d)
       id_alloc{},
       pending_events(false)
 {
-    char const *path_layers_json = getenv("AFM_APP_INSTALL_DIR");
-    std::string path;
-    if (!path_layers_json)
-    {
-        HMI_ERROR("wm", "AFM_APP_INSTALL_DIR is not defined");
-        path = std::string(path_layers_json);
-    }
-    else
-    {
-        path = std::string(path_layers_json) + std::string("/etc/layers.json");
-    }
+    std::string path(get_file_path("layers.json"));
 
     try
     {
@@ -1371,19 +1363,7 @@ const char* WindowManager::convertRoleOldToNew(char const *old_role)
 
 int WindowManager::loadOldRoleDb()
 {
-    // Get afm application installed dir
-    char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
-    HMI_DEBUG("wm", "afm_app_install_dir:%s", afm_app_install_dir);
-
-    std::string file_name;
-    if (!afm_app_install_dir)
-    {
-        HMI_ERROR("wm", "AFM_APP_INSTALL_DIR is not defined");
-    }
-    else
-    {
-        file_name = std::string(afm_app_install_dir) + std::string("/etc/old_roles.db");
-    }
+    std::string file_name(get_file_path("old_roles.db"));
 
     // Load old_role.db
     json_object* json_obj;

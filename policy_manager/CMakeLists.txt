@@ -45,6 +45,7 @@ add_library(${TARGETS_PM}
     SHARED
         policy_manager.cpp
         stm/stm.c
+        ../src/util.cpp
 )
 
 target_include_directories(${TARGETS_PM}
