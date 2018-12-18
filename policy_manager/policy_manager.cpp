@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 TOYOTA MOTOR CORPORATION
+ * Copyright (c) 2018 Konsulko Group
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -729,20 +730,7 @@ int PolicyManager::setStateTransitionProcessToSystemd(int event_id, uint64_t del
 
 int PolicyManager::loadRoleDb()
 {
-    std::string file_name;
-
-    // Get afm application installed dir
-    char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
-    HMI_DEBUG("afm_app_install_dir:%s", afm_app_install_dir);
-
-    if (!afm_app_install_dir)
-    {
-        HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
-    }
-    else
-    {
-        file_name = std::string(afm_app_install_dir) + std::string("/etc/roles.db");
-    }
+    std::string file_name(get_file_path("roles.db"));
 
     // Load roles.db
     json_object *json_obj;
@@ -832,19 +820,7 @@ int PolicyManager::loadStateDb()
 {
     HMI_DEBUG("Call");
 
-    // Get afm application installed dir
-    char const *afm_app_install_dir = getenv("AFM_APP_INSTALL_DIR");
-    HMI_DEBUG("afm_app_install_dir:%s", afm_app_install_dir);
-
-    std::string file_name;
-    if (!afm_app_install_dir)
-    {
-        HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
-    }
-    else
-    {
-        file_name = std::string(afm_app_install_dir) + std::string("/etc/states.db");
-    }
+    std::string file_name(get_file_path("states.db"));
 
     // Load states.db
     json_object *json_obj;

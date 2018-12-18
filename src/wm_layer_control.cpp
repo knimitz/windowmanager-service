@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 TOYOTA MOTOR CORPORATION
+ * Copyright (c) 2018 Konsulko Group
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +22,8 @@
 #include "request.hpp"
 #include "json_helper.hpp"
 
-#define LC_AREA_PATH "/etc/areas.json"
-#define LC_LAYER_SETTING_PATH "/etc/layers.json"
+#define LC_AREA_FILE "areas.json"
+#define LC_LAYER_SETTING_FILE "layers.json"
 #define LC_DEFAULT_AREA "fullscreen"
 #define BACK_GROUND_LAYER "BackGroundLayer"
 
@@ -58,8 +59,8 @@ static void layerCallback_static(t_ilm_layer layer,
 
 LayerControl::LayerControl(const std::string& root)
 {
-    string area_path = root + LC_AREA_PATH;
-    string layer_path= root + LC_LAYER_SETTING_PATH;
+    string area_path(get_file_path(LC_AREA_FILE, root.c_str()));
+    string layer_path(get_file_path(LC_LAYER_SETTING_FILE, root.c_str()));
     // load layers.setting.json
     WMError ret = this->loadLayerSetting(layer_path);
     assert(ret == WMError::SUCCESS);

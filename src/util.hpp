@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 TOYOTA MOTOR CORPORATION
+ * Copyright (c) 2018 Konsulko Group
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,5 +117,8 @@ class rectangle
     long _right;
     long _bottom;
 };
+
+// Configuration file path helper
+std::string get_file_path(const char *file_name, const char *root_path = NULL);
 
 #endif // !WM_UTIL_HPP

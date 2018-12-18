@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 TOYOTA MOTOR CORPORATION
+ * Copyright (c) 2018 Konsulko Group
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <fstream>
 
 #include <unistd.h>
 
@@ -139,4 +141,38 @@ void _DUMP(enum LOG_LEVEL level, const char *log, ...)
     fprintf(stderr, "%s \n", message);
     va_end(args);
     free(message);
+}
+
+std::string get_file_path(const char *file_name, const char *root_path)
+{
+    char const *default_base_path = root_path;
+    std::string path("");
+
+    if(!file_name) {
+        return path;
+    }
+
+    if (!default_base_path) {
+        default_base_path = getenv("AFM_APP_INSTALL_DIR");
+        if (!default_base_path) {
+            HMI_ERROR("AFM_APP_INSTALL_DIR is not defined");
+        }
+    }
+    if (default_base_path) {
+        path = default_base_path;
+        path.append("/etc/");
+        path.append(file_name);
+    }
+
+    // Check for over-ride in /etc/xdg/windowmanager
+    std::string override_path("/etc/xdg/windowmanager/");
+    override_path.append(file_name);
+    std::ifstream i(override_path);
+    if (i.good()) {
+        path = override_path;
+    }
+    i.close();
+
+    HMI_INFO("Using %s", path.c_str());
+    return path;
 }
