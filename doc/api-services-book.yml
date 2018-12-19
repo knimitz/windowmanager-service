@@ -1,0 +1,13 @@
+type: books
+books:
+-
+    id: agl-service-windowmanager
+    title: AGL Service Windowmanager
+    description: AGL Service Windowmanager documentation
+    keywords:
+    author: "TOYOTA MOTOR CORPORATION"
+    version: master
+    chapters:
+    - url: ApplicationGuide.md
+      destination: 3_2-WindowManager-Guide.md
+      name: Window Manager Developper Guide
