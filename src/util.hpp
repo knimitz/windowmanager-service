@@ -36,7 +36,7 @@
 #define HMI_SEQ_INFO(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_INFO, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
 #define HMI_SEQ_DEBUG(seq_num, args,...) _HMI_SEQ_LOG(LOG_LEVEL_DEBUG, __FILENAME__, __FUNCTION__, __LINE__, seq_num, args, ##__VA_ARGS__)
 
-#define DUMP(args, ...) _DUMP(LOG_LEVEL_DEBUG, args, ##__VA_ARGS__)
+#define DUMP(args, ...) _DUMP(LOG_LEVEL_INFO, args, ##__VA_ARGS__)
 
 enum LOG_LEVEL{
     LOG_LEVEL_NONE = 0,
