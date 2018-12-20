@@ -34,6 +34,7 @@ class LayerState
   public:
     LayerState();
     ~LayerState() = default;
+    const std::unordered_map<std::string, std::string> getCurrentState();
     const std::vector<unsigned> getIviIdList();
     void addLayer(unsigned layer);
     void removeLayer(unsigned layer);
@@ -69,6 +70,7 @@ class WMLayer
     void addLayerToState(unsigned layer);
     void removeLayerFromState(unsigned layer);
     void attachAppToArea(const std::string& app, const std::string& area);
+    std::string attachedApp(const std::string& area);
     void update();
     void undo();
 

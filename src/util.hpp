@@ -20,6 +20,7 @@
 
 #include <functional>
 #include <thread>
+#include <unordered_map>
 #include <sys/poll.h>
 #include <string.h>
 
@@ -121,4 +122,15 @@ class rectangle
 // Configuration file path helper
 std::string get_file_path(const char *file_name, const char *root_path = NULL);
 
-#endif // !WM_UTIL_HPP
+typedef struct ChangeAreaReq {
+    std::string appname;
+    std::unordered_map<std::string, struct rect> area_req;
+    bool save;
+    std::unordered_map<std::string, std::string> update_app2area;
+    ChangeAreaReq() = default;
+    ~ChangeAreaReq() = default;
+    ChangeAreaReq(const ChangeAreaReq& val) = default;
+    void dump();
+} ChangeAreaReq;
+
+#endif // WM_UTIL_HPP

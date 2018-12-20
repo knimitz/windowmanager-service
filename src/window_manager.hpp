@@ -176,6 +176,8 @@ class WindowManager
     void api_activate_window(char const *appid, char const *role, char const *drawing_area, const reply_func &reply);
     void api_deactivate_window(char const *appid, char const *role, const reply_func &reply);
     void api_enddraw(char const *appid, char const *role);
+    json_object* api_get_area_list();
+    void api_change_area_size(ChangeAreaReq &areas);
     bool api_subscribe(afb_req_t req, EventType event_id);
     result<json_object *> api_get_display_info();
     result<json_object *> api_get_area_info(char const *role);

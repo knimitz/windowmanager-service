@@ -48,6 +48,8 @@ class WMClient
     unsigned layerID() const;
     unsigned surfaceID() const;
     void registerSurface(unsigned surface);
+    std::string area() const {return this->app_area;};
+    void setArea(const std::string area) {this->app_area = area;}
     WMError addSurface(unsigned surface);
     bool isSourceSizeSet();
     void setSurfaceSizeCorrectly();
@@ -67,7 +69,7 @@ class WMClient
     unsigned layer;
     bool is_source_set;
     std::string main_role;
-    std::string area;
+    std::string app_area;
     unsigned surface; // currently, main application has only one surface.
     //std::vector<std::string> role_list;
     std::unordered_map<std::string, unsigned> role2surface;

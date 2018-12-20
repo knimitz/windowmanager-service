@@ -394,7 +394,7 @@ WMError LayerControl::layoutChange(const WMAction& action)
     unsigned surface = action.client->surfaceID();
 
     auto rect = this->getAreaSize(action.area);
-    HMI_DEBUG("Set layout %d, %d, %d, %d",rect.x, rect.y, rect.w, rect.h);
+    HMI_SEQ_INFO(action.req_num, "Set layout %d, %d, %d, %d",rect.x, rect.y, rect.w, rect.h);
 
     // Sometimes, ivi_wm_surface_size signal doesn't reach window manager,
     // then, Window Manager set set source size = 0.
@@ -413,6 +413,7 @@ WMError LayerControl::layoutChange(const WMAction& action)
 
     ilm_surfaceSetDestinationRectangle(surface, rect.x, rect.y, rect.w, rect.h);
     ilm_commitChanges();
+    action.client->setArea(action.area);
     for(auto &wm_layer: this->wm_layers)
     {
         // Store the state who is assigned to the area
@@ -448,6 +449,48 @@ WMError LayerControl::visibilityChange(const WMAction& action)
     }
     ilm_commitChanges();
     return ret;
+}
+
+WMError LayerControl::updateAreaList(const ChangeAreaReq& req)
+{
+    // error check
+    for(const auto& elem : req.area_req)
+    {
+        if(this->area2size.find(elem.first) == this->area2size.end())
+        {
+            HMI_ERROR("requested area %s is not registered in area list", elem.first.c_str());
+            return WMError::NOT_REGISTERED;
+        }
+    }
+    // update list
+    for(const auto& elem : req.area_req)
+    {
+        this->area2size[elem.first] = elem.second;
+    }
+    if(req.save)
+    {
+        HMI_NOTICE("Not implemented");
+        // TODO
+    }
+    return WMError::SUCCESS;
+}
+
+WMError LayerControl::getUpdateAreaList(ChangeAreaReq *req)
+{
+    for(const auto& wm_layer : this->wm_layers)
+    {
+        // get area name and compare it with elem
+        for(const auto& area : req->area_req)
+        {
+            string app = wm_layer->attachedApp(area.first);
+            if(!app.empty())
+            {
+                HMI_INFO("app %s changes area %s", app.c_str(), area.first.c_str());
+                req->update_app2area[app] = area.first;
+            }
+        }
+    }
+    return WMError::SUCCESS;
 }
 
 void LayerControl::appTerminated(const shared_ptr<WMClient> client)

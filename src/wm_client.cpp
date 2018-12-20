@@ -197,7 +197,6 @@ void WMClient::emitVisible(bool visible)
     }
     if(allow_send)
     {
-        this->area = area;
         json_object* j = json_object_new_object();
         json_object_object_add(j, kKeyRole, json_object_new_string(this->role().c_str()));
         json_object_object_add(j, kKeyDrawingName, json_object_new_string(this->role().c_str()));
@@ -231,7 +230,6 @@ void WMClient::emitActive(bool active)
     }
     if(allow_send)
     {
-        this->area = area;
         json_object* j = json_object_new_object();
         json_object_object_add(j, kKeyRole, json_object_new_string(this->role().c_str()));
         json_object_object_add(j, kKeyDrawingName, json_object_new_string(this->role().c_str()));
@@ -256,7 +254,6 @@ void WMClient::emitSyncDraw(const string& area, struct rect& r)
     HMI_NOTICE("trace");
     if(afb_event_is_valid(this->evname2afb_event[kSyncDraw]))
     {
-        this->area = area;
         json_object *j_rect = json_object_new_object();
         json_object_object_add(j_rect, kKeyX, json_object_new_int(r.x));
         json_object_object_add(j_rect, kKeyY, json_object_new_int(r.y));

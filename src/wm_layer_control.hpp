@@ -76,6 +76,10 @@ class LayerControl
     void undoUpdate();
     WMError layoutChange(const WMAction& action);
     WMError visibilityChange(const WMAction &action);
+    const std::unordered_map<std::string, struct rect>& getAreaList() {return this->area2size;}
+    WMError updateAreaList(const ChangeAreaReq& req);
+    WMError getUpdateAreaList(ChangeAreaReq* req);
+    WMError changeAreaSize(std::shared_ptr<WMClient> client, const std::string& area);
     void appTerminated(const std::shared_ptr<WMClient> client);
 
     // Don't use this function.

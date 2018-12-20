@@ -28,6 +28,7 @@ extern "C"
 
 using std::string;
 using std::vector;
+using std::unordered_map;
 
 namespace wm
 {
@@ -69,6 +70,9 @@ static const vector<string> kListEventName{
 static sd_event_source *g_timer_ev_src = nullptr;
 static AppList g_app_list;
 static WindowManager *g_context;
+static vector<string> white_list_area_size_change = {
+    "homescreen", "settings"
+};
 
 namespace
 {
@@ -377,6 +381,99 @@ void WindowManager::api_enddraw(char const *appid, char const *drawing_name)
     {
         HMI_SEQ_INFO(current_req, "Wait other App call endDraw");
         return;
+    }
+}
+
+json_object* WindowManager::api_get_area_list()
+{
+    json_object* ret = json_object_new_object();
+    json_object* jarray = json_object_new_array();
+    unordered_map<string, struct rect> area2size = this->lc->getAreaList();
+    for(const auto& area : area2size)
+    {
+        json_object* j = json_object_new_object();
+        json_object_object_add(j, "name", json_object_new_string(area.first.c_str()));
+        json_object* jrect = json_object_new_object();
+        json_object_object_add(jrect, "x", json_object_new_int(area.second.x));
+        json_object_object_add(jrect, "y", json_object_new_int(area.second.y));
+        json_object_object_add(jrect, "w", json_object_new_int(area.second.w));
+        json_object_object_add(jrect, "h", json_object_new_int(area.second.h));
+        json_object_object_add(j, "rect", jrect);
+        json_object_array_add(jarray, j);
+    }
+    json_object_object_add(ret, "areas", jarray);
+    HMI_DEBUG("area_list: %s", json_object_get_string(ret));
+    return ret;
+}
+
+void WindowManager::api_change_area_size(ChangeAreaReq &areas)
+{
+    // Error check
+    areas.dump();
+    auto client = g_app_list.lookUpClient(areas.appname);
+    WMError ret;
+    if(client == nullptr)
+    {
+        HMI_ERROR("Call register your role with setRole or requestSurface");
+        return;
+    }
+    if(std::find(white_list_area_size_change.begin(),
+                 white_list_area_size_change.end(), client->role()) == white_list_area_size_change.end())
+    {
+        HMI_ERROR("Application %s which has the role %s is not allowed to change area size", client->appID().c_str(), client->role().c_str());
+        return;
+    }
+
+    // Update
+    ret = this->lc->updateAreaList(areas);
+    if(ret != WMError::SUCCESS)
+    {
+        HMI_ERROR("%d : %s", ret, errorDescription(ret));
+        return;
+    }
+    ret = this->lc->getUpdateAreaList(&areas);
+    areas.dump();
+    if(ret != WMError::SUCCESS)
+    {
+        HMI_ERROR("%d : %s", ret, errorDescription(ret));
+        return;
+    }
+
+    // Create Action
+    unsigned req_num;
+    bool found = false;
+    ret = this->setRequest(client->appID(), client->role(), "-", Task::TASK_CHANGE_AREA, &req_num); // area is null
+    if(ret != WMError::SUCCESS)
+    {
+        HMI_SEQ_ERROR(req_num, "%d : %s", ret, errorDescription(ret));
+        return;
+    }
+    for(const auto &update: areas.update_app2area)
+    {
+        // create action
+        auto client = g_app_list.lookUpClient(update.first);
+        if(client == nullptr)
+        {
+            HMI_SEQ_ERROR(req_num, "%s : %s", update.first.c_str(), errorDescription(ret));
+            g_app_list.removeRequest(req_num);
+            this->processNextRequest();
+            return;
+        }
+        ret = g_app_list.setAction(req_num, client, client->role(), update.second, TaskVisible::VISIBLE);
+        if(ret != WMError::SUCCESS)
+        {
+            HMI_SEQ_ERROR(req_num, "Failed to set request");
+            return;
+        }
+    }
+    HMI_SEQ_INFO(req_num, "Area change request");
+    g_app_list.reqDump();
+
+    // Request change size to applications
+    for(const auto &action : g_app_list.getActions(req_num, &found))
+    {
+        struct rect r = this->lc->getAreaSize(action.area);
+        action.client->emitSyncDraw(action.area, r);
     }
 }
 

@@ -36,6 +36,11 @@ LayerState::LayerState()
        area2appid()
 {}
 
+const unordered_map<string, string> LayerState::getCurrentState()
+{
+    return this->area2appid;
+}
+
 const vector<unsigned> LayerState::getIviIdList()
 {
     return this->render_order;
@@ -181,6 +186,18 @@ void WMLayer::removeLayerFromState(unsigned layer)
 void WMLayer::attachAppToArea(const string& app, const string& area)
 {
     this->tmp_state.attachAppToArea(app, area);
+}
+
+string WMLayer::attachedApp(const string& area)
+{
+    string ret;
+    auto list = this->state.getCurrentState();
+    auto app = list.find(area);
+    if(app != list.end())
+    {
+        ret = app->second;
+    }
+    return ret;
 }
 
 void WMLayer::appendArea(const string& area)

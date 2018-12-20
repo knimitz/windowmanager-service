@@ -413,6 +413,73 @@ void windowmanager_getareainfo_thunk(afb_req_t req) noexcept
     }
 }
 
+void windowmanager_get_area_list(afb_req_t req) noexcept
+{
+    std::lock_guard<std::mutex> guard(binding_m);
+    json_object* ret = g_afb_instance->wmgr.api_get_area_list();
+    afb_req_success(req, ret, nullptr);
+}
+
+void windowmanager_change_area_size(afb_req_t req) noexcept
+{
+    std::lock_guard<std::mutex> guard(binding_m);
+    if (g_afb_instance == nullptr)
+    {
+        afb_req_fail(req, "failed", "Binding not initialized, did the compositor die?");
+        return;
+    }
+
+    char* appid = afb_req_get_application_id(req);
+    if(appid)
+    {
+        ChangeAreaReq change_req;
+        change_req.appname = appid;
+        change_req.save = false;
+        json_object *jreq = afb_req_json(req);
+        json_object *jsave, *jareas;
+        HMI_INFO("json_check, %s", json_object_get_string(jreq));
+        if(json_object_object_get_ex(jreq, "save", &jsave))
+        {
+            change_req.save = json_object_get_boolean(jsave);
+        }
+        if (json_object_object_get_ex(jreq, "areas", &jareas))
+        {
+            int size = json_object_array_length(jareas);
+            for(int i = 0; i < size; i++)
+            {
+                json_object* elem = json_object_array_get_idx(jareas, i);
+                struct rect rect;
+                std::string name = jh::getStringFromJson(elem, "name");
+                json_object* jrect;
+                if(json_object_object_get_ex(elem, "rect", &jrect))
+                {
+                    rect.x = jh::getIntFromJson(jrect, "x");
+                    rect.y = jh::getIntFromJson(jrect, "y");
+                    rect.w = jh::getIntFromJson(jrect, "w");
+                    rect.h = jh::getIntFromJson(jrect, "h");
+                }
+                else
+                {
+                    HMI_ERROR("bad request @area name :%s", name.c_str());
+                    afb_req_fail(req, "failed", "bad request");
+                    return;
+                }
+                change_req.area_req[name] = rect;
+            }
+            if(change_req.area_req.size() != 0)
+            {
+                g_afb_instance->wmgr.api_change_area_size(change_req);
+            }
+            afb_req_success(req, nullptr, nullptr);
+        }
+        free(appid);
+    }
+    else
+    {
+        afb_req_fail(req, "failed", nullptr);
+    }
+}
+
 void windowmanager_wm_subscribe(afb_req_t req) noexcept
 {
     std::lock_guard<std::mutex> guard(binding_m);
@@ -498,6 +565,8 @@ const afb_verb_t windowmanager_verbs[] = {
     { .verb = "endDraw", .callback = windowmanager_enddraw },
     { .verb = "getDisplayInfo", .callback = windowmanager_getdisplayinfo_thunk },
     { .verb = "getAreaInfo", .callback = windowmanager_getareainfo_thunk },
+    { .verb = "changeAreaSize", .callback = windowmanager_change_area_size },
+    { .verb = "getAreaList", .callback = windowmanager_get_area_list },
     { .verb = "wm_subscribe", .callback = windowmanager_wm_subscribe },
     { .verb = "ping", .callback = windowmanager_ping },
     { .verb = "debug_terminate", .callback = windowmanager_debug_terminate },

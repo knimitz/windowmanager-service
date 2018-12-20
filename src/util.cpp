@@ -176,3 +176,20 @@ std::string get_file_path(const char *file_name, const char *root_path)
     HMI_INFO("Using %s", path.c_str());
     return path;
 }
+
+void ChangeAreaReq::dump()
+{
+    DUMP("=== change request dump ===");
+    DUMP("request from : %s", this->appname.c_str());
+    DUMP("save : %s", this->save ? "true" : "false");
+    for(const auto& req : this->area_req)
+    {
+        DUMP("area change req : %s", req.first.c_str());
+        DUMP("  x:%d y:%d w:%d h:%d",req.second.x, req.second.y, req.second.w, req.second.h);
+    }
+    for(const auto& req : this->update_app2area)
+    {
+        DUMP("update change app : %s, area:%s", req.first.c_str(), req.second.c_str());
+    }
+    DUMP("======== dump end =========");
+}

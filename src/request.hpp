@@ -30,6 +30,7 @@ enum Task
 {
     TASK_ALLOCATE,
     TASK_RELEASE,
+    TASK_CHANGE_AREA,
     TASK_INVALID
 };
 
