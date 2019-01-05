@@ -689,7 +689,7 @@ int PolicyManager::timerEvent(sd_event_source *source, uint64_t usec, void *data
 int PolicyManager::setStateTransitionProcessToSystemd(int event_id, uint64_t delay_ms, std::string role)
 {
     struct sd_event_source *event_source;
-    HMI_DEBUG("wm:pm", "event_id:0x%x delay:%d role:%s", event_id, delay_ms, role.c_str());
+    HMI_DEBUG("wm:pm event_id:0x%x delay:%d role:%s", event_id, delay_ms, role.c_str());
 
     if (0 == delay_ms)
     {
@@ -697,7 +697,7 @@ int PolicyManager::setStateTransitionProcessToSystemd(int event_id, uint64_t del
                                      &pm::transitionStateWrapper, new int(event_id));
         if (0 > ret)
         {
-            HMI_ERROR("wm:pm", "Faild to sd_event_add_defer: errno:%d", ret);
+            HMI_ERROR("wm:pm Failed to sd_event_add_defer: errno:%d", ret);
             return -1;
         }
     }
@@ -716,7 +716,7 @@ int PolicyManager::setStateTransitionProcessToSystemd(int event_id, uint64_t del
                                     &pm::timerEventWrapper, new int(event_id));
         if (0 > ret)
         {
-            HMI_ERROR("wm:pm", "Faild to sd_event_add_time: errno:%d", ret);
+            HMI_ERROR("wm:pm Failed to sd_event_add_time: errno:%d", ret);
             return -1;
         }
     }

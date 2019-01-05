@@ -802,7 +802,7 @@ void WindowManager::emitScreenUpdated(unsigned req_num)
 
     int ret = afb_event_push(
         this->map_afb_event[kListEventName[Event_ScreenUpdated]], j);
-    if (ret != 0)
+    if (ret < 0)
     {
         HMI_DEBUG("afb_event_push failed: %m");
     }
