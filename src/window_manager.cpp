@@ -172,7 +172,7 @@ result<int> WindowManager::api_request_surface(char const *appid, char const *dr
         {
             // register drawing_name as fallback and make it displayed.
             lid = this->lc->getNewLayerID(string("fallback"));
-            HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
+            HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role.c_str());
             if (lid == 0)
             {
                 return Err<int>("Designated role does not match any role, fallback is disabled");
@@ -229,7 +229,7 @@ char const *WindowManager::api_request_surface(char const *appid, char const *dr
         {
             // register drawing_name as fallback and make it displayed.
             l_id = this->lc->getNewLayerID("fallback");
-            HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role);
+            HMI_DEBUG("%s is not registered in layers.json, then fallback as normal app", role.c_str());
             if (l_id == 0)
             {
                 return "Designated role does not match any role, fallback is disabled";
@@ -486,7 +486,7 @@ bool WindowManager::api_subscribe(afb_req_t req, EventType event_id)
         HMI_ERROR("not defined in Window Manager", event_id);
         return ret;
     }
-    HMI_INFO("%s subscribe %s : %d", appid, kListEventName[event_id], event_id);
+    HMI_INFO("%s subscribe %s : %d", appid, kListEventName[event_id].c_str(), event_id);
     if(event_id == Event_ScreenUpdated)
     {
         // Event_ScreenUpdated should be emitted to subscriber

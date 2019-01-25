@@ -278,7 +278,7 @@ void LayerControl::undoUpdate()
 
 WMError LayerControl::loadLayerSetting(const string &path)
 {
-    HMI_DEBUG("loading WMLayer(Application Containers) Setting from %s", path);
+    HMI_DEBUG("loading WMLayer(Application Containers) Setting from %s", path.c_str());
 
     json_object *json_obj, *json_cfg;
     int ret = jh::inputJsonFilie(path.c_str(), &json_obj);
