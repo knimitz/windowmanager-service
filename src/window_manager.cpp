@@ -192,6 +192,7 @@ int WindowManager::init()
         "wl_output", [this](wl_registry *r, uint32_t name, uint32_t v) {
             this->outputs.emplace_back(std::make_unique<wl::output>(r, name, v));
         });
+    this->display->roundtrip();
 
     this->display->add_global_handler(
         "ivi_wm", [this](wl_registry *r, uint32_t name, uint32_t v) {
